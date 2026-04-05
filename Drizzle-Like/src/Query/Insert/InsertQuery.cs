@@ -1,4 +1,5 @@
 
+using System.Text;
 using Drizzle_Like.Query.Select;
 using Drizzle_Like.Schema.Columns;
 using Drizzle_Like.Schema.Tables;
@@ -8,16 +9,58 @@ namespace Drizzle_Like.Query.Insert;
 public class InsertQuery<TTable> : Query<object> where TTable : ITable
 {
     private readonly TTable _table;
-    private readonly Dictionary<string, object?> _values = new();
+    private readonly List<Dictionary<string, object?>> _values = new();
 
     public InsertQuery(TTable table, DbClient dbClient) : base(null, dbClient)
     {
         _table = table;
     }
     
-    public InsertQuery<TTable> Values<T>(IInsertRecord<TTable> record, T value)
+    public InsertQuery<TTable> Value(IInsertRecord<TTable> record)
     {
-        record.Writer(_values);
+        Dictionary<string, object?> value = new();
+        record.Writer(value);
+        _values.Add(value);
+        return this;
+    }
+    
+    public InsertQuery<TTable> Values(params IInsertRecord<TTable>[] records)
+    {
+        foreach (var record in records)
+        {
+            Dictionary<string, object?> value = new();
+            record.Writer(value);
+            _values.Add(value);
+        }
+        return this;
+    }
+    
+    public InsertQuery<TTable> Value(Dictionary<IColumnBase<TTable>, object?> columnValuePairs)
+    {        
+        var value = new Dictionary<string, object?>();
+        foreach (var columnValuePair in columnValuePairs)
+        {
+            var col = columnValuePair.Key;
+            var val = columnValuePair.Value;
+            value[col.Identifier] = val;
+        }
+        _values.Add(value);
+        return this;
+    }
+    
+    public InsertQuery<TTable> Values(params Dictionary<IColumnBase<TTable>, object?>[] columnValuePairsArray)
+    {
+        foreach (var columnValuePairs in columnValuePairsArray)
+        {
+            var value = new Dictionary<string, object?>();
+            foreach (var columnValuePair in columnValuePairs)
+            {
+                var col = columnValuePair.Key;
+                var val = columnValuePair.Value;
+                value[col.Identifier] = val;
+            }
+            _values.Add(value);
+        }
         return this;
     }
 
@@ -25,17 +68,40 @@ public class InsertQuery<TTable> : Query<object> where TTable : ITable
     {
         get
         {
-            var colNames = _values.Keys;
-            var paramNames = new List<string>();
+            if (_values.Count == 0)
+                throw new InvalidOperationException("No values provided for insert.");
 
-            foreach (var val in _values.Values)
+            var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
+        
+            var sb = new StringBuilder();
+            sb.Append($"INSERT INTO {_table.Sql} (");
+            sb.Append(string.Join(", ", allColumns));
+            sb.Append(") VALUES ");
+
+            var rows = new List<string>();
+
+            foreach (var row in _values)
             {
-                string pName = $"p{Parameters.Count}";
-                Parameters.Add(pName, val);
-                paramNames.Add($"@{pName}");
+                var rowParamNames = new List<string>();
+            
+                foreach (var col in allColumns)
+                {
+                    if (row.TryGetValue(col, out var val))
+                    {
+                        string pName = $"p{Parameters.Count}";
+                        Parameters.Add(pName, val);
+                        rowParamNames.Add($"@{pName}");
+                    }
+                    else
+                    {
+                        rowParamNames.Add("NULL");
+                    }
+                }
+                rows.Add($"({string.Join(", ", rowParamNames)})");
             }
 
-            return $"INSERT INTO {_table.Sql} ({string.Join(", ", colNames)}) VALUES ({string.Join(", ", paramNames)})";
+            sb.Append(string.Join(", ", rows));
+            return sb.ToString();
         }
     }
 
