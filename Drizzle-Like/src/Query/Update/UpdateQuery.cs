@@ -27,21 +27,29 @@ public class UpdateQuery<TTable> : Query<object> where  TTable : ITable
         return this;
     }
     
-    public UpdateQuery<TTable> Set<T>(DbColumn<T, TTable> column, IOperator value)
+    public UpdateQuery<TTable> Set<T>(DbColumn<T, TTable> column, IColumn<T> value)
     {
-        var columnName = column.Sql;
-        var columnNameOnly = columnName.Contains(".") 
-            ? columnName.Split('.').Last() 
-            : columnName;
-        _setValues[columnNameOnly] = value.BuildSql(Parameters);
+        _setValues[column.Identifier] = value.Sql;
         return this;
     }
     
-    public UpdateQuery<TTable> Set(Dictionary<string, object> columnValuePairs)
+    public UpdateQuery<TTable> Set(IUpdateRecord<TTable> record)
+    {
+        record.Writer(_setValues);
+        return this;
+    }
+    
+    public UpdateQuery<TTable> Set<T>(DbColumn<T, TTable> column, IOperator value)
+    {
+        _setValues[column.Identifier] = value.BuildSql(Parameters);
+        return this;
+    }
+    
+    public UpdateQuery<TTable> Set(Dictionary<IColumnBase<TTable>, object> columnValuePairs)
     {
         foreach (var kv in columnValuePairs)
         {
-            _setValues[kv.Key] = kv.Value;
+            _setValues[kv.Key.Identifier] = kv.Value;
         }
         return this;
     }

@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
 [Generator]
-public class TableColumnConstantGenerator : IIncrementalGenerator
+public class TableGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -153,6 +153,8 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
             
             sb.AppendLine("using Drizzle_Like.Query.Select;");
             sb.AppendLine("using Drizzle_Like.Query.Insert;");
+            sb.AppendLine("using Drizzle_Like.Query.Update;");
+            sb.AppendLine("using Drizzle_Like.Shared;");
             sb.AppendLine("using Drizzle_Like.Schema.Columns;");
             sb.AppendLine("using Drizzle_Like.Schema.Tables;");
             
@@ -245,7 +247,38 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
     }}
 ");
 
-            
+            var updateModelProperties = string.Join("\n    ", table.Columns!.Select(c => 
+                $"public Optional<{c.Type}> {c.PropName} {{ get; set; }} = default;"));
+
+            var updateWriter = string.Join("\n        ", table.Columns!.Select(c => 
+                $@"if ({c.PropName}.HasValue) values[""{c.DbColumnName}""] = {c.PropName}.Value;"));
+
+            sb.AppendLine($@"
+    public class UpdateModel : IUpdateRecord<{table.ClassName}>
+    {{
+        {updateModelProperties}
+
+        public void Writer(Dictionary<string, object?> values)
+        {{
+            {updateWriter}
+        }}
+    }}
+");
+
+            var updateStructProperties = string.Join(", ", table.Columns!.Select(c => 
+                $"Optional<{c.Type}> {c.PropName} = default"));
+
+
+            sb.AppendLine($@"
+    public readonly record struct UpdateRecord({updateStructProperties}) : IUpdateRecord<{table.ClassName}>
+    {{
+        public void Writer(Dictionary<string, object?> values)
+        {{
+            {updateWriter}
+        }}
+    }}
+");
+
             sb.AppendLine($@"
         static {table.ClassName}() {{
                 {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new DbColumn<{c.Type}, {table.ClassName}>(\"{c.DbColumnName}\");"))}
