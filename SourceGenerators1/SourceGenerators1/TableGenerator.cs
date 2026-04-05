@@ -151,9 +151,11 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
             var refName = table.IsAlias ? table.AliasName : table.DbTableName;
             var tableSql = table.IsAlias ? $"{table.DbTableName} AS {table.AliasName}" : table.DbTableName;
             
-            sb.AppendLine("using Drizzle_Like.Schema.Columns;");
             sb.AppendLine("using Drizzle_Like.Query.Select;");
+            sb.AppendLine("using Drizzle_Like.Query.Insert;");
+            sb.AppendLine("using Drizzle_Like.Schema.Columns;");
             sb.AppendLine("using Drizzle_Like.Schema.Tables;");
+            
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Data.Common;");
 
@@ -216,7 +218,7 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
             var insertModelProperties = string.Join("\n    ", table.Columns!.Select(c => 
                 $"public {c.Type}? {c.PropName} {{ get; set; }}"));
 
-            var insertModelWriter = string.Join("\n        ", table.Columns!.Select(c => 
+            var insertWriter = string.Join("\n        ", table.Columns!.Select(c => 
                 $@"if ({c.PropName} != null) values[""{c.DbColumnName}""] = {c.PropName};"));
 
             sb.AppendLine($@"
@@ -226,22 +228,19 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
 
         public void Writer(Dictionary<string, object?> values)
         {{
-            {insertModelWriter}
+            {insertWriter}
         }}
     }}
 ");
 
             var insertStructProperties = string.Join(", ", table.Columns!.Select(c => $"{c.Type}? {c.PropName} = null"));
 
-            var insertStructWriter = string.Join("\n        ", table.Columns!.Select(c => 
-                $@"if ({c.PropName}.HasValue || {c.PropName} != null) values[""{c.DbColumnName}""] = {c.PropName};"));
-
             sb.AppendLine($@"
     public readonly record struct InsertRecord({insertStructProperties}) : IInsertRecord<{table.ClassName}>
     {{
         public void Writer(Dictionary<string, object?> values)
         {{
-            {insertStructWriter}
+            {insertWriter}
         }}
     }}
 ");
