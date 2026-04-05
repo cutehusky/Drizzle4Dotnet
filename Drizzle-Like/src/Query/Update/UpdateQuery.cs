@@ -21,7 +21,7 @@ public class UpdateQuery<TTable> : Query<object> where  TTable : ITable
     }
 
 
-    public UpdateQuery<TTable> Set<T>(IColumn<T> column, T value)
+    public UpdateQuery<TTable> Set<T>(DbColumnInstance<T, TTable> column, T value)
     {
         var columnName = column.Sql;
         var columnNameOnly = columnName.Contains(".") 
@@ -31,7 +31,7 @@ public class UpdateQuery<TTable> : Query<object> where  TTable : ITable
         return this;
     }
     
-    public UpdateQuery<TTable> Set<T>(IColumn<T> column, IOperator value)
+    public UpdateQuery<TTable> Set<T>(DbColumnInstance<T, TTable> column, IOperator value)
     {
         var columnName = column.Sql;
         var columnNameOnly = columnName.Contains(".") 

@@ -145,9 +145,9 @@ public partial class {model.Name}
         var argColumnName = attrSyntax?.ArgumentList?.Arguments[1];
         if (argColumnName == null) return null;
         var columnNameExpr = argColumnName.Expression.ToString();
-        if (!columnNameExpr.Contains($"{tableName}.Columns."))
+        if (!columnNameExpr.Contains($"{tableName}.ColumnNames."))
             return null;
-        return $"{(string.IsNullOrEmpty(tableNamespace) ? "" : $"{tableNamespace}.")}{columnNameExpr.Replace(".Columns", "")}";
+        return $"{(string.IsNullOrEmpty(tableNamespace) ? "" : $"{tableNamespace}.")}{columnNameExpr.Replace(".ColumnNames", "")}";
     }
 }
 

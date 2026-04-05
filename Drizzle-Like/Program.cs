@@ -8,19 +8,19 @@ using static Drizzle_Like.Query.Shared.Operators.Operators;
 [DbSelect]
 public static partial class UserSelect1
 {
-    [MapWith(typeof(UsersTable), UsersTable.Columns.Id)]
+    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
     public static int Id { get; }
 
-    [MapWith(typeof(UsersTable), UsersTable.Columns.Email)]
+    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
     public static string Email { get; }
     
-    [MapWith(typeof(UsersTable), UsersTable.Columns.Name)]
+    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
     public static string Name { get; }
     
-    [MapWith(typeof(DepartmentsTable), DepartmentsTable.Columns.Name)]
+    [MapWith(typeof(DepartmentsTable), DepartmentsTable.ColumnNames.Name)]
     public static int DepartmentName { get; }
     
-    [MapWith(typeof(ManagersTable), ManagersTable.Columns.Name)]
+    [MapWith(typeof(ManagersTable), ManagersTable.ColumnNames.Name)]
     public static int ManagerName { get; }
 }
 
@@ -28,13 +28,13 @@ public static partial class UserSelect1
 [DbSelect]
 public static partial class UserSelect
 {
-    [MapWith(typeof(UsersTable), UsersTable.Columns.Id)]
+    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
     public static int Id { get; }
 
-    [MapWith(typeof(UsersTable), UsersTable.Columns.Email)]
+    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
     public static string Email { get; }
     
-    [MapWith(typeof(UsersTable), UsersTable.Columns.Name)]
+    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
     public static string Name { get; }
 }
 

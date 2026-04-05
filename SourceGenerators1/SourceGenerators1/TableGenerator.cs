@@ -45,15 +45,23 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
             }
 
             var columns = new List<(string PropName, string DbColumnName, string Type)>();
-            foreach (var member in symbol.GetMembers().OfType<IPropertySymbol>())
+            foreach (var member in symbol.GetMembers().OfType<INamedTypeSymbol>())
             {
-                var colAttr = member.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name == "ColumnAttribute");
-                if (colAttr != null && colAttr.ConstructorArguments.Length > 0)
+                if (member == null)
+                    continue;
+                if (member.Name != "Columns")
+                    continue;
+                foreach (var subMember in member.GetMembers().OfType<IPropertySymbol>())
                 {
-                    var dbColumnName = colAttr.ConstructorArguments[0].Value?.ToString() ?? member.Name;
-                    var colType = ((INamedTypeSymbol)member.Type).TypeArguments[0].ToDisplayString();
-                    columns.Add((member.Name, dbColumnName, colType));
+                    var colAttr = subMember.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name == "ColumnAttribute");
+                    if (colAttr != null && colAttr.ConstructorArguments.Length > 0)
+                    {
+                        var dbColumnName = colAttr.ConstructorArguments[0].Value?.ToString() ?? subMember.Name;
+                        var colType = ((INamedTypeSymbol)subMember.Type).TypeArguments[0].ToDisplayString();
+                        columns.Add((subMember.Name, dbColumnName, colType));
+                    }
                 }
+                break;
             }
 
             return new TableModel
@@ -151,19 +159,17 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
         public override string TableName {{ get => ""{table.DbTableName}""; }}
 
         public override string Alias {{ get => ""{table.AliasName}""; }}
-
+");
+            sb.AppendLine($@"
         static {table.ClassName}() {{
-                {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new DbColumn<{c.Type}>(\"{refName}\",\"{c.DbColumnName}\");"))}
+                {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new DbColumnInstance<{c.Type}, {table.ClassName}>(\"{refName}\",\"{c.DbColumnName}\");"))}
         }}");
 
-            if (table.IsAlias)
-            {
-                sb.AppendLine(string.Join("\n        ", table.Columns!.Select(c => $"public static DbColumn<{c.Type}> {c.PropName} {{ get; set; }}")));
-            }
-
-            sb.AppendLine($@"
-        public static class Columns
-        {{");
+            sb.AppendLine(string.Join("\n        ", table.Columns!.Select(c => $"public static DbColumnInstance<{c.Type}, {table.ClassName}> {c.PropName} {{ get; set; }}")));
+            
+            sb.AppendLine(@"
+        public static class ColumnNames
+        {");
             foreach (var col in table.Columns!)
             {
                 sb.AppendLine($@"        public const string {col.PropName} = ""{col.PropName}"";");
