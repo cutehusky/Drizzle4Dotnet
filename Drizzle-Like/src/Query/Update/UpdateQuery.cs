@@ -21,17 +21,13 @@ public class UpdateQuery<TTable> : Query<object> where  TTable : ITable
     }
 
 
-    public UpdateQuery<TTable> Set<T>(DbColumnInstance<T, TTable> column, T value)
+    public UpdateQuery<TTable> Set<T>(DbColumn<T, TTable> column, T value)
     {
-        var columnName = column.Sql;
-        var columnNameOnly = columnName.Contains(".") 
-            ? columnName.Split('.').Last() 
-            : columnName;
-        _setValues[columnNameOnly] = value;
+        _setValues[column.ColumnIdentifier] = value;
         return this;
     }
     
-    public UpdateQuery<TTable> Set<T>(DbColumnInstance<T, TTable> column, IOperator value)
+    public UpdateQuery<TTable> Set<T>(DbColumn<T, TTable> column, IOperator value)
     {
         var columnName = column.Sql;
         var columnNameOnly = columnName.Contains(".") 

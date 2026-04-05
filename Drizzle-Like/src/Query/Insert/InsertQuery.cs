@@ -17,11 +17,7 @@ public class InsertQuery<TTable> : Query<object> where TTable : ITable
 
     public InsertQuery<TTable> Values<T>(IColumn<T> column, T value)
     {
-        var columnName = column.Sql;
-        var columnNameOnly = columnName.Contains(".") 
-            ? columnName.Split('.').Last() 
-            : columnName;
-        _values[columnNameOnly] = value;
+        _values[column.ColumnIdentifier] = value;
         return this;
     }
 

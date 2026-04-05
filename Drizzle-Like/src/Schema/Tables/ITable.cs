@@ -4,7 +4,7 @@ namespace Drizzle_Like.Schema.Tables;
 
 public interface ITable: ISql<object>
 {
-    public string TableName { get; }
-    public string? Alias { get; }
+    public static abstract string TableName { get; }
+    public static abstract string? Alias { get; }
+    public static abstract string TableRefName { get; }
 }
-

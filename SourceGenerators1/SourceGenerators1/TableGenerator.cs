@@ -149,23 +149,28 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
             }
             
             var refName = table.IsAlias ? table.AliasName : table.DbTableName;
+            var tableSql = table.IsAlias ? $"{table.DbTableName} AS {table.AliasName}" : table.DbTableName;
             
             sb.AppendLine("using Drizzle_Like.Schema.Columns;");
             sb.AppendLine("using Drizzle_Like.Query.Select;");
             sb.AppendLine("using Drizzle_Like.Schema.Tables;");
             sb.AppendLine($@"
-    partial class {table.ClassName}
+    partial class {table.ClassName} : ITable
     {{
-        public override string TableName {{ get => ""{table.DbTableName}""; }}
+        public static string TableName {{ get => ""{table.DbTableName}""; }}
 
-        public override string Alias {{ get => ""{table.AliasName}""; }}
+        public static string Alias {{ get => ""{table.AliasName}""; }}
+
+        public static string TableRefName {{ get => ""{refName}""; }}
+
+        public string Sql => $""{tableSql}"";
 ");
             sb.AppendLine($@"
         static {table.ClassName}() {{
-                {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new DbColumnInstance<{c.Type}, {table.ClassName}>(\"{refName}\",\"{c.DbColumnName}\");"))}
+                {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new DbColumn<{c.Type}, {table.ClassName}>(\"{c.DbColumnName}\");"))}
         }}");
 
-            sb.AppendLine(string.Join("\n        ", table.Columns!.Select(c => $"public static DbColumnInstance<{c.Type}, {table.ClassName}> {c.PropName} {{ get; set; }}")));
+            sb.AppendLine(string.Join("\n        ", table.Columns!.Select(c => $"public static DbColumn<{c.Type}, {table.ClassName}> {c.PropName} {{ get; set; }}")));
             
             sb.AppendLine(@"
         public static class ColumnNames
