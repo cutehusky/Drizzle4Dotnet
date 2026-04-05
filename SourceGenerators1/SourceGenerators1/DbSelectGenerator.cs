@@ -43,23 +43,21 @@ public class DbSelectGenerator : IIncrementalGenerator
                 sb.AppendLine($"namespace {model.Namespace};");
             }
 
-            var recordParams = string.Join(", ", model.Properties.Select(p => $"{p.Type} {p.Name}"));
+            var selectStructProperties = string.Join(", ", model.Properties.Select(p => $"{p.Type} {p.Name}"));
+            var selectModelProperties = string.Join("\n        ", model.Properties.Select(p => $"public {p.Type} {p.Name} {{ get; set; }} = default!;"));
 
             var sqlFragments = string.Join(", ", model.Properties.Select(p => $"{{{p.ColumnSql}.Sql}}"));
 
-            var mapperResultFields = string.Join(",\n                ", model.Properties.Select((p, i) => 
+            var selectStructMapper = string.Join(",\n                ", model.Properties.Select((p, i) => 
                 $"r.IsDBNull({i}) ? default({p.Type}) : r.GetFieldValue<{p.Type}>({i})"));
-
-            var mapperModelFields = string.Join(",\n                ",
+            var selectModelMapper = string.Join(",\n                ",
                 model.Properties.Select((p, i) =>
                     $"{p.Name} = r.IsDBNull({i}) ? default({p.Type}) : r.GetFieldValue<{p.Type}>({i})"));
-
-            var selectModelProperties = string.Join("\n        ", model.Properties.Select(p => $"public {p.Type} {p.Name} {{ get; set; }} = default!;"));
 
             sb.AppendLine($@"
 public partial class {model.Name}
 {{
-    public record struct SelectResult({recordParams});
+    public readonly record struct SelectResult({selectStructProperties});
     public class SelectModel 
     {{
         {selectModelProperties}
@@ -75,7 +73,7 @@ public partial class {model.Name}
         public SelectResult Mapper(DbDataReader r)
         {{
             return new SelectResult(
-                {mapperResultFields}
+                {selectStructMapper}
             );
         }}
     }}
@@ -88,7 +86,7 @@ public partial class {model.Name}
         {{
             return new SelectModel 
             {{
-                {mapperModelFields}
+                {selectModelMapper}
             }};
         }}
     }}

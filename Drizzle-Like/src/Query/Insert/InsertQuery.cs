@@ -14,10 +14,10 @@ public class InsertQuery<TTable> : Query<object> where TTable : ITable
     {
         _table = table;
     }
-
-    public InsertQuery<TTable> Values<T>(DbColumn<T, TTable> column, T value)
+    
+    public InsertQuery<TTable> Values<T>(IInsertRecord<TTable> record, T value)
     {
-        _values[column.Identifier] = value;
+        record.Writer(_values);
         return this;
     }
 

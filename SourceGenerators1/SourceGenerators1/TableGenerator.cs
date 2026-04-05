@@ -170,20 +170,20 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
 
         public string Identifier => $""\""{refName}\"""";
 ");
-            var recordParams = string.Join(", ", table.Columns!.Select(p => $"{p.Type} {p.PropName}"));
-            var sqlFragments = string.Join(", ", table.Columns!.Select(p => $"{{{p.PropName}.Sql}}"));
-            var mapperModelFields = string.Join(",\n                ",
-                table.Columns!.Select((p, i) =>
-                    $"{p.PropName} = r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
-            var mapperResultFields = string.Join(",\n                ",
-                table.Columns!.Select((p, i) => $"r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
+            var selectStructProperties = string.Join(", ", table.Columns!.Select(p => $"{p.Type} {p.PropName}"));
             var selectModelProperties = string.Join("\n        ",
                 table.Columns!.Select(p => $"public {p.Type} {p.PropName} {{ get; set; }} = default!;"));
+            var sqlFragments = string.Join(", ", table.Columns!.Select(p => $"{{{p.PropName}.Sql}}"));
+            var selectStructMapper = string.Join(",\n                ",
+                table.Columns!.Select((p, i) => $"r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
+            var selectModelMapper = string.Join(",\n                ",
+                table.Columns!.Select((p, i) =>
+                    $"{p.PropName} = r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
             sb.AppendLine($@"
     public static ISelectedColumns<SelectResult> ResultAll {{ get; }} = new GeneratedResultSelection();
     public static ISelectedColumns<SelectModel> ModelAll {{ get; }} = new GeneratedModelSelection();
 
-    public record struct SelectResult({recordParams});
+    public readonly record struct SelectResult({selectStructProperties});
 
     public class SelectModel {{
         {selectModelProperties}
@@ -196,7 +196,7 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
         public SelectResult Mapper(DbDataReader r)
         {{
             return new SelectResult(
-                {mapperResultFields}
+                {selectStructMapper}
             );
         }}
     }}
@@ -208,8 +208,40 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
         public SelectModel Mapper(DbDataReader r)
         {{
             return new SelectModel {{
-                {mapperModelFields}
+                {selectModelMapper}
             }};
+        }}
+    }}
+");
+            var insertModelProperties = string.Join("\n    ", table.Columns!.Select(c => 
+                $"public {c.Type}? {c.PropName} {{ get; set; }}"));
+
+            var insertModelWriter = string.Join("\n        ", table.Columns!.Select(c => 
+                $@"if ({c.PropName} != null) values[""{c.DbColumnName}""] = {c.PropName};"));
+
+            sb.AppendLine($@"
+    public class InsertModel : IInsertRecord<{table.ClassName}>
+    {{
+        {insertModelProperties}
+
+        public void Writer(Dictionary<string, object?> values)
+        {{
+            {insertModelWriter}
+        }}
+    }}
+");
+
+            var insertStructProperties = string.Join(", ", table.Columns!.Select(c => $"{c.Type}? {c.PropName} = null"));
+
+            var insertStructWriter = string.Join("\n        ", table.Columns!.Select(c => 
+                $@"if ({c.PropName}.HasValue || {c.PropName} != null) values[""{c.DbColumnName}""] = {c.PropName};"));
+
+            sb.AppendLine($@"
+    public readonly record struct InsertRecord({insertStructProperties}) : IInsertRecord<{table.ClassName}>
+    {{
+        public void Writer(Dictionary<string, object?> values)
+        {{
+            {insertStructWriter}
         }}
     }}
 ");
