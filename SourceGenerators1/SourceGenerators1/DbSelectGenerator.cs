@@ -43,25 +43,57 @@ public class DbSelectGenerator : IIncrementalGenerator
                 sb.AppendLine($"namespace {model.Namespace};");
             }
 
+            var recordParams = string.Join(", ", model.Properties.Select(p => $"{p.Type} {p.Name}"));
+
+            var sqlFragments = string.Join(", ", model.Properties.Select(p => $"{{{p.ColumnSql}.Sql}}"));
+
+            var mapperResultFields = string.Join(",\n                ", model.Properties.Select((p, i) => 
+                $"r.IsDBNull({i}) ? default({p.Type}) : r.GetFieldValue<{p.Type}>({i})"));
+
+            var mapperModelFields = string.Join(",\n                ",
+                model.Properties.Select((p, i) =>
+                    $"{p.Name} = r.IsDBNull({i}) ? default({p.Type}) : r.GetFieldValue<{p.Type}>({i})"));
+
+            var selectModelProperties = string.Join("\n        ", model.Properties.Select(p => $"public {p.Type} {p.Name} {{ get; set; }} = default!;"));
+
             sb.AppendLine($@"
 public partial class {model.Name}
 {{
-    public record struct Result({string.Join(", ", model.Properties.Select(p => $"{p.Type} {p.Name}"))});
-
-    public static ISelectedColumns<Result> Columns {{ get; }} = new GeneratedSelection();
-
-    private sealed class GeneratedSelection : ISelectedColumns<Result>
+    public record struct SelectResult({recordParams});
+    public class SelectModel 
     {{
-        public string Sql => $""{string.Join(", ", model.Properties.Select(p => $"{{{p.ColumnSql}.Sql}}"))}"";
+        {selectModelProperties}
+    }}
 
-        public Result Mapper(DbDataReader r)
+    public static ISelectedColumns<SelectResult> Record {{ get; }} = new GeneratedStructSelection();
+    public static ISelectedColumns<SelectModel> Model {{ get; }} = new GeneratedModelSelection();
+
+    private sealed class GeneratedStructSelection : ISelectedColumns<SelectResult>
+    {{
+        public string Sql => $""{sqlFragments}"";
+
+        public SelectResult Mapper(DbDataReader r)
         {{
-            return new Result(
-                {string.Join(",\n                ", model.Properties.Select((p, i) => $"r.GetFieldValue<{p.Type}>({i})"))}
+            return new SelectResult(
+                {mapperResultFields}
             );
         }}
     }}
+
+    private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel>
+    {{
+        public string Sql => $""{sqlFragments}"";
+
+        public SelectModel Mapper(DbDataReader r)
+        {{
+            return new SelectModel 
+            {{
+                {mapperModelFields}
+            }};
+        }}
+    }}
 }}");
+
 
             context.AddSource($"{model.Name}_generated.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
         }

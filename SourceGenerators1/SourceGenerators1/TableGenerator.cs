@@ -167,23 +167,53 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
         public static string TableRefName {{ get => ""{refName}""; }}
 
         public string Sql => $""{tableSql}"";
+
+        public string Identifier => $""\""{refName}\"""";
 ");
+            var recordParams = string.Join(", ", table.Columns!.Select(p => $"{p.Type} {p.PropName}"));
+            var sqlFragments = string.Join(", ", table.Columns!.Select(p => $"{{{p.PropName}.Sql}}"));
+            var mapperModelFields = string.Join(",\n                ",
+                table.Columns!.Select((p, i) =>
+                    $"{p.PropName} = r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
+            var mapperResultFields = string.Join(",\n                ",
+                table.Columns!.Select((p, i) => $"r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
+            var selectModelProperties = string.Join("\n        ",
+                table.Columns!.Select(p => $"public {p.Type} {p.PropName} {{ get; set; }} = default!;"));
             sb.AppendLine($@"
-    public static ISelectedColumns<SelectResult> SelectAll {{ get; }} = new GeneratedSelection();
+    public static ISelectedColumns<SelectResult> ResultAll {{ get; }} = new GeneratedResultSelection();
+    public static ISelectedColumns<SelectModel> ModelAll {{ get; }} = new GeneratedModelSelection();
 
-    public record struct SelectResult({string.Join(", ", table.Columns!.Select(p => $"{p.Type} {p.PropName}"))});
+    public record struct SelectResult({recordParams});
 
-    private sealed class GeneratedSelection : ISelectedColumns<SelectResult>
+    public class SelectModel {{
+        {selectModelProperties}
+    }}
+
+    private sealed class GeneratedResultSelection : ISelectedColumns<SelectResult>
     {{
-        public string Sql => $""{string.Join(", ", table.Columns!.Select(p => $"{{{p.PropName}.Sql}}"))}"";
+        public string Sql => $""{sqlFragments}"";
 
         public SelectResult Mapper(DbDataReader r)
         {{
             return new SelectResult(
-                {string.Join(",\n                ", table.Columns!.Select((p, i) => $"r.GetFieldValue<{p.Type}>({i})"))}
+                {mapperResultFields}
             );
         }}
-    }}");
+    }}
+
+    private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel>
+    {{
+        public string Sql => $""{sqlFragments}"";
+
+        public SelectModel Mapper(DbDataReader r)
+        {{
+            return new SelectModel {{
+                {mapperModelFields}
+            }};
+        }}
+    }}
+");
+
             
             sb.AppendLine($@"
         static {table.ClassName}() {{

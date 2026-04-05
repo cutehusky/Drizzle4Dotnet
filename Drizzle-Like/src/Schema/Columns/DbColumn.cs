@@ -15,5 +15,5 @@ public class DbColumn<T, TTable>: IColumn<T> where TTable : ITable
     
     public string Sql => $"\"{TTable.TableRefName}\".\"{_columnName}\"";
     
-    public string ColumnIdentifier => $"\"{_columnName}\"";
+    public string Identifier => $"\"{_columnName}\"";
 }

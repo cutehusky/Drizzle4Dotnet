@@ -5,5 +5,5 @@ namespace Drizzle_Like.Schema.Columns;
 
 public interface IColumn<T>: ISql<T>
 {
-    public string ColumnIdentifier { get; }
+    public string Identifier { get; }
 }

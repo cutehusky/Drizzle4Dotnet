@@ -23,7 +23,7 @@ public class UpdateQuery<TTable> : Query<object> where  TTable : ITable
 
     public UpdateQuery<TTable> Set<T>(DbColumn<T, TTable> column, T value)
     {
-        _setValues[column.ColumnIdentifier] = value;
+        _setValues[column.Identifier] = value;
         return this;
     }
     
