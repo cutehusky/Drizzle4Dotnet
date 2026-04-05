@@ -54,7 +54,7 @@ public class EntryPoint {
         var managers = new ManagersTable();
 
         var query = db
-            .Select(UserSelect1.SelectClause)
+            .Select(UserSelect1.Columns)
             .From(users)
             .InnerJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
             .InnerJoin(managers, Eq(UsersTable.ManagerId, ManagersTable.Id))
@@ -81,7 +81,7 @@ public class EntryPoint {
         }
         
         var query1 = db
-            .Select(UserSelect.SelectClause)
+            .Select(UserSelect.Columns)
             .From(users)
             .Where(Eq(UsersTable.Id, 1));
         
@@ -106,7 +106,7 @@ public class EntryPoint {
             .Update(users)
             .Set(UsersTable.Name, "New Name")
             .Where(Eq(UsersTable.Id, 1))
-            .Returning(UserSelect.SelectClause);
+            .Returning(UserSelect.Columns);
 
         Console.WriteLine(query2.Sql);
         foreach (var queryParameter in query2.Parameters)
@@ -145,5 +145,15 @@ public class EntryPoint {
         {
             Console.WriteLine(e.Message);
         }
+        
+        var query4 = db.Select(UsersTable.SelectAll)
+            .From(users)
+            .Where(Eq(UsersTable.Id, 1));
+        Console.WriteLine(query3.Sql);
+        foreach (var queryParameter in query3.Parameters)
+        {
+            Console.WriteLine($"{queryParameter.Key} = {queryParameter.Value}");
+        }
+        
     }
 }

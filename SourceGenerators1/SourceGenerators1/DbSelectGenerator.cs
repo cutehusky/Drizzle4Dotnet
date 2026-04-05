@@ -48,7 +48,7 @@ public partial class {model.Name}
 {{
     public record struct Result({string.Join(", ", model.Properties.Select(p => $"{p.Type} {p.Name}"))});
 
-    public static ISelectedColumns<Result> SelectClause {{ get; }} = new GeneratedSelection();
+    public static ISelectedColumns<Result> Columns {{ get; }} = new GeneratedSelection();
 
     private sealed class GeneratedSelection : ISelectedColumns<Result>
     {{

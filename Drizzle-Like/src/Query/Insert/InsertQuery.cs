@@ -15,7 +15,7 @@ public class InsertQuery<TTable> : Query<object> where TTable : ITable
         _table = table;
     }
 
-    public InsertQuery<TTable> Values<T>(IColumn<T> column, T value)
+    public InsertQuery<TTable> Values<T>(DbColumn<T, TTable> column, T value)
     {
         _values[column.ColumnIdentifier] = value;
         return this;

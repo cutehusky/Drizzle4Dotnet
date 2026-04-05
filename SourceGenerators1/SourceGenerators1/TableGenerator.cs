@@ -154,6 +154,9 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
             sb.AppendLine("using Drizzle_Like.Schema.Columns;");
             sb.AppendLine("using Drizzle_Like.Query.Select;");
             sb.AppendLine("using Drizzle_Like.Schema.Tables;");
+            sb.AppendLine("using System;");
+            sb.AppendLine("using System.Data.Common;");
+
             sb.AppendLine($@"
     partial class {table.ClassName} : ITable
     {{
@@ -165,6 +168,23 @@ public class TableColumnConstantGenerator : IIncrementalGenerator
 
         public string Sql => $""{tableSql}"";
 ");
+            sb.AppendLine($@"
+    public static ISelectedColumns<SelectResult> SelectAll {{ get; }} = new GeneratedSelection();
+
+    public record struct SelectResult({string.Join(", ", table.Columns!.Select(p => $"{p.Type} {p.PropName}"))});
+
+    private sealed class GeneratedSelection : ISelectedColumns<SelectResult>
+    {{
+        public string Sql => $""{string.Join(", ", table.Columns!.Select(p => $"{{{p.PropName}.Sql}}"))}"";
+
+        public SelectResult Mapper(DbDataReader r)
+        {{
+            return new SelectResult(
+                {string.Join(",\n                ", table.Columns!.Select((p, i) => $"r.GetFieldValue<{p.Type}>({i})"))}
+            );
+        }}
+    }}");
+            
             sb.AppendLine($@"
         static {table.ClassName}() {{
                 {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new DbColumn<{c.Type}, {table.ClassName}>(\"{c.DbColumnName}\");"))}
