@@ -1,4 +1,4 @@
-namespace Drizzle4Dotnet.Core.Query.Select;
+namespace Drizzle4Dotnet.Core.Shared;
 
 [AttributeUsage(AttributeTargets.Class)] public class DbSelectAttribute : Attribute { }
 

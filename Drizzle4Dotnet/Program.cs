@@ -1,6 +1,7 @@
 ﻿using Drizzle4Dotnet;
 using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query.Select;
+using Drizzle4Dotnet.Core.Shared;
 using MyNamespace;
 using Npgsql;
 using static Drizzle4Dotnet.Core.Query.Shared.Operators.Operators;

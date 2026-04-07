@@ -1,8 +1,6 @@
 using System.Data.Common;
-using Drizzle4Dotnet.Core.Query.Select;
-using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.Core.Query;
+namespace Drizzle4Dotnet.Core.Shared;
 
 public interface IParameterizedSql<TReturn> : ISql<TReturn>
 {

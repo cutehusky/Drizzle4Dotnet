@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
+using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.Core.Query.Select;
+namespace Drizzle4Dotnet.Core.Query;
 
 
 public class ReturningQuery<TReturn> : IParameterizedSql<TReturn>

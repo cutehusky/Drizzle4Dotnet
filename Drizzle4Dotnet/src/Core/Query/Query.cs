@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Drizzle4Dotnet.Core.Query.Select;
+using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query;
 

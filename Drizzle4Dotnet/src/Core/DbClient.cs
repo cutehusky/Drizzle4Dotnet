@@ -5,6 +5,7 @@ using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Query.Update;
 using Drizzle4Dotnet.Core.Schema.Tables;
+using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core;
 
