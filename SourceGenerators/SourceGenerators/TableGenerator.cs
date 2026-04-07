@@ -226,7 +226,7 @@ public class TableGenerator : IIncrementalGenerator
                 $"public {c.Type}? {c.PropName} {{ get; set; }}"));
 
             var insertWriter = string.Join("\n        ", table.Columns!.Select(c => 
-                $@"if ({c.PropName} != null) values[""{c.DbColumnName}""] = {c.PropName};"));
+                $@"if ({c.PropName} != null) values[PgSqlSqlDialectImpl.BuildIdentifier(""{c.DbColumnName}"")] = {c.PropName};"));
 
             sb.AppendLine($@"
     public class InsertModel : IInsertRecord<{table.ClassName}, PgSqlSqlDialectImpl>
@@ -256,7 +256,7 @@ public class TableGenerator : IIncrementalGenerator
                 $"public Optional<{c.Type}> {c.PropName} {{ get; set; }} = default;"));
 
             var updateWriter = string.Join("\n        ", table.Columns!.Select(c => 
-                $@"if ({c.PropName}.HasValue) values[""{c.DbColumnName}""] = {c.PropName}.Value;"));
+                $@"if ({c.PropName}.HasValue) values[PgSqlSqlDialectImpl.BuildIdentifier(""{c.DbColumnName}"")] = {c.PropName}.Value;"));
 
             sb.AppendLine($@"
     public class UpdateModel : IUpdateRecord<{table.ClassName}, PgSqlSqlDialectImpl>

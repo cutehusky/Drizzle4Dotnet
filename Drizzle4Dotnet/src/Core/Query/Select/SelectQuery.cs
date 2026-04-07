@@ -58,7 +58,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
                 var joinSql = $"{type} JOIN {table.Sql}";
                 if (on != null)
                 {
-                    joinSql += $" ON {on.BuildSql(Parameters)}";
+                    joinSql += $" ON ({on.BuildSql(Parameters)})";
                 }
                 return joinSql;
             }).ToList();
@@ -69,7 +69,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
             }
 
             // WHERE
-            var wheres = _wheres.Select(w => w.BuildSql(Parameters)).ToList();
+            var wheres = _wheres.Select(w => $"({w.BuildSql(Parameters)})").ToList();
             if (wheres.Count > 0)
             {
                 sb.Append(" WHERE ");
@@ -83,7 +83,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
                 sb.Append(string.Join(", ", groupBys));
             }
 
-            var havings = _havings.Select(h => h.BuildSql(Parameters)).ToList();
+            var havings = _havings.Select(h => $"({h.BuildSql(Parameters)})").ToList();
             if (havings.Count > 0)
             {
                 sb.Append(" HAVING ");

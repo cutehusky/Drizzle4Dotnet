@@ -56,6 +56,28 @@ public class EntryPoint {
         var departments = new DepartmentsTable();
         var managers = new ManagersTable();
 
+        var insertQuery = db.Insert(users)
+            .Values(new UsersTable.InsertRecord
+            {
+                Id = 1,
+                Name = "John Doe",
+                Email = "test@email.com",
+            }).Returning(UserSelect.Record);
+        Console.WriteLine(insertQuery.Sql);
+        foreach (var queryParameter in insertQuery.Parameters)
+        {
+            Console.WriteLine($"{queryParameter.Key} = {queryParameter.Value}");
+        }
+        try {
+            var insertResult = await insertQuery;
+            var insertedRecord = insertResult[0];
+            Console.WriteLine($"Inserted record: {insertedRecord}");
+        }
+        catch (NpgsqlException e)
+        {
+            Console.WriteLine($"Insert error: {e.Message}");
+        }
+
         var query = db
             .Select(UserSelect1.Record)
             .From(users)

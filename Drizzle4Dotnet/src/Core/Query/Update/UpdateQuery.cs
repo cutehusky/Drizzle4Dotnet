@@ -84,7 +84,7 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
 
             sb.Append(string.Join(", ", setClauses));
 
-            var wheres = _wheres.Select(w => w.BuildSql(Parameters)).ToList();
+            var wheres = _wheres.Select(w => $"({w.BuildSql(Parameters)})").ToList();
             if (wheres.Count > 0)
             {
                 sb.Append(" WHERE ");

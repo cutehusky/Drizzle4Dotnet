@@ -87,9 +87,9 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
                 {
                     if (row.TryGetValue(col, out var val))
                     {
-                        string pName = $"p{Parameters.Count}";
+                        string pName = $"@p{Parameters.Count}";
                         Parameters.Add(pName, val);
-                        rowParamNames.Add($"@{pName}");
+                        rowParamNames.Add($"{pName}");
                     }
                     else
                     {
