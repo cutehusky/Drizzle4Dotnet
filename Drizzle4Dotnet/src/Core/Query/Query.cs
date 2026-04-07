@@ -3,7 +3,7 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query;
 
-public abstract class Query<TDialect>: IParameterizedSql where TDialect : ISqlDialect
+public abstract class Query<TDialect>: ISql where TDialect : ISqlDialect
 {
     public readonly DbClient<TDialect> DbClient;
 

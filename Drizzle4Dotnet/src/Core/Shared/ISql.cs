@@ -2,10 +2,10 @@ namespace Drizzle4Dotnet.Core.Shared;
 
 public interface ISql<TReturn>
 {
-    public string Sql { get; }
+    string BuildSql(Dictionary<string, object?> parameters);
 }
 
 public interface ISql
 {
-    public string Sql { get; }
+    string BuildSql(Dictionary<string, object?> parameters);
 }

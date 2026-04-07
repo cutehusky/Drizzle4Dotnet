@@ -26,25 +26,19 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         return this;
     }
     
-    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, IColumn<T> value)
-    {
-        _setValues[column.Identifier] = value.Sql;
-        return this;
-    }
-    
     public UpdateQuery<TTable,TDialect> Set(IUpdateRecord<TTable, TDialect> record)
     {
         record.Writer(_setValues);
         return this;
     }
     
-    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, IOperator value)
+    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, ISql value)
     {
         _setValues[column.Identifier] = value;
         return this;
     }
     
-    public UpdateQuery<TTable, TDialect> Set(Dictionary<IColumnOfTableType<TTable, TDialect>, object> columnValuePairs)
+    public UpdateQuery<TTable, TDialect> Set(Dictionary<IColumnOfTable<TTable, TDialect>, object> columnValuePairs)
     {
         foreach (var kv in columnValuePairs)
         {
@@ -80,7 +74,7 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         var setClauses = new List<string>();
         foreach (var kv in _setValues)
         {
-            if (kv.Value is IOperator op)
+            if (kv.Value is ISql op)
             {
                 setClauses.Add($"{kv.Key} = ({op.BuildSql(parameters)})");
             }

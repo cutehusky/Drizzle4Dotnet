@@ -42,7 +42,7 @@ public sealed class DbClient<TDialect> where TDialect : ISqlDialect
         return result;
     }
     
-    public async Task ExecuteAsync(IParameterizedSql query)
+    public async Task ExecuteAsync(ISql query)
     {
         await using var cmd = _conn.CreateCommand();
         var parameters = new Dictionary<string, object?>();

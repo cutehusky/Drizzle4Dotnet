@@ -34,7 +34,7 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         return this;
     }
     
-    public InsertQuery<TTable, TDialect> Value(Dictionary<IColumnOfTableType<TTable, TDialect>, object?> columnValuePairs)
+    public InsertQuery<TTable, TDialect> Value(Dictionary<IColumnOfTable<TTable, TDialect>, object?> columnValuePairs)
     {        
         var value = new Dictionary<string, object?>();
         foreach (var columnValuePair in columnValuePairs)
@@ -47,7 +47,7 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         return this;
     }
     
-    public InsertQuery<TTable, TDialect> Values(params Dictionary<IColumnOfTableType<TTable, TDialect>, object?>[] columnValuePairsArray)
+    public InsertQuery<TTable, TDialect> Values(params Dictionary<IColumnOfTable<TTable, TDialect>, object?>[] columnValuePairsArray)
     {
         foreach (var columnValuePairs in columnValuePairsArray)
         {

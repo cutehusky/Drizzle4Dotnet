@@ -17,14 +17,14 @@ public enum ELockType
 
 public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDialect : ISqlDialect
 {
-    private string? _from;
+    private ITableType<TDialect>? _from;
     private readonly List<(ITableType<TDialect>, string, IOperator?)> _joins = new();
     private readonly List<IOperator> _wheres = new();
-    private readonly List<(IColumnType<TDialect>, bool)> _orderBys = new();
+    private readonly List<(IGenericColumn<TDialect>, bool)> _orderBys = new();
     private int? _limit;
     private int? _offset;
     private bool _distinct;
-    private readonly List<IColumnType<TDialect>> _groupBys = new();
+    private readonly List<IGenericColumn<TDialect>> _groupBys = new();
     private readonly List<IOperator> _havings = new();
     private string? _lockClause;
 
@@ -46,7 +46,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         if (_from != null)
         {
             sb.Append(" FROM ");
-            sb.Append(_from);
+            sb.Append(_from.Sql);
         }
 
         // JOIN
@@ -74,7 +74,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
             sb.Append(string.Join(" AND ", wheres));
         }
         
-        var groupBys = _groupBys.Select(g => g.Sql).ToList();
+        var groupBys = _groupBys.Select(g => g.BuildSql(parameters)).ToList();
         if (groupBys.Count > 0)
         {
             sb.Append(" GROUP BY ");
@@ -89,7 +89,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         }
 
         // ORDER BY
-        var orderBys = _orderBys.Select(o => $"{o.Item1.Sql} {(o.Item2 ? "ASC" : "DESC")}").ToList();
+        var orderBys = _orderBys.Select(o => $"{o.Item1.BuildSql(parameters)} {(o.Item2 ? "ASC" : "DESC")}").ToList();
         if (orderBys.Count > 0)
         {
             sb.Append(" ORDER BY ");
@@ -116,9 +116,9 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     }
     
     
-    public SelectQuery<TReturn, TDialect> From(ITable<TDialect> table)
+    public SelectQuery<TReturn, TDialect> From(ITableType<TDialect> table)
     {
-        _from = table.Sql;
+        _from = table;
         return this;
     }
 
@@ -134,7 +134,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         return this;
     }
     
-    public SelectQuery<TReturn, TDialect> GroupBy(IColumnType<TDialect> columns)
+    public SelectQuery<TReturn, TDialect> GroupBy(IGenericColumn<TDialect> columns)
     {
         _groupBys.Add(columns);
         return this;
@@ -152,7 +152,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         return this;
     }
 
-    public SelectQuery<TReturn, TDialect> OrderBy(IColumnType<TDialect> col, bool asc = true)
+    public SelectQuery<TReturn, TDialect> OrderBy(IGenericColumn<TDialect> col, bool asc = true)
     {
         _orderBys.Add((col, asc));
         return this;

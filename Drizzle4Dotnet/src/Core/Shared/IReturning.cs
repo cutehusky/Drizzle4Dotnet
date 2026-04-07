@@ -2,7 +2,7 @@ using System.Data.Common;
 
 namespace Drizzle4Dotnet.Core.Shared;
 
-public interface IReturning<TReturn, TDialect> : IParameterizedSql<TReturn> where TDialect : ISqlDialect
+public interface IReturning<TReturn, TDialect> : ISql<TReturn> where TDialect : ISqlDialect
 {
     protected ISelectedColumns<TReturn, TDialect> SelectedColumns { get;  }
 

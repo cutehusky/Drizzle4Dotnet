@@ -1,6 +1,4 @@
-﻿using Drizzle4Dotnet;
-using Drizzle4Dotnet.Core;
-using Drizzle4Dotnet.Core.Query.Select;
+﻿using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
 using MyNamespace;
@@ -186,5 +184,26 @@ public class EntryPoint {
             Console.WriteLine($"{queryParameter.Key} = {queryParameter.Value}");
         }
         
+        
+        var query5 = db
+            .Update(users)
+            .Set(UsersTable.Name, Concat(UsersTable.Name, " Jr."))
+            .Where(Eq(UsersTable.Id, 1));
+
+        (sql, parameters) = query5.Build();
+        Console.WriteLine(sql);
+        foreach (var queryParameter in parameters)
+        {
+            Console.WriteLine($"{queryParameter.Key} = {queryParameter.Value}");
+        }
+        
+        try
+        {
+            await query5;
+        }
+        catch (NpgsqlException e)
+        {
+            Console.WriteLine(e.Message);
+        }
     }
 }

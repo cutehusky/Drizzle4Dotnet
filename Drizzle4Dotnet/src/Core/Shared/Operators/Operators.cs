@@ -1,7 +1,7 @@
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
+using Drizzle4Dotnet.Core.Query;
 
 namespace Drizzle4Dotnet.Core.Shared.Operators;
-
 public static class Operators
 {
     const string _operatorEq = "=";
@@ -23,59 +23,48 @@ public static class Operators
     const string _operatorBetween = "BETWEEN";
     const string _operatorNot = "NOT";
     
-    public static BinaryValueNode<T> Eq<T>(ISql<T> col, T value) => new(col, value, _operatorEq);
-    public static BinaryValueNode<T> Lt<T>(ISql<T> col, T value) => new(col, value, _operatorLt);
-    public static BinaryValueNode<T> Gt<T>(ISql<T> col, T value) => new(col, value, _operatorGt);
-    public static BinaryValueNode<T> Ltq<T>(ISql<T> col, T value) => new(col, value, _operatorLtEq);
-    public static BinaryValueNode<T> Gtq<T>(ISql<T> col, T value) => new(col, value, _operatorGtEq);
-    public static BinaryValueNode<T> Ne<T>(ISql<T> col, T value) => new(col, value, _operatorNe);
-
-    public static BinarySqlNode<T1, T2> Eq<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorEq);
-    public static BinarySqlNode<T1, T2> Lt<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorLt);
-    public static BinarySqlNode<T1, T2> Gt<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorGt);
-    public static BinarySqlNode<T1, T2> Ltq<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorLtEq);
-    public static BinarySqlNode<T1, T2> Gtq<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorGtEq);
-    public static BinarySqlNode<T1, T2> Ne<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorNe);
-
-    public static BinaryNode Eq(IOperator c1, IOperator c2) => new(c1, c2, _operatorEq);
-    public static BinaryNode Lt(IOperator c1, IOperator c2) => new(c1, c2, _operatorLt);
-    public static BinaryNode Gt(IOperator c1, IOperator c2) => new(c1, c2, _operatorGt);
-    public static BinaryNode Ltq(IOperator c1, IOperator c2) => new(c1, c2, _operatorLtEq);
-    public static BinaryNode Gtq(IOperator c1, IOperator c2) => new(c1, c2, _operatorGtEq);
-    public static BinaryNode Ne(IOperator c1, IOperator c2) => new(c1, c2, _operatorNe);
-
-    public static BinaryNode And(IOperator c1, IOperator c2) => new(c1, c2, _operatorAnd);
-    public static BinaryNode Or(IOperator c1, IOperator c2) => new(c1, c2, _operatorOr);
-    public static BinaryNode Xor(IOperator c1, IOperator c2) => new(c1, c2, _operatorXor);
-
-    public static BinarySqlNode<T1, T2> And<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorAnd);
-    public static BinarySqlNode<T1, T2> Or<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorOr);
-    public static BinarySqlNode<T1, T2> Xor<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorXor);
+    public static BinarySqlValueNode<T> Eq<T>(ISql<T> c1, T value) => new(c1, value, _operatorEq);
+    public static BinarySqlValueNode<T> Lt<T>(ISql<T> c1, T value) => new(c1, value, _operatorLt);
+    public static BinarySqlValueNode<T> Gt<T>(ISql<T> c1, T value) => new(c1, value, _operatorGt);
+    public static BinarySqlValueNode<T> Ltq<T>(ISql<T> c1, T value) => new(c1, value, _operatorLtEq);
+    public static BinarySqlValueNode<T> Gtq<T>(ISql<T> c1, T value) => new(c1, value, _operatorGtEq);
+    public static BinarySqlValueNode<T> Ne<T>(ISql<T> c1, T value) => new(c1, value, _operatorNe);
     
-    public static BinaryValueNode<string> Like(ISql<string> col, string value) => new(col, value, _operatorLike);
-    public static BinaryValueNode<string> NotLike(ISql<string> col, string value) => new(col, value, _operatorNotLike);
-    public static BinaryValueNode<string> Contains(ISql<string> col, string value) 
-        => new(col, $"%{value}%", _operatorLike);
-    public static BinaryValueNode<string> StartsWith(ISql<string> col, string value) 
-        => new(col, $"{value}%", _operatorLike);
-    public static BinaryValueNode<string> EndsWith(ISql<string> col, string value) 
-        => new(col, $"%{value}", _operatorLike);
-    
-    public static UnarySqlNode<T> IsNull<T>(ISql<T> col) => new(col, _operatorIsNull);
-    public static UnarySqlNode<T> IsNotNull<T>(ISql<T> col) => new(col, _operatorIsNotNull);
-    public static UnaryNode IsNull(IOperator condition) => new(condition, _operatorIsNull, prefix: true);
-    public static UnaryNode IsNotNull(IOperator condition) => new(condition, _operatorIsNotNull, prefix: true);
+    public static BinaryNode Eq(ISql c1, ISql c2) => new(c1, c2, _operatorEq);
+    public static BinaryNode Lt(ISql c1, ISql c2) => new(c1, c2, _operatorLt);
+    public static BinaryNode Gt(ISql c1, ISql c2) => new(c1, c2, _operatorGt);
+    public static BinaryNode Ltq(ISql c1, ISql c2) => new(c1, c2, _operatorLtEq);
+    public static BinaryNode Gtq(ISql c1, ISql c2) => new(c1, c2, _operatorGtEq);
+    public static BinaryNode Ne(ISql c1, ISql c2) => new(c1, c2, _operatorNe);
 
-    public static BinaryListValueNode<T> In<T>(ISql<T> col, IEnumerable<T> values) => new(col, values, _operatorIn);
-    public static BinaryListValueNode<T> NotIn<T>(ISql<T> col, IEnumerable<T> values) => new(col, values, _operatorNotIn);
-
-    public static UnaryNode Not(IOperator condition) => new(condition, _operatorNot, prefix: true);
-    public static UnarySqlNode<T> Not<T>(ISql<T> condition) => new(condition, _operatorNot, prefix: true);
+    public static BinaryNode And(ISql c1, ISql c2) => new(c1, c2, _operatorAnd);
+    public static BinaryNode Or(ISql c1, ISql c2) => new(c1, c2, _operatorOr);
+    public static BinaryNode Xor(ISql c1, ISql c2) => new(c1, c2, _operatorXor);
     
-    public static BinarySqlNode<T, T> Add<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, "+");
-    public static BinarySqlNode<T, T> Sub<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, "-");
-    public static BinarySqlNode<T, T> Mul<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, "*");
-    public static BinarySqlNode<T, T> Div<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, "/");
+    public static BinarySqlValueNode<string> Like(ISql<string> c1, string value) => new(c1, value, _operatorLike);
+    public static BinarySqlValueNode<string> NotLike(ISql<string> c1, string value) => new(c1, value, _operatorNotLike);
+    public static BinarySqlValueNode<string> Contains(ISql<string> c1, string value) 
+        => new(c1, $"%{value}%", _operatorLike);
+    public static BinarySqlValueNode<string> StartsWith(ISql<string> c1, string value) 
+        => new(c1, $"{value}%", _operatorLike);
+    public static BinarySqlValueNode<string> EndsWith(ISql<string> c1, string value) 
+        => new(c1, $"%{value}", _operatorLike);
     
-    public static UnarySqlNode<T> Exists<T>(ISql<T> subquery) => new(subquery, "EXISTS", prefix: true);
+    public static UnaryNode IsNull(ISql c1) => new(c1, _operatorIsNull);
+    public static UnaryNode IsNotNull(ISql c1) => new(c1, _operatorIsNotNull);
+   
+    public static BinarySqlListValueNode<T> In<T>(ISql<T> c1, IEnumerable<T> values) => new(c1, values, _operatorIn);
+    public static BinarySqlListValueNode<T> NotIn<T>(ISql<T> c1, IEnumerable<T> values) => new(c1, values, _operatorNotIn);
+    
+    public static UnaryNode Not(ISql condition) => new(condition, _operatorNot, prefix: true);
+    
+    public static BinaryNode Add(ISql c1, ISql c2) => new(c1, c2, "+");
+    public static BinaryNode Sub(ISql c1, ISql c2) => new(c1, c2, "-");
+    public static BinaryNode Mul(ISql c1, ISql c2) => new(c1, c2, "*");
+    public static BinaryNode Div(ISql c1, ISql c2) => new(c1, c2, "/");
+    public static BinaryNode Mod(ISql c1, ISql c2) => new(c1, c2, "%");
+    
+    public static BinaryNode Concat(ISql c1, ISql c2) => new(c1, c2, "||");
+    public static BinarySqlValueNode<string> Concat(ISql<string> c1, string value) => new(c1, value, "||");
+    public static UnaryNode Exists<TDialect>(Query<TDialect> subquery) where TDialect: ISqlDialect => new(subquery, "EXISTS", prefix: true);
 }
