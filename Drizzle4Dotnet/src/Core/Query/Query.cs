@@ -3,31 +3,41 @@ using Drizzle4Dotnet.Core.Query.Select;
 
 namespace Drizzle4Dotnet.Core.Query;
 
-public abstract class Query<TReturn>: IReturning<TReturn>
+public abstract class Query: IParameterizedSql
 {
-    protected readonly DbClient DbClient;
+    public readonly DbClient DbClient;
     public Dictionary<string, object?> Parameters { get; } 
-    public ISelectedColumns<TReturn>? SelectedColumns { get; set; }
 
-    public Query(
-        ISelectedColumns<TReturn>? selectedColumns,
-        DbClient dbClient)
+    public Query(DbClient dbClient)
     {
-        SelectedColumns = selectedColumns;
-        Parameters = new Dictionary<string, object?>();
         DbClient = dbClient;
+        Parameters = new Dictionary<string, object?>();
     }
     
-    public Query(
-        ISelectedColumns<TReturn> selectedColumns,
-        Dictionary <string, object?> parameters,
-        DbClient dbClient)
+    public TaskAwaiter GetAwaiter()
     {
-        SelectedColumns = selectedColumns;
-        Parameters = parameters;
-        DbClient = dbClient;
+        return DbClient.ExecuteAsync(this).GetAwaiter();
     }
 
+    public abstract string Sql { get; }
+}
+
+
+public abstract class Query<TReturn>: IParameterizedSql<TReturn>
+{
+    public ISelectedColumns<TReturn> SelectedColumns { get; }
+    public readonly DbClient DbClient;
+    public Dictionary<string, object?> Parameters { get; }
+
+    public Query(
+        ISelectedColumns<TReturn> selectedColumns,
+        DbClient dbClient
+        )
+    {
+        SelectedColumns = selectedColumns;
+        DbClient = dbClient;
+        Parameters = new Dictionary<string, object?>();
+    }
     
     public TaskAwaiter<List<TReturn>> GetAwaiter()
     {
@@ -36,4 +46,3 @@ public abstract class Query<TReturn>: IReturning<TReturn>
 
     public abstract string Sql { get; }
 }
-

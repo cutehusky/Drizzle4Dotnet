@@ -1,4 +1,5 @@
 using System.Data.Common;
+using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Query.Select;
@@ -17,7 +18,7 @@ public sealed class DbClient
         _conn = conn;
     }
 
-    public async Task<List<T>> ExecuteAsync<T>(IReturning<T> query)
+    public async Task<List<T>> ExecuteAsync<T>(IParameterizedSql<T> query)
     {
         await using var cmd = _conn.CreateCommand();
         cmd.CommandText = query.Sql;
@@ -33,14 +34,27 @@ public sealed class DbClient
         await using var reader = await cmd.ExecuteReaderAsync();
         var result = new List<T>();
         var mapper = query.Mapper;
-        if (mapper == null)
-            return result;
         while (await reader.ReadAsync())
         {
-                
             result.Add(mapper(reader));
         }
         return result;
+    }
+    
+    public async Task ExecuteAsync(IParameterizedSql query)
+    {
+        await using var cmd = _conn.CreateCommand();
+        cmd.CommandText = query.Sql;
+
+        foreach (var entry in query.Parameters)
+        {
+            var p = cmd.CreateParameter();
+            p.ParameterName = entry.Key;
+            p.Value = entry.Value ?? DBNull.Value;
+            cmd.Parameters.Add(p);
+        }
+
+        await using var reader = await cmd.ExecuteReaderAsync();
     }
     
     public SelectQuery<T> Select<T>(ISelectedColumns<T> selectedColumns)

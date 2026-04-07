@@ -5,12 +5,12 @@ using Drizzle4Dotnet.Core.Schema.Tables;
 
 namespace Drizzle4Dotnet.Core.Query.Insert;
 
-public class InsertQuery<TTable> : Query<object> where TTable : ITable
+public class InsertQuery<TTable> : Query where TTable : ITable
 {
     private readonly TTable _table;
     private readonly List<Dictionary<string, object?>> _values = new();
 
-    public InsertQuery(TTable table, DbClient dbClient) : base(null, dbClient)
+    public InsertQuery(TTable table, DbClient dbClient) : base(dbClient)
     {
         _table = table;
     }
@@ -34,7 +34,7 @@ public class InsertQuery<TTable> : Query<object> where TTable : ITable
         return this;
     }
     
-    public InsertQuery<TTable> Value(Dictionary<IColumnBase<TTable>, object?> columnValuePairs)
+    public InsertQuery<TTable> Value(Dictionary<IDbColumn<TTable>, object?> columnValuePairs)
     {        
         var value = new Dictionary<string, object?>();
         foreach (var columnValuePair in columnValuePairs)
@@ -47,7 +47,7 @@ public class InsertQuery<TTable> : Query<object> where TTable : ITable
         return this;
     }
     
-    public InsertQuery<TTable> Values(params Dictionary<IColumnBase<TTable>, object?>[] columnValuePairsArray)
+    public InsertQuery<TTable> Values(params Dictionary<IDbColumn<TTable>, object?>[] columnValuePairsArray)
     {
         foreach (var columnValuePairs in columnValuePairsArray)
         {
@@ -106,6 +106,6 @@ public class InsertQuery<TTable> : Query<object> where TTable : ITable
 
     public ReturningQuery<TReturn> Returning<TReturn>(ISelectedColumns<TReturn> selectedColumns)
     {
-        return new ReturningQuery<TReturn>(this, selectedColumns, DbClient);
+        return new ReturningQuery<TReturn>(this, selectedColumns);
     }
 }

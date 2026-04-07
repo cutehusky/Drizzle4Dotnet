@@ -2,7 +2,7 @@ using Drizzle4Dotnet.Core.Schema.Tables;
 
 namespace Drizzle4Dotnet.Core.Schema.Columns;
 
-public class DbColumn<T, TTable>: IColumn<T>, IColumnBase<TTable> where TTable : ITable
+public class DbColumn<T, TTable>: IColumn<T>, IDbColumn<TTable> where TTable : ITable
 {
     private readonly string _columnName;
     
@@ -18,7 +18,7 @@ public class DbColumn<T, TTable>: IColumn<T>, IColumnBase<TTable> where TTable :
     public string Identifier => $"\"{_columnName}\"";
 }
 
-public interface IColumnBase<TTable> where TTable : ITable
+public interface IDbColumn<TTable> where TTable : ITable
 {
     public string Identifier { get; }
 }

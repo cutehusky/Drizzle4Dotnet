@@ -6,7 +6,7 @@ using Drizzle4Dotnet.Core.Schema.Tables;
 
 namespace Drizzle4Dotnet.Core.Query.Update;
 
-public class UpdateQuery<TTable> : Query<object> where  TTable : ITable
+public class UpdateQuery<TTable> : Query where  TTable : ITable
 {
     private readonly TTable _table;
     private readonly Dictionary<string, object?> _setValues = new();
@@ -15,11 +15,10 @@ public class UpdateQuery<TTable> : Query<object> where  TTable : ITable
     public UpdateQuery(
         TTable table, 
         DbClient dbClient
-    ): base(null, dbClient)
+    ): base(dbClient)
     {
         _table = table;
     }
-
 
     public UpdateQuery<TTable> Set<T>(DbColumn<T, TTable> column, T value)
     {
@@ -45,7 +44,7 @@ public class UpdateQuery<TTable> : Query<object> where  TTable : ITable
         return this;
     }
     
-    public UpdateQuery<TTable> Set(Dictionary<IColumnBase<TTable>, object> columnValuePairs)
+    public UpdateQuery<TTable> Set(Dictionary<IDbColumn<TTable>, object> columnValuePairs)
     {
         foreach (var kv in columnValuePairs)
         {
@@ -93,8 +92,7 @@ public class UpdateQuery<TTable> : Query<object> where  TTable : ITable
     {
         return new ReturningQuery<TReturn>(
             this,
-            selectedColumns,
-            DbClient
+            selectedColumns
         );
     }
 }

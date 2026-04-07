@@ -140,7 +140,7 @@ public class EntryPoint {
 
         try
         {
-            var result = await query3;
+            await query3;
         }
         catch (NpgsqlException e)
         {

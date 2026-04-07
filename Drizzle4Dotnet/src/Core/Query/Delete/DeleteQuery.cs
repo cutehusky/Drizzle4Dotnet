@@ -6,12 +6,12 @@ using Drizzle4Dotnet.Core.Schema.Tables;
 namespace Drizzle4Dotnet.Core.Query.Delete;
 
 
-public class DeleteQuery<TTable> : Query<object> where TTable : ITable
+public class DeleteQuery<TTable> : Query where TTable : ITable
 {
     private readonly TTable _table;
     private readonly List<string> _wheres = new();
 
-    public DeleteQuery(TTable table, DbClient dbClient) : base(null, dbClient)
+    public DeleteQuery(TTable table, DbClient dbClient) : base(dbClient)
     {
         _table = table;
     }
@@ -43,6 +43,6 @@ public class DeleteQuery<TTable> : Query<object> where TTable : ITable
     public ReturningQuery<TReturn> Returning<TReturn>(
         ISelectedColumns<TReturn> selectedColumns)
     {
-        return new ReturningQuery<TReturn>(this, selectedColumns, DbClient);
+        return new ReturningQuery<TReturn>(this, selectedColumns);
     }
 }

@@ -42,7 +42,7 @@ public class SelectQuery<TReturn>: Query<TReturn>
             var sb = new StringBuilder();
             sb.Append("SELECT ");
             if (_distinct) sb.Append("DISTINCT ");
-            sb.Append(SelectedColumns!.Sql);
+            sb.Append(SelectedColumns.Sql);
 
             // FROM
             if (_from != null)
