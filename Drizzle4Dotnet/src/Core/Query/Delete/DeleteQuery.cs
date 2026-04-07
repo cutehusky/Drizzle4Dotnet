@@ -1,5 +1,4 @@
 using System.Text;
-using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Query.Shared.Operators;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
@@ -7,19 +6,19 @@ using Drizzle4Dotnet.Core.Shared;
 namespace Drizzle4Dotnet.Core.Query.Delete;
 
 
-public class DeleteQuery<TTable> : Query where TTable : ITable
+public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITable<TDialect> where TDialect : ISqlDialect
 {
     private readonly TTable _table;
-    private readonly List<string> _wheres = new();
+    private readonly List<IOperator> _wheres = new();
 
-    public DeleteQuery(TTable table, DbClient dbClient) : base(dbClient)
+    public DeleteQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
     {
         _table = table;
     }
 
-    public DeleteQuery<TTable> Where(IOperator condition)
+    public DeleteQuery<TTable, TDialect> Where(IOperator condition)
     {
-        _wheres.Add(condition.BuildSql(Parameters));
+        _wheres.Add(condition);
         return this;
     }
 
@@ -31,19 +30,20 @@ public class DeleteQuery<TTable> : Query where TTable : ITable
             sb.Append("DELETE FROM ");
             sb.Append(_table.Sql);
 
+            var wheres = _wheres.Select(w => w.BuildSql(Parameters)).ToList();
             if (_wheres.Count > 0)
             {
                 sb.Append(" WHERE ");
-                sb.Append(string.Join(" AND ", _wheres));
+                sb.Append(string.Join(" AND ", wheres));
             }
 
             return sb.ToString();
         }
     }
 
-    public ReturningQuery<TReturn> Returning<TReturn>(
-        ISelectedColumns<TReturn> selectedColumns)
+    public ReturningQuery<TReturn, TDialect> Returning<TReturn>(
+        ISelectedColumns<TReturn, TDialect> selectedColumns)
     {
-        return new ReturningQuery<TReturn>(this, selectedColumns);
+        return new ReturningQuery<TReturn, TDialect>(this, selectedColumns);
     }
 }

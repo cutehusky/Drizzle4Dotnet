@@ -1,22 +1,21 @@
 using System.Text;
-using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query.Insert;
 
-public class InsertQuery<TTable> : Query where TTable : ITable
+public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITable<TDialect> where TDialect : ISqlDialect
 {
     private readonly TTable _table;
     private readonly List<Dictionary<string, object?>> _values = new();
 
-    public InsertQuery(TTable table, DbClient dbClient) : base(dbClient)
+    public InsertQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
     {
         _table = table;
     }
     
-    public InsertQuery<TTable> Value(IInsertRecord<TTable> record)
+    public InsertQuery<TTable, TDialect> Value(IInsertRecord<TTable, TDialect> record)
     {
         Dictionary<string, object?> value = new();
         record.Writer(value);
@@ -24,7 +23,7 @@ public class InsertQuery<TTable> : Query where TTable : ITable
         return this;
     }
     
-    public InsertQuery<TTable> Values(params IInsertRecord<TTable>[] records)
+    public InsertQuery<TTable, TDialect> Values(params IInsertRecord<TTable, TDialect>[] records)
     {
         foreach (var record in records)
         {
@@ -35,7 +34,7 @@ public class InsertQuery<TTable> : Query where TTable : ITable
         return this;
     }
     
-    public InsertQuery<TTable> Value(Dictionary<IDbColumn<TTable>, object?> columnValuePairs)
+    public InsertQuery<TTable, TDialect> Value(Dictionary<IColumnOfTable<TTable, TDialect>, object?> columnValuePairs)
     {        
         var value = new Dictionary<string, object?>();
         foreach (var columnValuePair in columnValuePairs)
@@ -48,7 +47,7 @@ public class InsertQuery<TTable> : Query where TTable : ITable
         return this;
     }
     
-    public InsertQuery<TTable> Values(params Dictionary<IDbColumn<TTable>, object?>[] columnValuePairsArray)
+    public InsertQuery<TTable, TDialect> Values(params Dictionary<IColumnOfTable<TTable, TDialect>, object?>[] columnValuePairsArray)
     {
         foreach (var columnValuePairs in columnValuePairsArray)
         {
@@ -105,8 +104,8 @@ public class InsertQuery<TTable> : Query where TTable : ITable
         }
     }
 
-    public ReturningQuery<TReturn> Returning<TReturn>(ISelectedColumns<TReturn> selectedColumns)
+    public ReturningQuery<TReturn, TDialect> Returning<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
     {
-        return new ReturningQuery<TReturn>(this, selectedColumns);
+        return new ReturningQuery<TReturn, TDialect>(this, selectedColumns);
     }
 }

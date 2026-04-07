@@ -2,11 +2,11 @@ using System.Data.Common;
 
 namespace Drizzle4Dotnet.Core.Shared;
 
-public interface IParameterizedSql<TReturn> : ISql<TReturn>
+public interface IParameterizedSql<TReturn, TDialect> : ISql<TReturn> where TDialect : ISqlDialect
 {
     public Dictionary<string, object?> Parameters { get; } 
     
-    protected ISelectedColumns<TReturn> SelectedColumns { get;  }
+    protected ISelectedColumns<TReturn, TDialect> SelectedColumns { get;  }
 
     public Func<DbDataReader, TReturn> Mapper => SelectedColumns.Mapper;
 }

@@ -15,7 +15,7 @@ public enum ELockType
     ForKeyShare
 }
 
-public class SelectQuery<TReturn>: Query<TReturn>
+public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDialect : ISqlDialect
 {
     private string? _from;
     private readonly List<string> _joins = new();
@@ -29,8 +29,8 @@ public class SelectQuery<TReturn>: Query<TReturn>
     private string? _lockClause;
 
     public SelectQuery(
-        ISelectedColumns<TReturn> selectedColumns,
-        DbClient dbClient
+        ISelectedColumns<TReturn, TDialect> selectedColumns,
+        DbClient<TDialect> dbClient
         ): base(selectedColumns, dbClient)
     {
     }
@@ -105,20 +105,20 @@ public class SelectQuery<TReturn>: Query<TReturn>
     }
     
     
-    public SelectQuery<TReturn> From(ITable table)
+    public SelectQuery<TReturn, TDialect> From(ITable<TDialect> table)
     {
         _from = table.Sql;
         return this;
     }
 
-    public SelectQuery<TReturn> Where(IOperator condition)
+    public SelectQuery<TReturn, TDialect> Where(IOperator condition)
     {
         var sql = condition.BuildSql(Parameters);
         _wheres.Add(sql);
         return this;
     }
     
-    public SelectQuery<TReturn> Where(params IOperator[] conditions)
+    public SelectQuery<TReturn, TDialect> Where(params IOperator[] conditions)
     {
         foreach (var condition in conditions)
         {
@@ -128,20 +128,20 @@ public class SelectQuery<TReturn>: Query<TReturn>
         return this;
     }
     
-    public SelectQuery<TReturn> GroupBy<TCol>(IColumn<TCol> columns)
+    public SelectQuery<TReturn, TDialect> GroupBy<TCol>(IColumn<TCol> columns)
     {
         _groupBys.Add(columns.Sql);
         return this;
     }
 
-    public SelectQuery<TReturn> Having(IOperator condition)
+    public SelectQuery<TReturn, TDialect> Having(IOperator condition)
     {
         _havings.Add(condition.BuildSql(Parameters));
         return this;
     }
     
     
-    public SelectQuery<TReturn> Having(params IOperator[] conditions)
+    public SelectQuery<TReturn, TDialect> Having(params IOperator[] conditions)
     {
         foreach (var condition in conditions)
         {
@@ -151,27 +151,27 @@ public class SelectQuery<TReturn>: Query<TReturn>
         return this;
     }
 
-    public SelectQuery<TReturn> OrderBy<TCol>(ISql<TCol> col, bool asc = true)
+    public SelectQuery<TReturn, TDialect> OrderBy<TCol>(ISql<TCol> col, bool asc = true)
     {
         _orderBys.Add($"{col.Sql} {(asc ? "ASC" : "DESC")}");
         return this;
     }
 
-    public SelectQuery<TReturn> Limit(int limit)
+    public SelectQuery<TReturn, TDialect> Limit(int limit)
     {
         _limit = limit;
         return this;
     }
 
-    public SelectQuery<TReturn> Offset(int offset)
+    public SelectQuery<TReturn, TDialect> Offset(int offset)
     {
         _offset = offset;
         return this;
     }
 
     // ====== JOINS ======
-    private SelectQuery<TReturn> JoinInternal(
-        ITable table,
+    private SelectQuery<TReturn, TDialect> JoinInternal(
+        ITable<TDialect> table,
         IOperator on,
         string type)
     {
@@ -180,35 +180,35 @@ public class SelectQuery<TReturn>: Query<TReturn>
         return this;
     }
 
-    public SelectQuery<TReturn> InnerJoin(ITable table, IOperator on)
+    public SelectQuery<TReturn, TDialect> InnerJoin(ITable<TDialect> table, IOperator on)
         => JoinInternal(table, on, "INNER");
 
-    public SelectQuery<TReturn> LeftJoin(ITable table, IOperator on)
+    public SelectQuery<TReturn, TDialect> LeftJoin(ITable<TDialect> table, IOperator on)
         => JoinInternal(table, on, "LEFT");
 
-    public SelectQuery<TReturn> RightJoin(ITable table, IOperator on)
+    public SelectQuery<TReturn, TDialect> RightJoin(ITable<TDialect> table, IOperator on)
         => JoinInternal(table, on, "RIGHT");
 
-    public SelectQuery<TReturn> FullJoin(ITable table, IOperator on)
+    public SelectQuery<TReturn, TDialect> FullJoin(ITable<TDialect> table, IOperator on)
         => JoinInternal(table, on, "FULL");
 
-    public SelectQuery<TReturn> CrossJoin(ITable table)
+    public SelectQuery<TReturn, TDialect> CrossJoin(ITable<TDialect> table)
     {
         _joins.Add($"CROSS JOIN {table.Sql}");
         return this;
     }
     
-    public SelectQuery<TReturn> Distinct()
+    public SelectQuery<TReturn, TDialect> Distinct()
     {
         _distinct = true;
         return this;
     }
     
-    public SelectQuery<TReturn> ForUpdate() { _lockClause = "FOR UPDATE"; return this; }
-    public SelectQuery<TReturn> ForShare() { _lockClause = "FOR SHARE"; return this; }
-    public SelectQuery<TReturn> ForNoKeyUpdate() { _lockClause = "FOR NO KEY UPDATE"; return this; }
-    public SelectQuery<TReturn> ForKeyShare() { _lockClause = "FOR KEY SHARE"; return this; }
-    public SelectQuery<TReturn> For(ELockType lockType)
+    public SelectQuery<TReturn, TDialect> ForUpdate() { _lockClause = "FOR UPDATE"; return this; }
+    public SelectQuery<TReturn, TDialect> ForShare() { _lockClause = "FOR SHARE"; return this; }
+    public SelectQuery<TReturn, TDialect> ForNoKeyUpdate() { _lockClause = "FOR NO KEY UPDATE"; return this; }
+    public SelectQuery<TReturn, TDialect> ForKeyShare() { _lockClause = "FOR KEY SHARE"; return this; }
+    public SelectQuery<TReturn, TDialect> For(ELockType lockType)
     {
         _lockClause = lockType switch
         {

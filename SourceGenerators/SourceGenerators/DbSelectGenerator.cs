@@ -36,6 +36,7 @@ public class DbSelectGenerator : IIncrementalGenerator
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Data.Common;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Shared;");
+            sb.AppendLine("using Drizzle4Dotnet.Dialect;");
 
             if (!string.IsNullOrEmpty(model.Namespace))
             {
@@ -62,10 +63,10 @@ public partial class {model.Name}
         {selectModelProperties}
     }}
 
-    public static ISelectedColumns<SelectResult> Record {{ get; }} = new GeneratedStructSelection();
-    public static ISelectedColumns<SelectModel> Model {{ get; }} = new GeneratedModelSelection();
+    public static ISelectedColumns<SelectResult, PgSqlSqlDialectImpl> Record {{ get; }} = new GeneratedStructSelection();
+    public static ISelectedColumns<SelectModel, PgSqlSqlDialectImpl> Model {{ get; }} = new GeneratedModelSelection();
 
-    private sealed class GeneratedStructSelection : ISelectedColumns<SelectResult>
+    private sealed class GeneratedStructSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl>
     {{
         public string Sql => $""{sqlFragments}"";
 
@@ -77,7 +78,7 @@ public partial class {model.Name}
         }}
     }}
 
-    private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel>
+    private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel, PgSqlSqlDialectImpl>
     {{
         public string Sql => $""{sqlFragments}"";
 

@@ -1,5 +1,4 @@
 using System.Text;
-using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Query.Shared.Operators;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
@@ -7,7 +6,7 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query.Update;
 
-public class UpdateQuery<TTable> : Query where  TTable : ITable
+public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITable<TDialect> where TDialect : ISqlDialect
 {
     private readonly TTable _table;
     private readonly Dictionary<string, object?> _setValues = new();
@@ -15,37 +14,37 @@ public class UpdateQuery<TTable> : Query where  TTable : ITable
 
     public UpdateQuery(
         TTable table, 
-        DbClient dbClient
+        DbClient<TDialect> dbClient
     ): base(dbClient)
     {
         _table = table;
     }
 
-    public UpdateQuery<TTable> Set<T>(DbColumn<T, TTable> column, T value)
+    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, T value)
     {
         _setValues[column.Identifier] = value;
         return this;
     }
     
-    public UpdateQuery<TTable> Set<T>(DbColumn<T, TTable> column, IColumn<T> value)
+    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, IColumn<T> value)
     {
         _setValues[column.Identifier] = value.Sql;
         return this;
     }
     
-    public UpdateQuery<TTable> Set(IUpdateRecord<TTable> record)
+    public UpdateQuery<TTable,TDialect> Set(IUpdateRecord<TTable, TDialect> record)
     {
         record.Writer(_setValues);
         return this;
     }
     
-    public UpdateQuery<TTable> Set<T>(DbColumn<T, TTable> column, IOperator value)
+    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, IOperator value)
     {
         _setValues[column.Identifier] = value.BuildSql(Parameters);
         return this;
     }
     
-    public UpdateQuery<TTable> Set(Dictionary<IDbColumn<TTable>, object> columnValuePairs)
+    public UpdateQuery<TTable, TDialect> Set(Dictionary<IColumnOfTable<TTable, TDialect>, object> columnValuePairs)
     {
         foreach (var kv in columnValuePairs)
         {
@@ -54,7 +53,7 @@ public class UpdateQuery<TTable> : Query where  TTable : ITable
         return this;
     }
 
-    public UpdateQuery<TTable> Where(IOperator condition)
+    public UpdateQuery<TTable, TDialect> Where(IOperator condition)
     {
         _wheres.Add(condition.BuildSql(Parameters));
         return this;
@@ -89,9 +88,9 @@ public class UpdateQuery<TTable> : Query where  TTable : ITable
         }
     }
     
-    public ReturningQuery<TReturn> Returning<TReturn>(ISelectedColumns<TReturn> selectedColumns)
+    public ReturningQuery<TReturn, TDialect> Returning<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
     {
-        return new ReturningQuery<TReturn>(
+        return new ReturningQuery<TReturn, TDialect>(
             this,
             selectedColumns
         );

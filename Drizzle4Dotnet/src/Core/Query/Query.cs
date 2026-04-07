@@ -1,15 +1,14 @@
 using System.Runtime.CompilerServices;
-using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query;
 
-public abstract class Query: IParameterizedSql
+public abstract class Query<TDialect>: IParameterizedSql where TDialect : ISqlDialect
 {
-    public readonly DbClient DbClient;
+    public readonly DbClient<TDialect> DbClient;
     public Dictionary<string, object?> Parameters { get; } 
 
-    public Query(DbClient dbClient)
+    public Query(DbClient<TDialect> dbClient)
     {
         DbClient = dbClient;
         Parameters = new Dictionary<string, object?>();
@@ -24,15 +23,15 @@ public abstract class Query: IParameterizedSql
 }
 
 
-public abstract class Query<TReturn>: IParameterizedSql<TReturn>
+public abstract class Query<TReturn, TDialect>: IParameterizedSql<TReturn, TDialect> where TDialect : ISqlDialect
 {
-    public ISelectedColumns<TReturn> SelectedColumns { get; }
-    public readonly DbClient DbClient;
+    public ISelectedColumns<TReturn, TDialect> SelectedColumns { get; }
+    public readonly DbClient<TDialect> DbClient;
     public Dictionary<string, object?> Parameters { get; }
 
     public Query(
-        ISelectedColumns<TReturn> selectedColumns,
-        DbClient dbClient
+        ISelectedColumns<TReturn, TDialect> selectedColumns,
+        DbClient<TDialect> dbClient
         )
     {
         SelectedColumns = selectedColumns;

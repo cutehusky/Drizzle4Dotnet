@@ -2,6 +2,7 @@
 using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Dialect;
 using MyNamespace;
 using Npgsql;
 using static Drizzle4Dotnet.Core.Query.Shared.Operators.Operators;
@@ -50,7 +51,7 @@ public class EntryPoint {
         await using var dataSource = builder.Build();
         await using var conn = await dataSource.OpenConnectionAsync();
 
-        var db = new DbClient(conn);
+        var db = new DbClient<PgSqlSqlDialectImpl>(conn);
         var users = new UsersTable();
         var departments = new DepartmentsTable();
         var managers = new ManagersTable();

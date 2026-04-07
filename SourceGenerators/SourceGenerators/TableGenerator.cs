@@ -159,12 +159,13 @@ public class TableGenerator : IIncrementalGenerator
             sb.AppendLine("using Drizzle4Dotnet.Core.Shared;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Columns;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Tables;");
+            sb.AppendLine("using Drizzle4Dotnet.Dialect;");
             
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Data.Common;");
 
             sb.AppendLine($@"
-    partial class {table.ClassName} : ITable
+    partial class {table.ClassName} : ITable<PgSqlSqlDialectImpl>
     {{
         public static string TableName {{ get => ""{table.DbTableName}""; }}
 
@@ -174,7 +175,7 @@ public class TableGenerator : IIncrementalGenerator
 
         public string Sql => $""{tableSql}"";
 
-        public string Identifier => $""\""{refName}\"""";
+        public string Identifier => $""PgSqlSqlDialectImpl.BuildIdentifier({refName})"";
 ");
             var selectStructProperties = string.Join(", ", table.Columns!.Select(p => $"{p.Type} {p.PropName}"));
             var selectModelProperties = string.Join("\n        ",
@@ -186,8 +187,8 @@ public class TableGenerator : IIncrementalGenerator
                 table.Columns!.Select((p, i) =>
                     $"{p.PropName} = r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
             sb.AppendLine($@"
-    public static ISelectedColumns<SelectResult> ResultAll {{ get; }} = new GeneratedResultSelection();
-    public static ISelectedColumns<SelectModel> ModelAll {{ get; }} = new GeneratedModelSelection();
+    public static ISelectedColumns<SelectResult, PgSqlSqlDialectImpl> ResultAll {{ get; }} = new GeneratedResultSelection();
+    public static ISelectedColumns<SelectModel, PgSqlSqlDialectImpl> ModelAll {{ get; }} = new GeneratedModelSelection();
 
     public readonly record struct SelectResult({selectStructProperties});
 
@@ -195,7 +196,7 @@ public class TableGenerator : IIncrementalGenerator
         {selectModelProperties}
     }}
 
-    private sealed class GeneratedResultSelection : ISelectedColumns<SelectResult>
+    private sealed class GeneratedResultSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl>
     {{
         public string Sql => $""{sqlFragments}"";
 
@@ -207,7 +208,7 @@ public class TableGenerator : IIncrementalGenerator
         }}
     }}
 
-    private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel>
+    private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel, PgSqlSqlDialectImpl>
     {{
         public string Sql => $""{sqlFragments}"";
 
@@ -226,7 +227,7 @@ public class TableGenerator : IIncrementalGenerator
                 $@"if ({c.PropName} != null) values[""{c.DbColumnName}""] = {c.PropName};"));
 
             sb.AppendLine($@"
-    public class InsertModel : IInsertRecord<{table.ClassName}>
+    public class InsertModel : IInsertRecord<{table.ClassName}, PgSqlSqlDialectImpl>
     {{
         {insertModelProperties}
 
@@ -240,7 +241,7 @@ public class TableGenerator : IIncrementalGenerator
             var insertStructProperties = string.Join(", ", table.Columns!.Select(c => $"{c.Type}? {c.PropName} = null"));
 
             sb.AppendLine($@"
-    public readonly record struct InsertRecord({insertStructProperties}) : IInsertRecord<{table.ClassName}>
+    public readonly record struct InsertRecord({insertStructProperties}) : IInsertRecord<{table.ClassName}, PgSqlSqlDialectImpl>
     {{
         public void Writer(Dictionary<string, object?> values)
         {{
@@ -256,7 +257,7 @@ public class TableGenerator : IIncrementalGenerator
                 $@"if ({c.PropName}.HasValue) values[""{c.DbColumnName}""] = {c.PropName}.Value;"));
 
             sb.AppendLine($@"
-    public class UpdateModel : IUpdateRecord<{table.ClassName}>
+    public class UpdateModel : IUpdateRecord<{table.ClassName}, PgSqlSqlDialectImpl>
     {{
         {updateModelProperties}
 
@@ -272,7 +273,7 @@ public class TableGenerator : IIncrementalGenerator
 
 
             sb.AppendLine($@"
-    public readonly record struct UpdateRecord({updateStructProperties}) : IUpdateRecord<{table.ClassName}>
+    public readonly record struct UpdateRecord({updateStructProperties}) : IUpdateRecord<{table.ClassName}, PgSqlSqlDialectImpl>
     {{
         public void Writer(Dictionary<string, object?> values)
         {{
@@ -283,10 +284,10 @@ public class TableGenerator : IIncrementalGenerator
 
             sb.AppendLine($@"
         static {table.ClassName}() {{
-                {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new DbColumn<{c.Type}, {table.ClassName}>(\"{c.DbColumnName}\");"))}
+                {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new DbColumn<{c.Type}, {table.ClassName}, PgSqlSqlDialectImpl>(\"{c.DbColumnName}\");"))}
         }}");
 
-            sb.AppendLine(string.Join("\n        ", table.Columns!.Select(c => $"public static DbColumn<{c.Type}, {table.ClassName}> {c.PropName} {{ get; set; }}")));
+            sb.AppendLine(string.Join("\n        ", table.Columns!.Select(c => $"public static DbColumn<{c.Type}, {table.ClassName}, PgSqlSqlDialectImpl> {c.PropName} {{ get; set; }}")));
             
             sb.AppendLine(@"
         public static class ColumnNames

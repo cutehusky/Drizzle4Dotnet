@@ -4,16 +4,16 @@ using Drizzle4Dotnet.Core.Shared;
 namespace Drizzle4Dotnet.Core.Query;
 
 
-public class ReturningQuery<TReturn> : IParameterizedSql<TReturn>
+public class ReturningQuery<TReturn, TDialect> : IParameterizedSql<TReturn, TDialect> where  TDialect : ISqlDialect
 {
-    private readonly Query _baseQuery;
-    public readonly DbClient DbClient;
+    private readonly Query<TDialect> _baseQuery;
+    public readonly DbClient<TDialect> DbClient;
     public Dictionary<string, object?> Parameters { get; }
-    public ISelectedColumns<TReturn> SelectedColumns { get; }
+    public ISelectedColumns<TReturn, TDialect> SelectedColumns { get; }
 
     public ReturningQuery(
-        Query baseQuery,
-        ISelectedColumns<TReturn> selectedColumns
+        Query<TDialect> baseQuery,
+        ISelectedColumns<TReturn, TDialect> selectedColumns
         )
     {
         _baseQuery = baseQuery;

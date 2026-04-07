@@ -1,5 +1,4 @@
 using System.Data.Common;
-using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Query.Select;
@@ -10,7 +9,7 @@ using Drizzle4Dotnet.Core.Shared;
 namespace Drizzle4Dotnet.Core;
 
 
-public sealed class DbClient
+public sealed class DbClient<TDialect> where TDialect : ISqlDialect
 {
     private readonly DbConnection _conn;
 
@@ -19,7 +18,7 @@ public sealed class DbClient
         _conn = conn;
     }
 
-    public async Task<List<T>> ExecuteAsync<T>(IParameterizedSql<T> query)
+    public async Task<List<T>> ExecuteAsync<T>(IParameterizedSql<T, TDialect> query)
     {
         await using var cmd = _conn.CreateCommand();
         cmd.CommandText = query.Sql;
@@ -58,23 +57,23 @@ public sealed class DbClient
         await using var reader = await cmd.ExecuteReaderAsync();
     }
     
-    public SelectQuery<T> Select<T>(ISelectedColumns<T> selectedColumns)
+    public SelectQuery<TReturn, TDialect> Select<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
     {
-        return new SelectQuery<T>(selectedColumns, this);
+        return new SelectQuery<TReturn, TDialect>(selectedColumns, this);
     }
     
-    public UpdateQuery<TTable> Update<TTable>(TTable table) where TTable : ITable
+    public UpdateQuery<TTable, TDialect> Update<TTable>(TTable table) where TTable : ITable<TDialect>
     {
-        return new UpdateQuery<TTable>(table, this);
+        return new UpdateQuery<TTable, TDialect>(table, this);
     }
     
-    public InsertQuery<TTable> Insert<TTable>(TTable table) where TTable : ITable
+    public InsertQuery<TTable, TDialect> Insert<TTable>(TTable table) where TTable : ITable<TDialect>
     {
-        return new InsertQuery<TTable>(table, this);
+        return new InsertQuery<TTable, TDialect>(table, this);
     }
     
-    public DeleteQuery<TTable> Delete<TTable>(TTable table) where TTable : ITable
+    public DeleteQuery<TTable, TDialect> Delete<TTable>(TTable table) where TTable : ITable<TDialect>
     {
-        return new DeleteQuery<TTable>(table, this);
+        return new DeleteQuery<TTable, TDialect>(table, this);
     }
 }
