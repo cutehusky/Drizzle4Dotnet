@@ -151,7 +151,9 @@ public class TableGenerator : IIncrementalGenerator
             }
             
             var refName = table.IsAlias ? table.AliasName : table.DbTableName;
-            var tableSql = table.IsAlias ? $"{table.DbTableName} AS {table.AliasName}" : table.DbTableName;
+            var tableSql = table.IsAlias 
+                ? $"$\"{{PgSqlSqlDialectImpl.BuildTableName(\"public\", \"{table.DbTableName}\")}} AS {table.AliasName}\"" 
+                : $"PgSqlSqlDialectImpl.BuildTableName(\"public\", \"{table.DbTableName}\")";
             
             sb.AppendLine("using Drizzle4Dotnet.Core.Query.Select;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Query.Insert;");
@@ -165,7 +167,7 @@ public class TableGenerator : IIncrementalGenerator
             sb.AppendLine("using System.Data.Common;");
 
             sb.AppendLine($@"
-    partial class {table.ClassName} : ITable<PgSqlSqlDialectImpl>
+    partial class {table.ClassName} : ITable<PgSqlSqlDialectImpl>, ITableType<PgSqlSqlDialectImpl>
     {{
         public static string TableName {{ get => ""{table.DbTableName}""; }}
 
@@ -173,9 +175,9 @@ public class TableGenerator : IIncrementalGenerator
 
         public static string TableRefName {{ get => ""{refName}""; }}
 
-        public string Sql => $""{tableSql}"";
+        public string Sql => {tableSql};
 
-        public string Identifier => $""PgSqlSqlDialectImpl.BuildIdentifier({refName})"";
+        public string Identifier => PgSqlSqlDialectImpl.BuildIdentifier(""{refName}"");
 ");
             var selectStructProperties = string.Join(", ", table.Columns!.Select(p => $"{p.Type} {p.PropName}"));
             var selectModelProperties = string.Join("\n        ",

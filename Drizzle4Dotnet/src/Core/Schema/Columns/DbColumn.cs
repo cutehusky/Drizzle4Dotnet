@@ -3,7 +3,7 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Schema.Columns;
 
-public class DbColumn<T, TTable, TDialect>: IColumn<T>, IColumnOfTable<TTable, TDialect> where TTable : ITable<TDialect> where TDialect : ISqlDialect
+public class DbColumn<T, TTable, TDialect>: IColumn<T>, IColumnOfTableType<TTable, TDialect> where TTable : ITable<TDialect> where TDialect : ISqlDialect
 {
     private readonly string _columnName;
     

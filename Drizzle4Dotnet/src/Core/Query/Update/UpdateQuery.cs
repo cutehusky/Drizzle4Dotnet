@@ -10,7 +10,7 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
 {
     private readonly TTable _table;
     private readonly Dictionary<string, object?> _setValues = new();
-    private readonly List<string> _wheres = new();
+    private readonly List<IOperator> _wheres = new();
 
     public UpdateQuery(
         TTable table, 
@@ -44,7 +44,7 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         return this;
     }
     
-    public UpdateQuery<TTable, TDialect> Set(Dictionary<IColumnOfTable<TTable, TDialect>, object> columnValuePairs)
+    public UpdateQuery<TTable, TDialect> Set(Dictionary<IColumnOfTableType<TTable, TDialect>, object> columnValuePairs)
     {
         foreach (var kv in columnValuePairs)
         {
@@ -55,7 +55,13 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
 
     public UpdateQuery<TTable, TDialect> Where(IOperator condition)
     {
-        _wheres.Add(condition.BuildSql(Parameters));
+        _wheres.Add(condition);
+        return this;
+    }
+    
+    public UpdateQuery<TTable, TDialect> Where(params IOperator[] conditions)
+    {
+        _wheres.AddRange(conditions);
         return this;
     }
 
@@ -78,10 +84,11 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
 
             sb.Append(string.Join(", ", setClauses));
 
-            if (_wheres.Count > 0)
+            var wheres = _wheres.Select(w => w.BuildSql(Parameters)).ToList();
+            if (wheres.Count > 0)
             {
                 sb.Append(" WHERE ");
-                sb.Append(string.Join(" AND ", _wheres));
+                sb.Append(string.Join(" AND ", wheres));
             }
 
             return sb.ToString();

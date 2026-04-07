@@ -8,7 +8,12 @@ public interface IColumn<T>: ISql<T>
 { }
 
 
-public interface IColumnOfTable<TTable, TDialect> where TTable : ITable<TDialect> where TDialect: ISqlDialect
+public interface IColumnOfTableType<TTable, TDialect>: IColumnType<TDialect> where TTable : ITable<TDialect> where TDialect: ISqlDialect
+{
+}
+
+
+public interface IColumnType<TDialect>: ISql where TDialect: ISqlDialect
 {
     public string Identifier { get; }
 }

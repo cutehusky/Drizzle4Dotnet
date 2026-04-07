@@ -21,6 +21,12 @@ public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         _wheres.Add(condition);
         return this;
     }
+    
+    public DeleteQuery<TTable, TDialect> Where(params IOperator[] conditions)
+    {
+        _wheres.AddRange(conditions);
+        return this;
+    }
 
     public override string Sql
     {
@@ -31,7 +37,7 @@ public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
             sb.Append(_table.Sql);
 
             var wheres = _wheres.Select(w => w.BuildSql(Parameters)).ToList();
-            if (_wheres.Count > 0)
+            if (wheres.Count > 0)
             {
                 sb.Append(" WHERE ");
                 sb.Append(string.Join(" AND ", wheres));

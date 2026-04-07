@@ -18,14 +18,14 @@ public enum ELockType
 public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDialect : ISqlDialect
 {
     private string? _from;
-    private readonly List<string> _joins = new();
-    private readonly List<string> _wheres = new();
-    private readonly List<string> _orderBys = new();
+    private readonly List<(ITableType<TDialect>, string, IOperator?)> _joins = new();
+    private readonly List<IOperator> _wheres = new();
+    private readonly List<(IColumnType<TDialect>, bool)> _orderBys = new();
     private int? _limit;
     private int? _offset;
     private bool _distinct;
-    private readonly List<string> _groupBys = new();
-    private readonly List<string> _havings = new();
+    private readonly List<IColumnType<TDialect>> _groupBys = new();
+    private readonly List<IOperator> _havings = new();
     private string? _lockClause;
 
     public SelectQuery(
@@ -52,36 +52,50 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
             }
 
             // JOIN
-            if (_joins.Count > 0)
+            var joins = _joins.Select(j =>
+            {
+                var (table, type, on) = j;
+                var joinSql = $"{type} JOIN {table.Sql}";
+                if (on != null)
+                {
+                    joinSql += $" ON {on.BuildSql(Parameters)}";
+                }
+                return joinSql;
+            }).ToList();
+            if (joins.Count > 0)
             {
                 sb.Append(" ");
-                sb.Append(string.Join(" ", _joins));
+                sb.Append(string.Join(" ", joins));
             }
 
             // WHERE
-            if (_wheres.Count > 0)
+            var wheres = _wheres.Select(w => w.BuildSql(Parameters)).ToList();
+            if (wheres.Count > 0)
             {
                 sb.Append(" WHERE ");
-                sb.Append(string.Join(" AND ", _wheres));
+                sb.Append(string.Join(" AND ", wheres));
             }
             
-            if (_groupBys.Count > 0)
+            var groupBys = _groupBys.Select(g => g.Sql).ToList();
+            if (groupBys.Count > 0)
             {
                 sb.Append(" GROUP BY ");
-                sb.Append(string.Join(", ", _groupBys));
+                sb.Append(string.Join(", ", groupBys));
             }
 
-            if (_havings.Count > 0)
+            var havings = _havings.Select(h => h.BuildSql(Parameters)).ToList();
+            if (havings.Count > 0)
             {
                 sb.Append(" HAVING ");
-                sb.Append(string.Join(" AND ", _havings));
+                sb.Append(string.Join(" AND ", havings));
             }
 
             // ORDER BY
-            if (_orderBys.Count > 0)
+            var orderBys = _orderBys.Select(o => $"{o.Item1.Sql} {(o.Item2 ? "ASC" : "DESC")}").ToList();
+            if (orderBys.Count > 0)
             {
                 sb.Append(" ORDER BY ");
-                sb.Append(string.Join(", ", _orderBys));
+                sb.Append(string.Join(", ", orderBys));
             }
 
             // LIMIT
@@ -113,47 +127,37 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
 
     public SelectQuery<TReturn, TDialect> Where(IOperator condition)
     {
-        var sql = condition.BuildSql(Parameters);
-        _wheres.Add(sql);
+        _wheres.Add(condition);
         return this;
     }
     
     public SelectQuery<TReturn, TDialect> Where(params IOperator[] conditions)
     {
-        foreach (var condition in conditions)
-        {
-            var sql = condition.BuildSql(Parameters);
-            _wheres.Add(sql);
-        }
+        _wheres.AddRange(conditions);
         return this;
     }
     
-    public SelectQuery<TReturn, TDialect> GroupBy<TCol>(IColumn<TCol> columns)
+    public SelectQuery<TReturn, TDialect> GroupBy(IColumnType<TDialect> columns)
     {
-        _groupBys.Add(columns.Sql);
+        _groupBys.Add(columns);
         return this;
     }
 
     public SelectQuery<TReturn, TDialect> Having(IOperator condition)
     {
-        _havings.Add(condition.BuildSql(Parameters));
+        _havings.Add(condition);
         return this;
     }
-    
     
     public SelectQuery<TReturn, TDialect> Having(params IOperator[] conditions)
     {
-        foreach (var condition in conditions)
-        {
-            var sql = condition.BuildSql(Parameters);
-            _havings.Add(sql);
-        }
+        _havings.AddRange(conditions);
         return this;
     }
 
-    public SelectQuery<TReturn, TDialect> OrderBy<TCol>(ISql<TCol> col, bool asc = true)
+    public SelectQuery<TReturn, TDialect> OrderBy(IColumnType<TDialect> col, bool asc = true)
     {
-        _orderBys.Add($"{col.Sql} {(asc ? "ASC" : "DESC")}");
+        _orderBys.Add((col, asc));
         return this;
     }
 
@@ -171,30 +175,29 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
 
     // ====== JOINS ======
     private SelectQuery<TReturn, TDialect> JoinInternal(
-        ITable<TDialect> table,
+        ITableType<TDialect> table,
         IOperator on,
         string type)
     {
-        var sql = $"{type} JOIN {table.Sql} ON {on.BuildSql(Parameters)}";
-        _joins.Add(sql);
+        _joins.Add((table, type, on));
         return this;
     }
 
-    public SelectQuery<TReturn, TDialect> InnerJoin(ITable<TDialect> table, IOperator on)
+    public SelectQuery<TReturn, TDialect> InnerJoin(ITableType<TDialect> table, IOperator on)
         => JoinInternal(table, on, "INNER");
 
-    public SelectQuery<TReturn, TDialect> LeftJoin(ITable<TDialect> table, IOperator on)
+    public SelectQuery<TReturn, TDialect> LeftJoin(ITableType<TDialect> table, IOperator on)
         => JoinInternal(table, on, "LEFT");
 
-    public SelectQuery<TReturn, TDialect> RightJoin(ITable<TDialect> table, IOperator on)
+    public SelectQuery<TReturn, TDialect> RightJoin(ITableType<TDialect> table, IOperator on)
         => JoinInternal(table, on, "RIGHT");
 
-    public SelectQuery<TReturn, TDialect> FullJoin(ITable<TDialect> table, IOperator on)
+    public SelectQuery<TReturn, TDialect> FullJoin(ITableType<TDialect> table, IOperator on)
         => JoinInternal(table, on, "FULL");
 
-    public SelectQuery<TReturn, TDialect> CrossJoin(ITable<TDialect> table)
+    public SelectQuery<TReturn, TDialect> CrossJoin(ITableType<TDialect> table)
     {
-        _joins.Add($"CROSS JOIN {table.Sql}");
+        _joins.Add((table, "CROSS", null));
         return this;
     }
     
