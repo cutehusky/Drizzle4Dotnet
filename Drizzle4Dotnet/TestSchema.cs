@@ -1,5 +1,5 @@
-using Drizzle4Dotnet.Schema.Columns;
-using Drizzle4Dotnet.Schema.Tables;
+using Drizzle4Dotnet.Core.Schema.Columns;
+using Drizzle4Dotnet.Core.Schema.Tables;
 
 namespace MyNamespace
 {

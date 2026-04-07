@@ -1,8 +1,9 @@
 ﻿using Drizzle4Dotnet;
-using Drizzle4Dotnet.Query.Select;
+using Drizzle4Dotnet.Core;
+using Drizzle4Dotnet.Core.Query.Select;
 using MyNamespace;
 using Npgsql;
-using static Drizzle4Dotnet.Query.Shared.Operators.Operators;
+using static Drizzle4Dotnet.Core.Query.Shared.Operators.Operators;
 
 
 [DbSelect]

@@ -153,12 +153,12 @@ public class TableGenerator : IIncrementalGenerator
             var refName = table.IsAlias ? table.AliasName : table.DbTableName;
             var tableSql = table.IsAlias ? $"{table.DbTableName} AS {table.AliasName}" : table.DbTableName;
             
-            sb.AppendLine("using Drizzle4Dotnet.Query.Select;");
-            sb.AppendLine("using Drizzle4Dotnet.Query.Insert;");
-            sb.AppendLine("using Drizzle4Dotnet.Query.Update;");
-            sb.AppendLine("using Drizzle4Dotnet.Shared;");
-            sb.AppendLine("using Drizzle4Dotnet.Schema.Columns;");
-            sb.AppendLine("using Drizzle4Dotnet.Schema.Tables;");
+            sb.AppendLine("using Drizzle4Dotnet.Core.Query.Select;");
+            sb.AppendLine("using Drizzle4Dotnet.Core.Query.Insert;");
+            sb.AppendLine("using Drizzle4Dotnet.Core.Query.Update;");
+            sb.AppendLine("using Drizzle4Dotnet.Core.Shared;");
+            sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Columns;");
+            sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Tables;");
             
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Data.Common;");
