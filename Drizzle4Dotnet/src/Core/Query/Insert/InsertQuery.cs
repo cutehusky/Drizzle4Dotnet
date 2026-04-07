@@ -63,45 +63,42 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         return this;
     }
 
-    public override string Sql
+    public override string BuildSql(Dictionary<string, object?> parameters)
     {
-        get
+        if (_values.Count == 0)
+            throw new InvalidOperationException("No values provided for insert.");
+
+        var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
+    
+        var sb = new StringBuilder();
+        sb.Append($"INSERT INTO {_table.Sql} (");
+        sb.Append(string.Join(", ", allColumns));
+        sb.Append(") VALUES ");
+
+        var rows = new List<string>();
+
+        foreach (var row in _values)
         {
-            if (_values.Count == 0)
-                throw new InvalidOperationException("No values provided for insert.");
-
-            var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
+            var rowParamNames = new List<string>();
         
-            var sb = new StringBuilder();
-            sb.Append($"INSERT INTO {_table.Sql} (");
-            sb.Append(string.Join(", ", allColumns));
-            sb.Append(") VALUES ");
-
-            var rows = new List<string>();
-
-            foreach (var row in _values)
+            foreach (var col in allColumns)
             {
-                var rowParamNames = new List<string>();
-            
-                foreach (var col in allColumns)
+                if (row.TryGetValue(col, out var val))
                 {
-                    if (row.TryGetValue(col, out var val))
-                    {
-                        string pName = $"@p{Parameters.Count}";
-                        Parameters.Add(pName, val);
-                        rowParamNames.Add($"{pName}");
-                    }
-                    else
-                    {
-                        rowParamNames.Add("NULL");
-                    }
+                    string pName = $"@p{parameters.Count}";
+                    parameters.Add(pName, val);
+                    rowParamNames.Add($"{pName}");
                 }
-                rows.Add($"({string.Join(", ", rowParamNames)})");
+                else
+                {
+                    rowParamNames.Add("NULL");
+                }
             }
-
-            sb.Append(string.Join(", ", rows));
-            return sb.ToString();
+            rows.Add($"({string.Join(", ", rowParamNames)})");
         }
+
+        sb.Append(string.Join(", ", rows));
+        return sb.ToString();
     }
 
     public ReturningQuery<TReturn, TDialect> Returning<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)

@@ -1,7 +1,7 @@
 using System.Text;
-using Drizzle4Dotnet.Core.Query.Shared.Operators;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Core.Shared.Operators;
 
 namespace Drizzle4Dotnet.Core.Query.Delete;
 
@@ -28,23 +28,20 @@ public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         return this;
     }
 
-    public override string Sql
+    public override string BuildSql(Dictionary<string, object?> parameters)
     {
-        get
+        var sb = new StringBuilder();
+        sb.Append("DELETE FROM ");
+        sb.Append(_table.Sql);
+
+        var wheres = _wheres.Select(w => $"({w.BuildSql(parameters)})").ToList();
+        if (wheres.Count > 0)
         {
-            var sb = new StringBuilder();
-            sb.Append("DELETE FROM ");
-            sb.Append(_table.Sql);
-
-            var wheres = _wheres.Select(w => $"({w.BuildSql(Parameters)})").ToList();
-            if (wheres.Count > 0)
-            {
-                sb.Append(" WHERE ");
-                sb.Append(string.Join(" AND ", wheres));
-            }
-
-            return sb.ToString();
+            sb.Append(" WHERE ");
+            sb.Append(string.Join(" AND ", wheres));
         }
+
+        return sb.ToString();
     }
 
     public ReturningQuery<TReturn, TDialect> Returning<TReturn>(

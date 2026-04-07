@@ -1,6 +1,4 @@
-using Drizzle4Dotnet.Core.Shared;
-
-namespace Drizzle4Dotnet.Core.Query.Shared.Operators.Nodes;
+namespace Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
 
 public readonly struct BinaryValueNode<T> : IOperator

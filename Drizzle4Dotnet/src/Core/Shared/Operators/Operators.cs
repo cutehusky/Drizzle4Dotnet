@@ -1,7 +1,6 @@
-using Drizzle4Dotnet.Core.Query.Shared.Operators.Nodes;
-using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
-namespace Drizzle4Dotnet.Core.Query.Shared.Operators;
+namespace Drizzle4Dotnet.Core.Shared.Operators;
 
 public static class Operators
 {

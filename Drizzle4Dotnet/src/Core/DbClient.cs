@@ -18,12 +18,13 @@ public sealed class DbClient<TDialect> where TDialect : ISqlDialect
         _conn = conn;
     }
 
-    public async Task<List<T>> ExecuteAsync<T>(IParameterizedSql<T, TDialect> query)
+    public async Task<List<T>> ExecuteAsync<T>(IReturning<T, TDialect> query)
     {
         await using var cmd = _conn.CreateCommand();
-        cmd.CommandText = query.Sql;
+        var parameters = new Dictionary<string, object?>();
+        cmd.CommandText = query.BuildSql(parameters);
 
-        foreach (var entry in query.Parameters)
+        foreach (var entry in parameters)
         {
             var p = cmd.CreateParameter();
             p.ParameterName = entry.Key;
@@ -44,9 +45,10 @@ public sealed class DbClient<TDialect> where TDialect : ISqlDialect
     public async Task ExecuteAsync(IParameterizedSql query)
     {
         await using var cmd = _conn.CreateCommand();
-        cmd.CommandText = query.Sql;
+        var parameters = new Dictionary<string, object?>();
+        cmd.CommandText = query.BuildSql(parameters);
 
-        foreach (var entry in query.Parameters)
+        foreach (var entry in parameters)
         {
             var p = cmd.CreateParameter();
             p.ParameterName = entry.Key;

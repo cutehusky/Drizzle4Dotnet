@@ -5,7 +5,7 @@ using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
 using MyNamespace;
 using Npgsql;
-using static Drizzle4Dotnet.Core.Query.Shared.Operators.Operators;
+using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
 
 
 [DbSelect]
@@ -63,11 +63,13 @@ public class EntryPoint {
                 Name = "John Doe",
                 Email = "test@email.com",
             }).Returning(UserSelect.Record);
-        Console.WriteLine(insertQuery.Sql);
-        foreach (var queryParameter in insertQuery.Parameters)
+        var (sql, parameters) = insertQuery.Build();
+        Console.WriteLine(sql);
+        foreach (var queryParameter in parameters)
         {
             Console.WriteLine($"{queryParameter.Key} = {queryParameter.Value}");
         }
+        
         try {
             var insertResult = await insertQuery;
             var insertedRecord = insertResult[0];
@@ -87,9 +89,9 @@ public class EntryPoint {
                 Eq(DepartmentsTable.Id, 1),
                 Like(UsersTable.Email, "%@example.com")
                 ));
-
-        Console.WriteLine(query.Sql);
-        foreach (var queryParameter in query.Parameters)
+        (sql, parameters) = query.Build();
+        Console.WriteLine(sql);
+        foreach (var queryParameter in parameters)
         {
             Console.WriteLine($"{queryParameter.Key} = {queryParameter.Value}");
         }
@@ -110,8 +112,9 @@ public class EntryPoint {
             .From(users)
             .Where(Eq(UsersTable.Id, 1));
         
-        Console.WriteLine(query1.Sql);
-        foreach (var queryParameter in query1.Parameters)
+        (sql, parameters) = query1.Build();
+        Console.WriteLine(sql);
+        foreach (var queryParameter in parameters)
         {
             Console.WriteLine($"{queryParameter.Key} = {queryParameter.Value}");
         }
@@ -132,9 +135,10 @@ public class EntryPoint {
             .Set(UsersTable.Name, "New Name")
             .Where(Eq(UsersTable.Id, 1))
             .Returning(UserSelect.Record);
-
-        Console.WriteLine(query2.Sql);
-        foreach (var queryParameter in query2.Parameters)
+        
+        (sql, parameters) = query2.Build();
+        Console.WriteLine(sql);
+        foreach (var queryParameter in parameters)
         {
             Console.WriteLine($"{queryParameter.Key} = {queryParameter.Value}");
         }
@@ -156,12 +160,13 @@ public class EntryPoint {
             .Set(UsersTable.Name, "New Name 2")
             .Where(Eq(UsersTable.Id, 1));
 
-        Console.WriteLine(query3.Sql);
-        foreach (var queryParameter in query3.Parameters)
+        (sql, parameters) = query3.Build();
+        Console.WriteLine(sql);
+        foreach (var queryParameter in parameters)
         {
             Console.WriteLine($"{queryParameter.Key} = {queryParameter.Value}");
         }
-
+        
         try
         {
             await query3;
@@ -174,8 +179,9 @@ public class EntryPoint {
         var query4 = db.Select(UsersTable.ModelAll)
             .From(users)
             .Where(Eq(UsersTable.Id, 1));
-        Console.WriteLine(query3.Sql);
-        foreach (var queryParameter in query3.Parameters)
+        (sql, parameters) = query4.Build();
+        Console.WriteLine(sql);
+        foreach (var queryParameter in parameters)
         {
             Console.WriteLine($"{queryParameter.Key} = {queryParameter.Value}");
         }

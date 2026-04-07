@@ -1,8 +1,8 @@
 using System.Text;
-using Drizzle4Dotnet.Core.Query.Shared.Operators;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Core.Shared.Operators;
 
 namespace Drizzle4Dotnet.Core.Query.Update;
 
@@ -40,7 +40,7 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
     
     public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, IOperator value)
     {
-        _setValues[column.Identifier] = value.BuildSql(Parameters);
+        _setValues[column.Identifier] = value;
         return this;
     }
     
@@ -65,34 +65,43 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         return this;
     }
 
-    public override string Sql
+    public override string BuildSql(Dictionary<string, object?> parameters)
     {
-        get
+        if (_setValues.Count == 0)
         {
-            var sb = new StringBuilder();
-            sb.Append("UPDATE ");
-            sb.Append(_table.Sql);
-            sb.Append(" SET ");
+            throw new InvalidOperationException("No columns set for update.");
+        }
+        
+        var sb = new StringBuilder();
+        sb.Append("UPDATE ");
+        sb.Append(_table.Sql);
+        sb.Append(" SET ");
 
-            var setClauses = new List<string>();
-            foreach (var kv in _setValues)
+        var setClauses = new List<string>();
+        foreach (var kv in _setValues)
+        {
+            if (kv.Value is IOperator op)
             {
-                string paramName = $"@p{Parameters.Count}";
-                Parameters.Add(paramName, kv.Value);
+                setClauses.Add($"{kv.Key} = ({op.BuildSql(parameters)})");
+            }
+            else
+            {
+                string paramName = $"@p{parameters.Count}";
+                parameters.Add(paramName, kv.Value);
                 setClauses.Add($"{kv.Key} = {paramName}");
             }
-
-            sb.Append(string.Join(", ", setClauses));
-
-            var wheres = _wheres.Select(w => $"({w.BuildSql(Parameters)})").ToList();
-            if (wheres.Count > 0)
-            {
-                sb.Append(" WHERE ");
-                sb.Append(string.Join(" AND ", wheres));
-            }
-
-            return sb.ToString();
         }
+
+        sb.Append(string.Join(", ", setClauses));
+
+        var wheres = _wheres.Select(w => $"({w.BuildSql(parameters)})").ToList();
+        if (wheres.Count > 0)
+        {
+            sb.Append(" WHERE ");
+            sb.Append(string.Join(" AND ", wheres));
+        }
+
+        return sb.ToString();
     }
     
     public ReturningQuery<TReturn, TDialect> Returning<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)

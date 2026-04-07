@@ -1,8 +1,8 @@
 using System.Text;
-using Drizzle4Dotnet.Core.Query.Shared.Operators;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Core.Shared.Operators;
 
 namespace Drizzle4Dotnet.Core.Query.Select;
 
@@ -35,87 +35,84 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     {
     }
 
-    public override string Sql
+    public override string BuildSql(Dictionary<string, object?> parameters)
     {
-        get
+        var sb = new StringBuilder();
+        sb.Append("SELECT ");
+        if (_distinct) sb.Append("DISTINCT ");
+        sb.Append(SelectedColumns.Sql);
+
+        // FROM
+        if (_from != null)
         {
-            var sb = new StringBuilder();
-            sb.Append("SELECT ");
-            if (_distinct) sb.Append("DISTINCT ");
-            sb.Append(SelectedColumns.Sql);
-
-            // FROM
-            if (_from != null)
-            {
-                sb.Append(" FROM ");
-                sb.Append(_from);
-            }
-
-            // JOIN
-            var joins = _joins.Select(j =>
-            {
-                var (table, type, on) = j;
-                var joinSql = $"{type} JOIN {table.Sql}";
-                if (on != null)
-                {
-                    joinSql += $" ON ({on.BuildSql(Parameters)})";
-                }
-                return joinSql;
-            }).ToList();
-            if (joins.Count > 0)
-            {
-                sb.Append(" ");
-                sb.Append(string.Join(" ", joins));
-            }
-
-            // WHERE
-            var wheres = _wheres.Select(w => $"({w.BuildSql(Parameters)})").ToList();
-            if (wheres.Count > 0)
-            {
-                sb.Append(" WHERE ");
-                sb.Append(string.Join(" AND ", wheres));
-            }
-            
-            var groupBys = _groupBys.Select(g => g.Sql).ToList();
-            if (groupBys.Count > 0)
-            {
-                sb.Append(" GROUP BY ");
-                sb.Append(string.Join(", ", groupBys));
-            }
-
-            var havings = _havings.Select(h => $"({h.BuildSql(Parameters)})").ToList();
-            if (havings.Count > 0)
-            {
-                sb.Append(" HAVING ");
-                sb.Append(string.Join(" AND ", havings));
-            }
-
-            // ORDER BY
-            var orderBys = _orderBys.Select(o => $"{o.Item1.Sql} {(o.Item2 ? "ASC" : "DESC")}").ToList();
-            if (orderBys.Count > 0)
-            {
-                sb.Append(" ORDER BY ");
-                sb.Append(string.Join(", ", orderBys));
-            }
-
-            // LIMIT
-            if (_limit.HasValue)
-            {
-                sb.Append(" LIMIT ");
-                sb.Append(_limit.Value);
-            }
-
-            // OFFSET
-            if (_offset.HasValue)
-            {
-                sb.Append(" OFFSET ");
-                sb.Append(_offset.Value);
-            }
-            
-            if (_lockClause != null) sb.Append($" {_lockClause}");
-
-            return sb.ToString();
+            sb.Append(" FROM ");
+            sb.Append(_from);
         }
+
+        // JOIN
+        var joins = _joins.Select(j =>
+        {
+            var (table, type, on) = j;
+            var joinSql = $"{type} JOIN {table.Sql}";
+            if (on != null)
+            {
+                joinSql += $" ON ({on.BuildSql(parameters)})";
+            }
+            return joinSql;
+        }).ToList();
+        if (joins.Count > 0)
+        {
+            sb.Append(" ");
+            sb.Append(string.Join(" ", joins));
+        }
+
+        // WHERE
+        var wheres = _wheres.Select(w => $"({w.BuildSql(parameters)})").ToList();
+        if (wheres.Count > 0)
+        {
+            sb.Append(" WHERE ");
+            sb.Append(string.Join(" AND ", wheres));
+        }
+        
+        var groupBys = _groupBys.Select(g => g.Sql).ToList();
+        if (groupBys.Count > 0)
+        {
+            sb.Append(" GROUP BY ");
+            sb.Append(string.Join(", ", groupBys));
+        }
+
+        var havings = _havings.Select(h => $"({h.BuildSql(parameters)})").ToList();
+        if (havings.Count > 0)
+        {
+            sb.Append(" HAVING ");
+            sb.Append(string.Join(" AND ", havings));
+        }
+
+        // ORDER BY
+        var orderBys = _orderBys.Select(o => $"{o.Item1.Sql} {(o.Item2 ? "ASC" : "DESC")}").ToList();
+        if (orderBys.Count > 0)
+        {
+            sb.Append(" ORDER BY ");
+            sb.Append(string.Join(", ", orderBys));
+        }
+
+        // LIMIT
+        if (_limit.HasValue)
+        {
+            sb.Append(" LIMIT ");
+            sb.Append(_limit.Value);
+        }
+
+        // OFFSET
+        if (_offset.HasValue)
+        {
+            sb.Append(" OFFSET ");
+            sb.Append(_offset.Value);
+        }
+        
+        if (_lockClause != null) sb.Append($" {_lockClause}");
+
+        return sb.ToString();
     }
     
     

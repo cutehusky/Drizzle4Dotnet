@@ -4,11 +4,10 @@ using Drizzle4Dotnet.Core.Shared;
 namespace Drizzle4Dotnet.Core.Query;
 
 
-public class ReturningQuery<TReturn, TDialect> : IParameterizedSql<TReturn, TDialect> where  TDialect : ISqlDialect
+public class ReturningQuery<TReturn, TDialect> : IReturning<TReturn, TDialect> where  TDialect : ISqlDialect
 {
     private readonly Query<TDialect> _baseQuery;
     public readonly DbClient<TDialect> DbClient;
-    public Dictionary<string, object?> Parameters { get; }
     public ISelectedColumns<TReturn, TDialect> SelectedColumns { get; }
 
     public ReturningQuery(
@@ -19,7 +18,6 @@ public class ReturningQuery<TReturn, TDialect> : IParameterizedSql<TReturn, TDia
         _baseQuery = baseQuery;
         SelectedColumns = selectedColumns;
         DbClient = baseQuery.DbClient;
-        Parameters = baseQuery.Parameters;
     }
     
     public TaskAwaiter<List<TReturn>> GetAwaiter()
@@ -27,5 +25,15 @@ public class ReturningQuery<TReturn, TDialect> : IParameterizedSql<TReturn, TDia
         return DbClient.ExecuteAsync(this).GetAwaiter();
     }
 
-    public string Sql => $"{_baseQuery.Sql} RETURNING {SelectedColumns!.Sql}";
+    public string BuildSql(Dictionary<string, object?> parameters)
+    {
+        return $"{_baseQuery.BuildSql(parameters)} RETURNING {SelectedColumns.Sql}";
+    }
+    
+    public (string, Dictionary<string, object?>) Build()
+    {
+        var parameters = new Dictionary<string, object?>();
+        var sql = BuildSql(parameters);
+        return (sql, parameters);
+    }
 }

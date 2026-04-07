@@ -6,12 +6,10 @@ namespace Drizzle4Dotnet.Core.Query;
 public abstract class Query<TDialect>: IParameterizedSql where TDialect : ISqlDialect
 {
     public readonly DbClient<TDialect> DbClient;
-    public Dictionary<string, object?> Parameters { get; } 
 
     public Query(DbClient<TDialect> dbClient)
     {
         DbClient = dbClient;
-        Parameters = new Dictionary<string, object?>();
     }
     
     public TaskAwaiter GetAwaiter()
@@ -19,15 +17,21 @@ public abstract class Query<TDialect>: IParameterizedSql where TDialect : ISqlDi
         return DbClient.ExecuteAsync(this).GetAwaiter();
     }
 
-    public abstract string Sql { get; }
+    public abstract string BuildSql(Dictionary<string, object?> parameters);
+    
+    public (string, Dictionary<string, object?>) Build()
+    {
+        var parameters = new Dictionary<string, object?>();
+        var sql = BuildSql(parameters);
+        return (sql, parameters);
+    }
 }
 
 
-public abstract class Query<TReturn, TDialect>: IParameterizedSql<TReturn, TDialect> where TDialect : ISqlDialect
+public abstract class Query<TReturn, TDialect>: IReturning<TReturn, TDialect> where TDialect : ISqlDialect
 {
     public ISelectedColumns<TReturn, TDialect> SelectedColumns { get; }
     public readonly DbClient<TDialect> DbClient;
-    public Dictionary<string, object?> Parameters { get; }
 
     public Query(
         ISelectedColumns<TReturn, TDialect> selectedColumns,
@@ -36,7 +40,6 @@ public abstract class Query<TReturn, TDialect>: IParameterizedSql<TReturn, TDial
     {
         SelectedColumns = selectedColumns;
         DbClient = dbClient;
-        Parameters = new Dictionary<string, object?>();
     }
     
     public TaskAwaiter<List<TReturn>> GetAwaiter()
@@ -44,5 +47,12 @@ public abstract class Query<TReturn, TDialect>: IParameterizedSql<TReturn, TDial
         return DbClient.ExecuteAsync(this).GetAwaiter();
     }
 
-    public abstract string Sql { get; }
+    public abstract string BuildSql(Dictionary<string, object?> parameters);
+
+    public (string, Dictionary<string, object?>) Build()
+    {
+        var parameters = new Dictionary<string, object?>();
+        var sql = BuildSql(parameters);
+        return (sql, parameters);
+    }
 }

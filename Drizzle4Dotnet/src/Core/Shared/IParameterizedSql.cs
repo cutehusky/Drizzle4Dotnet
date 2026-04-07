@@ -1,17 +1,11 @@
-using System.Data.Common;
-
 namespace Drizzle4Dotnet.Core.Shared;
 
-public interface IParameterizedSql<TReturn, TDialect> : ISql<TReturn> where TDialect : ISqlDialect
+public interface IParameterizedSql<TReturn>
 {
-    public Dictionary<string, object?> Parameters { get; } 
-    
-    protected ISelectedColumns<TReturn, TDialect> SelectedColumns { get;  }
-
-    public Func<DbDataReader, TReturn> Mapper => SelectedColumns.Mapper;
+    string BuildSql(Dictionary<string, object?> parameters);
 }
 
-public interface IParameterizedSql : ISql
+public interface IParameterizedSql
 {
-    public Dictionary<string, object?> Parameters { get; } 
+    string BuildSql(Dictionary<string, object?> parameters);
 }
