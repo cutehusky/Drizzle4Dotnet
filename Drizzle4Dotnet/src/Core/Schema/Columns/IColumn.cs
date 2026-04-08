@@ -17,3 +17,8 @@ public interface IGenericColumn<TDialect>: ISql where TDialect: ISqlDialect
 public interface IColumnOfTable<TTable, TDialect>: IGenericColumn<TDialect> where TTable : ITable<TDialect> where TDialect: ISqlDialect
 {
 }
+
+public interface IColumnOfDialect<T, TDialect> : IColumn<T> where TDialect : ISqlDialect
+{
+    
+}

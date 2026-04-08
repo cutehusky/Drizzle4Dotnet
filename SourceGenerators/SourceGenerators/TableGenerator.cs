@@ -201,7 +201,7 @@ public class TableGenerator : IIncrementalGenerator
 
     private sealed class GeneratedResultSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl>
     {{
-        public string Sql => $""{sqlFragments}"";
+        public string BuildSql(Dictionary<string, object?> parameters) => $""{sqlFragments}"";
 
         public SelectResult Mapper(DbDataReader r)
         {{
@@ -213,7 +213,7 @@ public class TableGenerator : IIncrementalGenerator
 
     private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel, PgSqlSqlDialectImpl>
     {{
-        public string Sql => $""{sqlFragments}"";
+        public string BuildSql(Dictionary<string, object?> parameters) => $""{sqlFragments}"";
 
         public SelectModel Mapper(DbDataReader r)
         {{

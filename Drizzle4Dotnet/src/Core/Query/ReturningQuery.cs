@@ -27,7 +27,7 @@ public class ReturningQuery<TReturn, TDialect> : IReturning<TReturn, TDialect> w
 
     public string BuildSql(Dictionary<string, object?> parameters)
     {
-        return $"{_baseQuery.BuildSql(parameters)} RETURNING {SelectedColumns.Sql}";
+        return $"{_baseQuery.BuildSql(parameters)} RETURNING {SelectedColumns.BuildSql(parameters)}";
     }
     
     public (string, Dictionary<string, object?>) Build()

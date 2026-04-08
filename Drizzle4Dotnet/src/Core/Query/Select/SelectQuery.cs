@@ -41,7 +41,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         
         sb.Append("SELECT ");
         if (_distinct) sb.Append("DISTINCT ");
-        sb.Append(SelectedColumns.Sql);
+        sb.Append(SelectedColumns.BuildSql(parameters));
 
         // FROM
         if (_from != null)

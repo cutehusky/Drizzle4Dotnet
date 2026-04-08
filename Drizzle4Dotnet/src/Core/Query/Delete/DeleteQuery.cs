@@ -38,10 +38,4 @@ public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
 
         return sb.ToString();
     }
-
-    public ReturningQuery<TReturn, TDialect> Returning<TReturn>(
-        ISelectedColumns<TReturn, TDialect> selectedColumns)
-    {
-        return new ReturningQuery<TReturn, TDialect>(this, selectedColumns);
-    }
 }
