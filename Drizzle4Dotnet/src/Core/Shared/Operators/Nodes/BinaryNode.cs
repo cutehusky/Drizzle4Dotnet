@@ -62,16 +62,18 @@ public readonly struct BinaryNode : IOperator
     private readonly ISql _c1;
     private readonly ISql _c2;
     private readonly string _operator;
+    private readonly bool _wrapInParentheses;
 
-    public BinaryNode(ISql c1, ISql c2, string @operator)
+    public BinaryNode(ISql c1, ISql c2, string @operator, bool wrapInParentheses = false)
     {
         _c1 = c1;
         _c2 = c2;
         _operator = @operator;
+        _wrapInParentheses = wrapInParentheses;
     }
     
     public string BuildSql(Dictionary<string, object?> parameters)
     {
-        return $"{_c1.BuildSql(parameters)} {_operator} {_c2.BuildSql(parameters)}";
+        return _wrapInParentheses ? $"({_c1.BuildSql(parameters)}) {_operator} ({_c2.BuildSql(parameters)})" : $"{_c1.BuildSql(parameters)} {_operator} {_c2.BuildSql(parameters)}";
     }
 }

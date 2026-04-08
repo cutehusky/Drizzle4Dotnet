@@ -1,5 +1,6 @@
 using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Dialect;
+using Test.Shared;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
 
 namespace Test.Select;
@@ -312,5 +313,149 @@ public class SelectQueryPgTests
     //     var (sql, parameters) = query.Build();
     //
     //     Print("SELECT with AGGREGATE functions", sql, parameters);
+    // }
+    
+    [Test]
+    public void Select_WithExists()
+    {
+        var subQuery = _db
+            .Select(UserProjectsTable.ModelAll)
+            .From(userProjects)
+            .Where(Eq(UserProjectsTable.ProjectId, 1));
+
+        var query = _db
+            .Select(UserSelect.Record)
+            .From(users)
+            .Where(Exists(subQuery));
+
+        var (sql, parameters) = query.Build();
+
+        Print("SELECT with EXISTS", sql, parameters);
+    }
+
+    [Test]
+    public void Select_WithInSubquery()
+    {
+        var subQuery = _db
+            .Select(UserProjectsTable.ModelAll)
+            .From(userProjects)
+            .Where(Eq(UserProjectsTable.ProjectId, 2));
+
+        var query = _db
+            .Select(UserSelect.Record)
+            .From(users)
+            .Where(In(UsersTable.Id, subQuery));
+
+        var (sql, parameters) = query.Build();
+
+        Print("SELECT with IN SUBQUERY", sql, parameters);
+    }
+
+    // [Test]
+    // public void Select_FromSubquery_AsDerivedTable()
+    // {
+    //     var subQuery = _db
+    //         .Select(UserSelect.Id, UserSelect.Email)
+    //         .From(users)
+    //         .Where(Eq(UsersTable.IsActive, true));
+    //
+    //     var derived = subQuery.As("active_users");
+    //
+    //     var query = _db
+    //         .Select(derived.Column("Id"), derived.Column("Email"))
+    //         .From(derived);
+    //
+    //     var (sql, parameters) = query.Build();
+    //
+    //     Print("SELECT FROM SUBQUERY (Derived Table)", sql, parameters);
+    // }
+
+    // [Test]
+    // public void Select_SubqueryInSelectList()
+    // {
+    //     var subQuery = _db
+    //         .Select(Count(UserProjectsTable.ProjectId))
+    //         .From(userProjects)
+    //         .Where(Eq(UserProjectsTable.UserId, UsersTable.Id));
+    //
+    //     var query = _db
+    //         .Select(
+    //             UsersTable.Id,
+    //             UsersTable.Name,
+    //             subQuery.As("ProjectCount")
+    //         )
+    //         .From(users);
+    //
+    //     var (sql, parameters) = query.Build();
+    //
+    //     Print("SELECT with SUBQUERY in SELECT list", sql, parameters);
+    // }
+
+    [Test]
+    public void Select_ComplexExistsAndJoins()
+    {
+        var subQuery = _db
+            .Select(UserProjectsTable.ModelAll)
+            .From(userProjects)
+            .Where(Eq(UserProjectsTable.UserId, UsersTable.Id));
+
+        var query = _db
+            .Select(UserSelect.Record)
+            .From(users)
+            .InnerJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
+            .Where(And(
+                Exists(subQuery),
+                Eq(DepartmentsTable.Name, "Engineering")
+            ))
+            .OrderBy(UsersTable.Name);
+
+        var (sql, parameters) = query.Build();
+
+        Print("COMPLEX SELECT with EXISTS and JOIN", sql, parameters);
+    }
+
+    [Test]
+    public void Select_WithNestedSubqueries()
+    {
+        var innerSub = _db
+            .Select(UserProjectsTable.ModelAll)
+            .From(userProjects)
+            .Where(Eq(UserProjectsTable.ProjectId, 3));
+
+        var outerSub = _db
+            .Select(UsersTable.ModelAll)
+            .From(users)
+            .Where(In(UsersTable.Id, innerSub));
+
+        var query = _db
+            .Select(UserSelect.Record)
+            .From(users)
+            .Where(In(UsersTable.Id, outerSub));
+
+        var (sql, parameters) = query.Build();
+
+        Print("SELECT with NESTED SUBQUERIES", sql, parameters);
+    }
+
+    // [Test]
+    // public void Select_WithAggregatedSubquery()
+    // {
+    //     var subQuery = _db
+    //         .Select(Avg(UserProjectsTable.Allocation))
+    //         .From(userProjects)
+    //         .Where(Eq(UserProjectsTable.UserId, UsersTable.Id));
+    //
+    //     var query = _db
+    //         .Select(
+    //             UsersTable.Id,
+    //             UsersTable.Name,
+    //             subQuery.As("AvgAllocation")
+    //         )
+    //         .From(users)
+    //         .Where(Eq(UsersTable.IsActive, true));
+    //
+    //     var (sql, parameters) = query.Build();
+    //
+    //     Print("SELECT with AGGREGATED SUBQUERY", sql, parameters);
     // }
 }
