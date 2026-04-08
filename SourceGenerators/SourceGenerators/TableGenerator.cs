@@ -151,9 +151,6 @@ public class TableGenerator : IIncrementalGenerator
             }
             
             var refName = table.IsAlias ? table.AliasName : table.DbTableName;
-            var tableSql = table.IsAlias 
-                ? $"$\"{{PgSqlSqlDialectImpl.BuildTableName(\"public\", \"{table.DbTableName}\")}} AS {table.AliasName}\"" 
-                : $"PgSqlSqlDialectImpl.BuildTableName(\"public\", \"{table.DbTableName}\")";
             
             sb.AppendLine("using Drizzle4Dotnet.Core.Query.Select;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Query.Insert;");
@@ -175,9 +172,13 @@ public class TableGenerator : IIncrementalGenerator
 
         public static string TableRefName {{ get => ""{refName}""; }}
 
-        public string Sql => {tableSql};
+        private static readonly string _sql;
 
-        public string Identifier => PgSqlSqlDialectImpl.BuildIdentifier(""{refName}"");
+        public string Sql => _sql;
+        
+        private static readonly string _identifier;
+
+        public string Identifier => _identifier;
 ");
             var selectStructProperties = string.Join(", ", table.Columns!.Select(p => $"{p.Type} {p.PropName}"));
             var selectModelProperties = string.Join("\n        ",
@@ -284,9 +285,16 @@ public class TableGenerator : IIncrementalGenerator
     }}
 ");
 
+            
+            var tableSql = table.IsAlias 
+                ? $"$\"{{PgSqlSqlDialectImpl.BuildTableName(\"public\", \"{table.DbTableName}\")}} AS {table.AliasName}\"" 
+                : $"PgSqlSqlDialectImpl.BuildTableName(\"public\", \"{table.DbTableName}\")";
+
             sb.AppendLine($@"
         static {table.ClassName}() {{
                 {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new DbColumn<{c.Type}, {table.ClassName}, PgSqlSqlDialectImpl>(\"{c.DbColumnName}\");"))}
+                _sql = {tableSql};
+                _identifier = PgSqlSqlDialectImpl.BuildIdentifier(""{table.DbTableName}"");
         }}");
 
             sb.AppendLine(string.Join("\n        ", table.Columns!.Select(c => $"public static DbColumn<{c.Type}, {table.ClassName}, PgSqlSqlDialectImpl> {c.PropName} {{ get; set; }}")));

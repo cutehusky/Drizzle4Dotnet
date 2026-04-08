@@ -63,7 +63,13 @@ public partial class {model.Name}
 
     private sealed class GeneratedStructSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl>
     {{
-        public string Sql => $""{sqlFragments}"";
+        public string Sql => _sql;
+
+        private static readonly string _sql;
+
+        static GeneratedStructSelection() {{
+            _sql = $""{sqlFragments}"";
+        }}
 
         public SelectResult Mapper(DbDataReader r)
         {{
@@ -75,7 +81,13 @@ public partial class {model.Name}
 
     private sealed class GeneratedModelSelection : ISelectedColumns<{model.Name}, PgSqlSqlDialectImpl>
     {{
-        public string Sql => $""{sqlFragments}"";
+        public string Sql => _sql;
+
+        private static readonly string _sql;
+
+        static GeneratedModelSelection() {{
+            _sql = $""{sqlFragments}"";
+        }}
 
         public {model.Name} Mapper(DbDataReader r)
         {{
