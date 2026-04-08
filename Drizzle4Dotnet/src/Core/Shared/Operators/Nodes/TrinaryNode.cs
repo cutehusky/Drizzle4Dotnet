@@ -1,7 +1,7 @@
 namespace Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
 
-public class TrinaryNode<T>: IOperator<T>
+public readonly struct TrinaryNode<T>: IOperator<T>
 {
     private readonly ISql<T> _col1;
     private readonly ISql<T> _col2;
@@ -25,7 +25,7 @@ public class TrinaryNode<T>: IOperator<T>
     }
 }
 
-public class TrinaryNode<T, TReturn>: IOperator<TReturn>
+public readonly struct TrinaryNode<T, TReturn>: IOperator<TReturn>
 {
     private readonly ISql<T> _col1;
     private readonly ISql<T> _col2;
@@ -50,7 +50,7 @@ public class TrinaryNode<T, TReturn>: IOperator<TReturn>
 }
 
 
-public class TrinaryNodeV2Val<T, TReturn>: IOperator<TReturn>
+public readonly struct TrinaryNodeV2Val<T, TReturn>: IOperator<TReturn>
 {
     private readonly ISql<T> _col1;
     private readonly T _col2;
@@ -77,7 +77,7 @@ public class TrinaryNodeV2Val<T, TReturn>: IOperator<TReturn>
     }
 }
 
-public class TrinaryNodeV3Val<T, TReturn> : IOperator<TReturn>
+public readonly struct TrinaryNodeV3Val<T, TReturn> : IOperator<TReturn>
 {
     private readonly ISql<T> _col1;
     private readonly ISql<T> _col2;
@@ -102,7 +102,7 @@ public class TrinaryNodeV3Val<T, TReturn> : IOperator<TReturn>
     }
 }
 
-public class TrinaryNodeV23Val<T, TReturn> : IOperator<TReturn>
+public readonly struct TrinaryNodeV23Val<T, TReturn> : IOperator<TReturn>
 {
     private readonly ISql<T> _col1;
     private readonly T _col2;

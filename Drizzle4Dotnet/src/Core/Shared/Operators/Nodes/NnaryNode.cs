@@ -3,7 +3,7 @@ using Drizzle4Dotnet.Core.Query.Select;
 
 namespace Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
-public class NnaryNode<T, TReturn>: IOperator<TReturn>
+public readonly struct NnaryNode<T, TReturn>: IOperator<TReturn>
 {
     private readonly ISql<T>[] _cols;
     private readonly string _seperator;
@@ -28,7 +28,7 @@ public class NnaryNode<T, TReturn>: IOperator<TReturn>
 }
 
 
-public class NnaryAnyNode<T, TReturn, TDialect>: IOperator<TReturn> where TDialect : ISqlDialect
+public readonly struct NnaryAnyNode<T, TReturn, TDialect>: IOperator<TReturn> where TDialect : ISqlDialect
 {
     private readonly ISql<T> _c1;
     private readonly SqlValue<T, TDialect>[] _cols;
@@ -58,7 +58,7 @@ public class NnaryAnyNode<T, TReturn, TDialect>: IOperator<TReturn> where TDiale
     }
 }
 
-public struct SqlValue<T, TDialect> where TDialect : ISqlDialect
+public readonly struct SqlValue<T, TDialect> where TDialect : ISqlDialect
 {
     private readonly ISql<T>? _sql;
     private readonly T? _value;
@@ -84,7 +84,7 @@ public struct SqlValue<T, TDialect> where TDialect : ISqlDialect
     }
 }
 
-internal class SqlConverter<T> : ISql<T>
+internal readonly struct SqlConverter<T> : ISql<T>
 {
     private readonly ISql<T> _inner;
     public SqlConverter(ISql<T> inner) => _inner = inner;

@@ -61,7 +61,7 @@ public class SelectQueryPgTests
             .Select(UserSelect.Record)
             .From(users)
             .Where(And(
-                Eq(UsersTable.Id, 1),
+                UsersTable.Id.Eq(1),
                 Like(UsersTable.Email, "%@example.com")
             ));
 
