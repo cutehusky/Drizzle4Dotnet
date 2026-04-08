@@ -13,16 +13,16 @@ public class User
 
 
 [DbSelect]
-public static partial class UserSelect
+public partial class UserSelect
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public static int Id { get; }
+    public int Id { get; set; }
 
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
-    public static string Email { get; }
-    
+    public string Email { get; set; }
+
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public static string Name { get; }
+    public string Name { get; set; }
 }
 
 namespace MyNamespace
@@ -33,38 +33,19 @@ namespace MyNamespace
         public static class Columns
         {
             [Column("Id")]
-            public static IColumn<int> Id { get; set; }
+            public static int Id { get; set; }
 
             [Column("Name")]
-            public static IColumn<string> Name { get; set; }
+            public static string Name { get; set; }
 
             [Column("Email")]
-            public static IColumn<string> Email { get; set; }
+            public static string Email { get; set; }
         
             [Column("DepartmentId")]
-            public static IColumn<int> DepartmentId { get; set; }
+            public static int DepartmentId { get; set; }
             
             [Column("ManagerId")]
-            public static IColumn<int> ManagerId { get; set; }
-        }
-    }
-
-    [Alias(typeof(UsersTable), "Manager")]
-    public partial class ManagersTable
-    {
-    
-    }
-
-    [Table("Departments")]
-    public partial class DepartmentsTable
-    {
-        public static class Columns
-        {
-            [Column("Id")] public static IColumn<int> Id { get; set; }
-
-            [Column("Name")] public static IColumn<string> Name { get; set; }
-
-            [Column("Email")] public static IColumn<string> Email { get; set; }
+            public static int ManagerId { get; set; }
         }
     }
 }

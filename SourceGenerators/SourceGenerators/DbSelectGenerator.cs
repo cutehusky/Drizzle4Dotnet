@@ -44,8 +44,7 @@ public class DbSelectGenerator : IIncrementalGenerator
             }
 
             var selectStructProperties = string.Join(", ", model.Properties.Select(p => $"{p.Type} {p.Name}"));
-            var selectModelProperties = string.Join("\n        ", model.Properties.Select(p => $"public {p.Type} {p.Name} {{ get; set; }} = default!;"));
-
+            
             var sqlFragments = string.Join(", ", model.Properties.Select(p => $"{{{p.ColumnSql}.Sql}}"));
 
             var selectStructMapper = string.Join(",\n                ", model.Properties.Select((p, i) => 
@@ -58,13 +57,9 @@ public class DbSelectGenerator : IIncrementalGenerator
 public partial class {model.Name}
 {{
     public readonly record struct SelectResult({selectStructProperties});
-    public class SelectModel 
-    {{
-        {selectModelProperties}
-    }}
 
     public static ISelectedColumns<SelectResult, PgSqlSqlDialectImpl> Record {{ get; }} = new GeneratedStructSelection();
-    public static ISelectedColumns<SelectModel, PgSqlSqlDialectImpl> Model {{ get; }} = new GeneratedModelSelection();
+    public static ISelectedColumns<{model.Name}, PgSqlSqlDialectImpl> Mapping {{ get; }} = new GeneratedModelSelection();
 
     private sealed class GeneratedStructSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl>
     {{
@@ -78,13 +73,13 @@ public partial class {model.Name}
         }}
     }}
 
-    private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel, PgSqlSqlDialectImpl>
+    private sealed class GeneratedModelSelection : ISelectedColumns<{model.Name}, PgSqlSqlDialectImpl>
     {{
         public string Sql => $""{sqlFragments}"";
 
-        public SelectModel Mapper(DbDataReader r)
+        public {model.Name} Mapper(DbDataReader r)
         {{
-            return new SelectModel 
+            return new {model.Name} 
             {{
                 {selectModelMapper}
             }};

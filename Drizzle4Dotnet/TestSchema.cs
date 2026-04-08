@@ -8,21 +8,20 @@ namespace MyNamespace
     {
         public static class Columns
         {
-            [PrimaryKey]
             [Column("Id")]
-            public static IColumn<int> Id { get; set; }
+            public static int Id { get; set; }
 
             [Column("Name")]
-            public static IColumn<string> Name { get; set; }
+            public static string Name { get; set; }
 
             [Column("Email")]
-            public static IColumn<string> Email { get; set; }
+            public static string Email { get; set; }
         
             [Column("DepartmentId")]
-            public static IColumn<int> DepartmentId { get; set; }
+            public static int DepartmentId { get; set; }
             
             [Column("ManagerId")]
-            public static IColumn<int> ManagerId { get; set; }
+            public static int ManagerId { get; set; }
         }
     }
 
@@ -37,11 +36,14 @@ namespace MyNamespace
     {
         public static class Columns
         {
-            [PrimaryKey] [Column("Id")] public static IColumn<int> Id { get; set; }
+            [Column("Id")] 
+            public static int Id { get; set; }
 
-            [Column("Name")] public static IColumn<string> Name { get; set; }
+            [Column("Name")] 
+            public static string Name { get; set; }
 
-            [Column("Email")] public static IColumn<string> Email { get; set; }
+            [Column("Email")] 
+            public static string Email { get; set; }
         }
     }
 }

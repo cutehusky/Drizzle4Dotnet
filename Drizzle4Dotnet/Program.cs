@@ -7,36 +7,36 @@ using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
 
 
 [DbSelect]
-public static partial class UserSelect1
+public partial class UserSelect1
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public static int Id { get; }
+    public int Id { get; set; }
 
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
-    public static string Email { get; }
+    public string Email { get; set;}
     
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public static string Name { get; }
+    public string Name { get; set;}
     
     [MapWith(typeof(DepartmentsTable), DepartmentsTable.ColumnNames.Name)]
-    public static int DepartmentName { get; }
+    public int DepartmentName { get; set;}
     
     [MapWith(typeof(ManagersTable), ManagersTable.ColumnNames.Name)]
-    public static int ManagerName { get; }
+    public int ManagerName { get;set; }
 }
 
 
 [DbSelect]
-public static partial class UserSelect
+public partial class UserSelect
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public static int Id { get; }
+    public int Id { get;set; }
 
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
-    public static string Email { get; }
+    public string Email { get; set;}
     
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public static string Name { get; }
+    public string Name { get; set;}
 }
 
 
@@ -106,7 +106,7 @@ public class EntryPoint {
         }
         
         var query1 = db
-            .Select(UserSelect.Model)
+            .Select(UserSelect.Mapping)
             .From(users)
             .Where(Eq(UsersTable.Id, 1));
         

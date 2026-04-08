@@ -59,7 +59,7 @@ public class TableGenerator : IIncrementalGenerator
                     if (colAttr != null && colAttr.ConstructorArguments.Length > 0)
                     {
                         var dbColumnName = colAttr.ConstructorArguments[0].Value?.ToString() ?? subMember.Name;
-                        var colType = ((INamedTypeSymbol)subMember.Type).TypeArguments[0].ToDisplayString();
+                        var colType = subMember.Type.ToDisplayString();
                         columns.Add((subMember.Name, dbColumnName, colType));
                     }
                 }
