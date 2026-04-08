@@ -71,28 +71,38 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         sb.Append(_table.Sql);
         sb.Append(" SET ");
 
-        var setClauses = new List<string>();
+        bool firstSet = true;
         foreach (var kv in _setValues)
         {
+            if (!firstSet) sb.Append(", ");
+        
+            sb.Append(kv.Key);
+            sb.Append(" = ");
+
             if (kv.Value is ISql op)
             {
-                setClauses.Add($"{kv.Key} = ({op.BuildSql(parameters)})");
+                sb.Append('(').Append(op.BuildSql(parameters)).Append(')');
             }
             else
             {
                 string paramName = $"@p{parameters.Count}";
                 parameters.Add(paramName, kv.Value);
-                setClauses.Add($"{kv.Key} = {paramName}");
+                sb.Append(paramName);
             }
+            firstSet = false;
         }
 
-        sb.Append(string.Join(", ", setClauses));
-
-        var wheres = _wheres.Select(w => $"({w.BuildSql(parameters)})").ToList();
-        if (wheres.Count > 0)
+        if (_wheres.Count > 0)
         {
             sb.Append(" WHERE ");
-            sb.Append(string.Join(" AND ", wheres));
+            for (int i = 0; i < _wheres.Count; i++)
+            {
+                if (i > 0) sb.Append(" AND ");
+            
+                sb.Append('(');
+                sb.Append(_wheres[i].BuildSql(parameters));
+                sb.Append(')');
+            }
         }
 
         return sb.ToString();

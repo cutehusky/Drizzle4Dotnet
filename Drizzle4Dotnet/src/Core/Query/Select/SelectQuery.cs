@@ -37,7 +37,8 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
 
     public override string BuildSql(Dictionary<string, object?> parameters)
     {
-        var sb = new StringBuilder();
+        var sb = new StringBuilder(); 
+        
         sb.Append("SELECT ");
         if (_distinct) sb.Append("DISTINCT ");
         sb.Append(SelectedColumns.Sql);
@@ -45,72 +46,47 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         // FROM
         if (_from != null)
         {
-            sb.Append(" FROM ");
-            sb.Append(_from.Sql);
+            sb.Append(" FROM ").Append(_from.Sql);
         }
 
-        // JOIN
-        var joins = _joins.Select(j =>
+        if (_joins.Count > 0)
         {
-            var (table, type, on) = j;
-            var joinSql = $"{type} JOIN {table.Sql}";
-            if (on != null)
+            foreach (var (table, type, on) in _joins)
             {
-                joinSql += $" ON ({on.BuildSql(parameters)})";
+                sb.Append(' ').Append(type).Append(" JOIN ").Append(table.Sql);
+                if (on != null)
+                {
+                    sb.Append(" ON (").Append(on.BuildSql(parameters)).Append(')');
+                }
             }
-            return joinSql;
-        }).ToList();
-        if (joins.Count > 0)
-        {
-            sb.Append(" ");
-            sb.Append(string.Join(" ", joins));
         }
 
         // WHERE
-        var wheres = _wheres.Select(w => $"({w.BuildSql(parameters)})").ToList();
-        if (wheres.Count > 0)
-        {
-            sb.Append(" WHERE ");
-            sb.Append(string.Join(" AND ", wheres));
-        }
-        
-        var groupBys = _groupBys.Select(g => g.BuildSql(parameters)).ToList();
-        if (groupBys.Count > 0)
-        {
-            sb.Append(" GROUP BY ");
-            sb.Append(string.Join(", ", groupBys));
-        }
+        AppendClause(sb, " WHERE ", " AND ", _wheres, parameters, wrapInParentheses: true);
 
-        var havings = _havings.Select(h => $"({h.BuildSql(parameters)})").ToList();
-        if (havings.Count > 0)
-        {
-            sb.Append(" HAVING ");
-            sb.Append(string.Join(" AND ", havings));
-        }
+        // GROUP BY
+        AppendClause(sb, " GROUP BY ", ", ", _groupBys, parameters);
+
+        // HAVING
+        AppendClause(sb, " HAVING ", " AND ", _havings, parameters, wrapInParentheses: true);
 
         // ORDER BY
-        var orderBys = _orderBys.Select(o => $"{o.Item1.BuildSql(parameters)} {(o.Item2 ? "ASC" : "DESC")}").ToList();
-        if (orderBys.Count > 0)
+        if (_orderBys.Count > 0)
         {
             sb.Append(" ORDER BY ");
-            sb.Append(string.Join(", ", orderBys));
+            for (int i = 0; i < _orderBys.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                var (expr, isAsc) = _orderBys[i];
+                sb.Append(expr.BuildSql(parameters)).Append(isAsc ? " ASC" : " DESC");
+            }
         }
 
-        // LIMIT
-        if (_limit.HasValue)
-        {
-            sb.Append(" LIMIT ");
-            sb.Append(_limit.Value);
-        }
-
-        // OFFSET
-        if (_offset.HasValue)
-        {
-            sb.Append(" OFFSET ");
-            sb.Append(_offset.Value);
-        }
+        // LIMIT & OFFSET
+        if (_limit.HasValue) sb.Append(" LIMIT ").Append(_limit.Value);
+        if (_offset.HasValue) sb.Append(" OFFSET ").Append(_offset.Value);
         
-        if (_lockClause != null) sb.Append($" {_lockClause}");
+        if (_lockClause != null) sb.Append(' ').Append(_lockClause);
 
         return sb.ToString();
     }
