@@ -2,6 +2,7 @@ using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Dialect;
 using Test.Shared;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+using static Drizzle4Dotnet.Core.Shared.Operators.Functions;
 
 namespace Test.Select;
 
@@ -209,24 +210,24 @@ public class SelectQueryPgTests
         Print("SELECT with LIMIT/OFFSET", sql, parameters);
     }
 
-    // [Test]
-    // public void Select_WithGroupBy()
-    // {
-    //     var query = _db
-    //         .Select(
-    //             DepartmentsTable.Id,
-    //             DepartmentsTable.Name,
-    //             Count(UsersTable.Id).As("UserCount")
-    //         )
-    //         .From(users)
-    //         .InnerJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
-    //         .GroupBy(DepartmentsTable.Id, DepartmentsTable.Name)
-    //         .Having(Gt(Count(UsersTable.Id), 5));
-    //
-    //     var (sql, parameters) = query.Build();
-    //
-    //     Print("SELECT with GROUP BY and HAVING", sql, parameters);
-    // }
+    [Test]
+    public void Select_WithGroupBy()
+    {
+        var query = _db
+            .Select(
+                DepartmentsTable.Id,
+                DepartmentsTable.Name,
+                Count(UsersTable.Id)//.As("UserCount")
+            )
+            .From(users)
+            .InnerJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
+            .GroupBy(DepartmentsTable.Id, DepartmentsTable.Name)
+            .Having(Gt(Count(UsersTable.Id), 5));
+    
+        var (sql, parameters) = query.Build();
+    
+        Print("SELECT with GROUP BY and HAVING", sql, parameters);
+    }
 
     [Test]
     public void Select_WithDistinct()
@@ -298,22 +299,26 @@ public class SelectQueryPgTests
     //     Print("SELECT with CASE expression", sql, parameters);
     // }
     
-    // [Test]
-    // public void Select_WithAggregateFunctions()
-    // {
-    //     var query = _db
-    //         .Select(
-    //             Count(UsersTable.Id).As("TotalUsers"),
-    //             Avg(UsersTable.Age).As("AverageAge"),
-    //             Max(UsersTable.Salary).As("MaxSalary"),
-    //             Min(UsersTable.Salary).As("MinSalary")
-    //         )
-    //         .From(users);
-    //
-    //     var (sql, parameters) = query.Build();
-    //
-    //     Print("SELECT with AGGREGATE functions", sql, parameters);
-    // }
+    [Test]
+    public void Select_WithAggregateFunctions()
+    {
+        var query = _db
+            .Select(
+                // Count(UsersTable.Id).As("TotalUsers"),
+                // Avg(UsersTable.Age).As("AverageAge"),
+                // Max(UsersTable.Salary).As("MaxSalary"),
+                // Min(UsersTable.Salary).As("MinSalary")
+                Count(UsersTable.Id),
+                Avg(UsersTable.Age),
+                Max(UsersTable.Salary),
+                Min(UsersTable.Salary)
+            )
+            .From(users);
+    
+        var (sql, parameters) = query.Build();
+    
+        Print("SELECT with AGGREGATE functions", sql, parameters);
+    }
     
     [Test]
     public void Select_WithExists()
@@ -373,7 +378,7 @@ public class SelectQueryPgTests
     // public void Select_FromSubquery_AsDerivedTable()
     // {
     //     var subQuery = _db
-    //         .Select(UserSelect.Id, UserSelect.Email)
+    //         .Select(UsersTable.Id, UsersTable.Email)
     //         .From(users)
     //         .Where(Eq(UsersTable.IsActive, true));
     //
@@ -455,25 +460,25 @@ public class SelectQueryPgTests
         Print("SELECT with NESTED SUBQUERIES", sql, parameters);
     }
 
-    // [Test]
-    // public void Select_WithAggregatedSubquery()
-    // {
-    //     var subQuery = _db
-    //         .Select(Avg(UserProjectsTable.Allocation))
-    //         .From(userProjects)
-    //         .Where(Eq(UserProjectsTable.UserId, UsersTable.Id));
-    //
-    //     var query = _db
-    //         .Select(
-    //             UsersTable.Id,
-    //             UsersTable.Name,
-    //             subQuery.As("AvgAllocation")
-    //         )
-    //         .From(users)
-    //         .Where(Eq(UsersTable.IsActive, true));
-    //
-    //     var (sql, parameters) = query.Build();
-    //
-    //     Print("SELECT with AGGREGATED SUBQUERY", sql, parameters);
-    // }
+    [Test]
+    public void Select_WithAggregatedSubquery()
+    {
+        var subQuery = _db
+            .Select(Avg(UserProjectsTable.Allocation))
+            .From(userProjects)
+            .Where(Eq(UserProjectsTable.UserId, UsersTable.Id));
+    
+        var query = _db
+            .Select(
+                UsersTable.Id,
+                UsersTable.Name,
+                subQuery//.As("AvgAllocation")
+            )
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true));
+    
+        var (sql, parameters) = query.Build();
+    
+        Print("SELECT with AGGREGATED SUBQUERY", sql, parameters);
+    }
 }
