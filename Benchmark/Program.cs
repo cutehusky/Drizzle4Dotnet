@@ -17,7 +17,7 @@ public class OrmBenchmark
     private AppDbContext _efContext;
 
     public static readonly UsersTable users = new UsersTable();
-    public SelectQuery<UserSelect.SelectResult, PgSqlSqlDialectImpl> query;
+    public SelectQuery<UserSelect, PgSqlSqlDialectImpl> query;
     
     [GlobalSetup]
     public void Setup()
@@ -29,7 +29,7 @@ public class OrmBenchmark
         _connection = dataSource.OpenConnection(); 
         
         _client = new DbClient<PgSqlSqlDialectImpl>(_connection); 
-        query = _client.Select(UserSelect.Record)
+        query = _client.Select(UserSelect.Mapping)
             .From(users)
             .Where(Eq(UsersTable.Id, 1));
         

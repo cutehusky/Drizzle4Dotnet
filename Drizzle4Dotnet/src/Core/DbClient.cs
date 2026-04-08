@@ -8,8 +8,40 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core;
 
+public interface IQueryBuilder<TDialect> where TDialect : ISqlDialect
+{
+    public SelectQuery<TReturn, TDialect> Select<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns);
 
-public sealed class DbClient<TDialect>: IAsyncDisposable where TDialect : ISqlDialect
+    public UpdateQuery<TTable, TDialect> Update<TTable>(TTable table) where TTable : ITable<TDialect>;
+
+    public InsertQuery<TTable, TDialect> Insert<TTable>(TTable table) where TTable : ITable<TDialect>;
+    public DeleteQuery<TTable, TDialect> Delete<TTable>(TTable table) where TTable : ITable<TDialect>;
+}
+
+public class QueryBuilder<TDialect> : IQueryBuilder<TDialect> where TDialect : ISqlDialect
+{
+    public SelectQuery<TReturn, TDialect> Select<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
+    {
+        return new SelectQuery<TReturn, TDialect>(selectedColumns, null);
+    }
+    
+    public UpdateQuery<TTable, TDialect> Update<TTable>(TTable table) where TTable : ITable<TDialect>
+    {
+        return new UpdateQuery<TTable, TDialect>(table, null);
+    }
+    
+    public InsertQuery<TTable, TDialect> Insert<TTable>(TTable table) where TTable : ITable<TDialect>
+    {
+        return new InsertQuery<TTable, TDialect>(table, null);
+    }
+    
+    public DeleteQuery<TTable, TDialect> Delete<TTable>(TTable table) where TTable : ITable<TDialect>
+    {
+        return new DeleteQuery<TTable, TDialect>(table, null);
+    }
+}
+
+public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposable where TDialect : ISqlDialect
 {
     private readonly DbConnection _conn;
     private readonly DbTransaction? _transaction;

@@ -159,17 +159,15 @@ public partial class {model.Name}
         )
     {
         var attrSyntax = attr.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax;
-        if (attrSyntax == null) return null;
-        if (attrSyntax.ArgumentList == null
-            || attrSyntax.ArgumentList.Arguments.Count < 2) return null;
+        if (attrSyntax?.ArgumentList == null
+            || attrSyntax.ArgumentList.Arguments.Count < 2) 
+            return null;
 
         var argTableType = attrSyntax.ArgumentList.Arguments[0];
-        var typeOfExpr = argTableType.Expression as TypeOfExpressionSyntax;
-        if (typeOfExpr == null)
+        if (argTableType.Expression is not TypeOfExpressionSyntax typeOfExpr)
             return null;
         var typeInfo = ctx.SemanticModel.GetTypeInfo(typeOfExpr.Type);
-        var tableTypeSymbol = typeInfo.Type as INamedTypeSymbol;
-        if (tableTypeSymbol == null)
+        if (typeInfo.Type is not INamedTypeSymbol tableTypeSymbol)
             return null;
         
         var tableNamespace = (

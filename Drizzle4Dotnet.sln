@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SourceGenerators", "SourceG
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmark", "Benchmark\Benchmark.csproj", "{E5ECC7FE-9C5E-409D-95DD-616E627F7FC9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{FE3766AF-F3D6-423F-A838-82204606AE58}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{E5ECC7FE-9C5E-409D-95DD-616E627F7FC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E5ECC7FE-9C5E-409D-95DD-616E627F7FC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E5ECC7FE-9C5E-409D-95DD-616E627F7FC9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE3766AF-F3D6-423F-A838-82204606AE58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE3766AF-F3D6-423F-A838-82204606AE58}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE3766AF-F3D6-423F-A838-82204606AE58}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE3766AF-F3D6-423F-A838-82204606AE58}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

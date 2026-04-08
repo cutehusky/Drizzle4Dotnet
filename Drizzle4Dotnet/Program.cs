@@ -205,5 +205,16 @@ public class EntryPoint {
         {
             Console.WriteLine(e.Message);
         }
+        
+        var query6 = db
+            .Update(users)
+            .Set(new UsersTable.UpdateModel()
+            {
+                DepartmentId = 12
+            })
+            .Where(Eq(UsersTable.Id, 1));
+        
+        var query7 = db.Delete(users)
+            .Where(Eq(UsersTable.Id, 1));
     }
 }
