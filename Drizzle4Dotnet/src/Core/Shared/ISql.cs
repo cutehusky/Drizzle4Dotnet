@@ -1,11 +1,14 @@
 namespace Drizzle4Dotnet.Core.Shared;
 
-public interface ISql<TReturn>
+public interface IGenericSql
 {
     string BuildSql(Dictionary<string, object?> parameters);
 }
 
-public interface ISql
+public interface ISql<TReturn>: IGenericSql
 {
-    string BuildSql(Dictionary<string, object?> parameters);
+}
+
+public interface ISql: IGenericSql
+{
 }

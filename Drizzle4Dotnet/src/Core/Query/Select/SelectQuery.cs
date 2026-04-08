@@ -1,8 +1,6 @@
 using System.Text;
-using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Core.Shared.Operators;
 
 namespace Drizzle4Dotnet.Core.Query.Select;
 
@@ -18,14 +16,14 @@ public enum ELockType
 public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDialect : ISqlDialect
 {
     private ITableType<TDialect>? _from;
-    private readonly List<(ITableType<TDialect>, string, IOperator?)> _joins = new();
-    private readonly List<IOperator> _wheres = new();
-    private readonly List<(IGenericColumn<TDialect>, bool)> _orderBys = new();
+    private readonly List<(ITableType<TDialect>, string, IGenericSql?)> _joins = new();
+    private readonly List<IGenericSql> _wheres = new();
+    private readonly List<(IGenericSql, bool)> _orderBys = new();
     private int? _limit;
     private int? _offset;
     private bool _distinct;
-    private readonly List<IGenericColumn<TDialect>> _groupBys = new();
-    private readonly List<IOperator> _havings = new();
+    private readonly List<IGenericSql> _groupBys = new();
+    private readonly List<IGenericSql> _havings = new();
     private string? _lockClause;
 
     public SelectQuery(
@@ -98,43 +96,44 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         return this;
     }
 
-    public SelectQuery<TReturn, TDialect> Where(IOperator condition)
-    {
-        _wheres.Add(condition);
-        return this;
-    }
     
-    public SelectQuery<TReturn, TDialect> Where(params IOperator[] conditions)
+    public SelectQuery<TReturn, TDialect> Where(params IGenericSql[] conditions)
     {
         _wheres.AddRange(conditions);
         return this;
     }
     
-    public SelectQuery<TReturn, TDialect> GroupBy(IGenericColumn<TDialect> columns)
+    public SelectQuery<TReturn, TDialect> Where(IGenericSql conditions)
+    {
+        _wheres.AddRange(conditions);
+        return this;
+    }
+    
+    public SelectQuery<TReturn, TDialect> GroupBy(IGenericSql columns)
     {
         _groupBys.Add(columns);
         return this;
     }
     
-    public SelectQuery<TReturn, TDialect> GroupBy(params IGenericColumn<TDialect>[] columns)
+    public SelectQuery<TReturn, TDialect> GroupBy(params IGenericSql[] columns)
     {
         _groupBys.AddRange(columns);
         return this;
     }
 
-    public SelectQuery<TReturn, TDialect> Having(IOperator condition)
+    public SelectQuery<TReturn, TDialect> Having(IGenericSql condition)
     {
         _havings.Add(condition);
         return this;
     }
     
-    public SelectQuery<TReturn, TDialect> Having(params IOperator[] conditions)
+    public SelectQuery<TReturn, TDialect> Having(params IGenericSql[] conditions)
     {
         _havings.AddRange(conditions);
         return this;
     }
 
-    public SelectQuery<TReturn, TDialect> OrderBy(IGenericColumn<TDialect> col, bool asc = true)
+    public SelectQuery<TReturn, TDialect> OrderBy(IGenericSql col, bool asc = true)
     {
         _orderBys.Add((col, asc));
         return this;
@@ -155,23 +154,23 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     // ====== JOINS ======
     private SelectQuery<TReturn, TDialect> JoinInternal(
         ITableType<TDialect> table,
-        IOperator on,
+        IGenericSql on,
         string type)
     {
         _joins.Add((table, type, on));
         return this;
     }
 
-    public SelectQuery<TReturn, TDialect> InnerJoin(ITableType<TDialect> table, IOperator on)
+    public SelectQuery<TReturn, TDialect> InnerJoin(ITableType<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "INNER");
 
-    public SelectQuery<TReturn, TDialect> LeftJoin(ITableType<TDialect> table, IOperator on)
+    public SelectQuery<TReturn, TDialect> LeftJoin(ITableType<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "LEFT");
 
-    public SelectQuery<TReturn, TDialect> RightJoin(ITableType<TDialect> table, IOperator on)
+    public SelectQuery<TReturn, TDialect> RightJoin(ITableType<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "RIGHT");
 
-    public SelectQuery<TReturn, TDialect> FullJoin(ITableType<TDialect> table, IOperator on)
+    public SelectQuery<TReturn, TDialect> FullJoin(ITableType<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "FULL");
 
     public SelectQuery<TReturn, TDialect> CrossJoin(ITableType<TDialect> table)

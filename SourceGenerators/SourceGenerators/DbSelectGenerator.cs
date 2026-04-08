@@ -21,10 +21,10 @@ public class DbSelectGenerator : IIncrementalGenerator
 
         context.RegisterSourceOutput(classDeclarations.Collect(), GenerateCode);
         context.RegisterPostInitializationOutput(i => {
-            var source = GenerateSource1();
-            i.AddSource("TypedTupleSelectedColumns.g.cs", SourceText.From(source, Encoding.UTF8));
-            // source = GenerateSource2();
-            // i.AddSource("QueryBuilderExtensions.g.cs", SourceText.From(source, Encoding.UTF8));
+            var source1 = GenerateSource1();
+            i.AddSource("TypedTupleSelectedColumns.g.cs", SourceText.From(source1, Encoding.UTF8));
+            // var source2 = GenerateSource2();
+            // i.AddSource("QueryBuilderExtensions.g.cs", SourceText.From(source2, Encoding.UTF8));
         });
     }
 
@@ -50,7 +50,7 @@ public class DbSelectGenerator : IIncrementalGenerator
 //         {
 //             var range = Enumerable.Range(1, i).ToList();
 //             var tTypes = string.Join(", ", range.Select(n => $"T{n}"));
-//             var colParams = string.Join(", ", range.Select(n => $"IColumnOfDialect<T{n}, TDialect> col{n}"));
+//             var colParams = string.Join(", ", range.Select(n => $"ISql<T{n}> col{n}"));
 //             var colArgs = string.Join(", ", range.Select(n => $"col{n}"));
 //             string returnType = i == 1 ? "T1" : $"({tTypes})";
 //
@@ -80,8 +80,8 @@ public class DbSelectGenerator : IIncrementalGenerator
             var range = Enumerable.Range(1, i).ToList();
             var tParams = string.Join(", ", range.Select(n => $"T{n}"));
             string interfaceType = i == 1 ? "T1" : $"({tParams})";
-            var fields = string.Join("\n    ", range.Select(n => $"private readonly IColumnOfDialect<T{n}, TDialect> _col{n};"));
-            var ctorParams = string.Join(", ", range.Select(n => $"IColumnOfDialect<T{n}, TDialect> col{n}"));
+            var fields = string.Join("\n    ", range.Select(n => $"private readonly ISql<T{n}> _col{n};"));
+            var ctorParams = string.Join(", ", range.Select(n => $"ISql<T{n}> col{n}"));
             var ctorAssigns = string.Join("\n        ", range.Select(n => $"_col{n} = col{n};"));
             var sqlParts = string.Join(", ", range.Select(n => $"{{_col{n}.BuildSql(parameters)}}"));
             var mapperParts = string.Join(",\n            ", range.Select(n => $"r.IsDBNull({n - 1}) ? default! : r.GetFieldValue<T{n}>({n - 1})"));

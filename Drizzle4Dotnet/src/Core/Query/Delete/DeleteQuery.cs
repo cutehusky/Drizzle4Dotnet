@@ -1,7 +1,6 @@
 using System.Text;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Core.Shared.Operators;
 
 namespace Drizzle4Dotnet.Core.Query.Delete;
 
@@ -9,20 +8,20 @@ namespace Drizzle4Dotnet.Core.Query.Delete;
 public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITable<TDialect> where TDialect : ISqlDialect
 {
     private readonly TTable _table;
-    private readonly List<IOperator> _wheres = new();
+    private readonly List<IGenericSql> _wheres = new();
 
     public DeleteQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
     {
         _table = table;
     }
 
-    public DeleteQuery<TTable, TDialect> Where(IOperator condition)
+    public DeleteQuery<TTable, TDialect> Where(IGenericSql condition)
     {
         _wheres.Add(condition);
         return this;
     }
     
-    public DeleteQuery<TTable, TDialect> Where(params IOperator[] conditions)
+    public DeleteQuery<TTable, TDialect> Where(params IGenericSql[] conditions)
     {
         _wheres.AddRange(conditions);
         return this;

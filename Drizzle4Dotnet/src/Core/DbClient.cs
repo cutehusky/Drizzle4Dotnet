@@ -3,7 +3,6 @@ using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Query.Update;
-using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
@@ -70,7 +69,7 @@ public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposabl
     public async Task RollbackAsync() => await (_transaction?.RollbackAsync() ?? Task.CompletedTask);
 
 
-    public async Task<List<T>> ExecuteAsync<T>(IReturning<T, TDialect> query)
+    public async Task<List<T>> ExecuteGetListAsync<T>(IReturning<T, TDialect> query)
     {
         await using var cmd = _conn.CreateCommand();
         cmd.Transaction = _transaction;

@@ -10,27 +10,27 @@ public class SelectQueryPgTests
 {
     private QueryBuilder<PgSqlSqlDialectImpl> _db;
 
-    private Shared.UsersTable users;
-    private Shared.DepartmentsTable departments;
-    private Shared.RolesTable roles;
-    private Shared.ManagersTable managers;
-    private Shared.ProjectsTable projects;
-    private Shared.UserProjectsTable userProjects;
+    private UsersTable users;
+    private DepartmentsTable departments;
+    private RolesTable roles;
+    private ManagersTable managers;
+    private ProjectsTable projects;
+    private UserProjectsTable userProjects;
 
     [SetUp]
     public void Setup()
     {
         _db = new QueryBuilder<PgSqlSqlDialectImpl>();
 
-        users = new Shared.UsersTable();
-        departments = new Shared.DepartmentsTable();
-        roles = new Shared.RolesTable();
-        managers = new Shared.ManagersTable();
-        projects = new Shared.ProjectsTable();
-        userProjects = new Shared.UserProjectsTable();
+        users = new UsersTable();
+        departments = new DepartmentsTable();
+        roles = new RolesTable();
+        managers = new ManagersTable();
+        projects = new ProjectsTable();
+        userProjects = new UserProjectsTable();
     }
     
-    private void Print(string title, string sql, Dictionary<string, object> parameters)
+    private void Print(string title, string sql, Dictionary<string, object?> parameters)
     {
         TestContext.Out.WriteLine("===== " + title + " =====");
         TestContext.Out.WriteLine(sql);
@@ -46,7 +46,7 @@ public class SelectQueryPgTests
     public void Select_Basic()
     {
         var query = _db
-            .Select(global::UserSelect.Record)
+            .Select(UserSelect.Record)
             .From(users);
 
         var (sql, parameters) = query.Build();
@@ -58,11 +58,11 @@ public class SelectQueryPgTests
     public void Select_WithWhere()
     {
         var query = _db
-            .Select(global::UserSelect.Record)
+            .Select(UserSelect.Record)
             .From(users)
             .Where(And(
-                Eq(Shared.UsersTable.Id, 1),
-                Like(Shared.UsersTable.Email, "%@example.com")
+                Eq(UsersTable.Id, 1),
+                Like(UsersTable.Email, "%@example.com")
             ));
 
         var (sql, parameters) = query.Build();
@@ -74,10 +74,10 @@ public class SelectQueryPgTests
     public void Select_WithJoin()
     {
         var query = _db
-            .Select(global::UserSelect.Record)
+            .Select(UserSelect.Record)
             .From(users)
             .InnerJoin(departments,
-                Eq(Shared.UsersTable.DepartmentId, Shared.DepartmentsTable.Id));
+                Eq(UsersTable.DepartmentId, DepartmentsTable.Id));
 
         var (sql, parameters) = query.Build();
 
@@ -88,12 +88,12 @@ public class SelectQueryPgTests
     public void Select_WithMultipleJoins()
     {
         var query = _db
-            .Select(global::UserSelect.Record)
+            .Select(UserSelect.Record)
             .From(users)
             .InnerJoin(departments,
-                Eq(Shared.UsersTable.DepartmentId, Shared.DepartmentsTable.Id))
+                Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
             .InnerJoin(roles,
-                Eq(Shared.UsersTable.RoleId, Shared.RolesTable.Id));
+                Eq(UsersTable.RoleId, RolesTable.Id));
 
         var (sql, parameters) = query.Build();
 
@@ -104,10 +104,10 @@ public class SelectQueryPgTests
     public void Select_SelfJoin_Alias()
     {
         var query = _db
-            .Select(global::UserSelect.Record)
+            .Select(UserSelect.Record)
             .From(users)
             .InnerJoin(managers,
-                Eq(Shared.UsersTable.ManagerId, Shared.ManagersTable.Id));
+                Eq(UsersTable.ManagerId, ManagersTable.Id));
 
         var (sql, parameters) = query.Build();
 
@@ -118,12 +118,12 @@ public class SelectQueryPgTests
     public void Select_ManyToMany()
     {
         var query = _db
-            .Select(Shared.ProjectSelect.Record)
+            .Select(ProjectSelect.Record)
             .From(userProjects)
             .InnerJoin(projects,
-                Eq(Shared.UserProjectsTable.ProjectId, Shared.ProjectsTable.Id))
+                Eq(UserProjectsTable.ProjectId, ProjectsTable.Id))
             .InnerJoin(users,
-                Eq(Shared.UserProjectsTable.UserId, Shared.UsersTable.Id));
+                Eq(UserProjectsTable.UserId, UsersTable.Id));
 
         var (sql, parameters) = query.Build();
 
@@ -134,12 +134,12 @@ public class SelectQueryPgTests
     public void Select_ComplexWhere()
     {
         var query = _db
-            .Select(global::UserSelect.Record)
+            .Select(UserSelect.Record)
             .From(users)
             .Where(
-                Eq(Shared.UsersTable.IsActive, true),
-                Eq(Shared.UsersTable.Age, 30),
-                Like(Shared.UsersTable.Email, "%@company.com")
+                Eq(UsersTable.IsActive, true),
+                Eq(UsersTable.Age, 30),
+                Like(UsersTable.Email, "%@company.com")
             );
 
         var (sql, parameters) = query.Build();
@@ -151,9 +151,9 @@ public class SelectQueryPgTests
     public void Select_NullCheck()
     {
         var query = _db
-            .Select(global::UserSelect.Record)
+            .Select(UserSelect.Record)
             .From(users)
-            .Where(IsNull(Shared.UsersTable.ManagerId));
+            .Where(IsNull(UsersTable.ManagerId));
 
         var (sql, parameters) = query.Build();
 
@@ -164,15 +164,15 @@ public class SelectQueryPgTests
     public void Select_FullComplex()
     {
         var query = _db
-            .Select(global::UserSelect.Record)
+            .Select(UserSelect.Record)
             .From(users)
             .InnerJoin(departments,
-                Eq(Shared.UsersTable.DepartmentId, Shared.DepartmentsTable.Id))
+                Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
             .InnerJoin(managers,
-                Eq(Shared.UsersTable.ManagerId, Shared.ManagersTable.Id))
+                Eq(UsersTable.ManagerId, ManagersTable.Id))
             .Where(And(
-                Eq(Shared.DepartmentsTable.Id, 1),
-                Like(Shared.UsersTable.Email, "%@example.com")
+                Eq(DepartmentsTable.Id, 1),
+                Like(UsersTable.Email, "%@example.com")
             ));
 
         var (sql, parameters) = query.Build();
@@ -184,10 +184,10 @@ public class SelectQueryPgTests
     public void Select_WithOrderBy()
     {
         var query = _db
-            .Select(global::UserSelect.Record)
+            .Select(UserSelect.Record)
             .From(users)
-            .OrderBy(Shared.UsersTable.Name)
-            .OrderBy(Shared.UsersTable.Age, false);
+            .OrderBy(UsersTable.Name)
+            .OrderBy(UsersTable.Age, false);
 
         var (sql, parameters) = query.Build();
 
@@ -198,9 +198,9 @@ public class SelectQueryPgTests
     public void Select_WithLimitOffset()
     {
         var query = _db
-            .Select(global::UserSelect.Record)
+            .Select(UserSelect.Record)
             .From(users)
-            .OrderBy(Shared.UsersTable.Id)
+            .OrderBy(UsersTable.Id)
             .Limit(10)
             .Offset(20);
 
@@ -232,7 +232,7 @@ public class SelectQueryPgTests
     public void Select_WithDistinct()
     {
         var query = _db
-            .SelectDistinct(global::UserSelect.Record)
+            .SelectDistinct(UserSelect.Record)
             .From(users);
 
         var (sql, parameters) = query.Build();
@@ -244,14 +244,14 @@ public class SelectQueryPgTests
     public void Select_WithSubquery()
     {
         var subQuery = _db
-            .Select(Shared.UserSelect.Mapping)
+            .Select(UsersTable.Id)
             .From(users)
-            .Where(Eq(Shared.UsersTable.IsActive, true));
+            .Where(Eq(UsersTable.IsActive, true));
     
         var query = _db
             .Select(Shared.UserSelect.Record)
             .From(users)
-            .Where(In(Shared.UsersTable.Id, subQuery));
+            .Where(In(UsersTable.Id, subQuery));
     
         var (sql, parameters) = query.Build();
     
@@ -262,17 +262,17 @@ public class SelectQueryPgTests
     public void Select_WithComplexJoinsAndWhere()
     {
         var query = _db
-            .Select(Shared.UserWithRelationsSelect.Record)
+            .Select(UserWithRelationsSelect.Record)
             .From(users)
-            .InnerJoin(departments, Eq(Shared.UsersTable.DepartmentId, Shared.DepartmentsTable.Id))
-            .InnerJoin(roles, Eq(Shared.UsersTable.RoleId, Shared.RolesTable.Id))
-            .LeftJoin(managers, Eq(Shared.UsersTable.ManagerId, Shared.ManagersTable.Id))
+            .InnerJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
+            .InnerJoin(roles, Eq(UsersTable.RoleId, RolesTable.Id))
+            .LeftJoin(managers, Eq(UsersTable.ManagerId, ManagersTable.Id))
             .Where(
-                Eq(Shared.UsersTable.IsActive, true),
-                Gt(Shared.UsersTable.Age, 25),
-                Like(Shared.UsersTable.Email, "%@company.com")
+                Eq(UsersTable.IsActive, true),
+                Gt(UsersTable.Age, 25),
+                Like(UsersTable.Email, "%@company.com")
             )
-            .OrderBy(Shared.UsersTable.Name)
+            .OrderBy(UsersTable.Name)
             .Limit(50);
 
         var (sql, parameters) = query.Build();

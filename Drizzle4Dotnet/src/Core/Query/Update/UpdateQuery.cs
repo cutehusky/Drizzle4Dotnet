@@ -10,7 +10,7 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
 {
     private readonly TTable _table;
     private readonly Dictionary<string, object?> _setValues = new();
-    private readonly List<IOperator> _wheres = new();
+    private readonly List<IGenericSql> _wheres = new();
 
     public UpdateQuery(
         TTable table, 
@@ -32,13 +32,13 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         return this;
     }
     
-    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, ISql value)
+    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, ISql<T> value)
     {
         _setValues[column.Identifier] = value;
         return this;
     }
     
-    public UpdateQuery<TTable, TDialect> Set(Dictionary<IColumnOfTable<TTable, TDialect>, object> columnValuePairs)
+    public UpdateQuery<TTable, TDialect> Set(Dictionary<IColumnOfTable<TTable>, object> columnValuePairs)
     {
         foreach (var kv in columnValuePairs)
         {
@@ -47,13 +47,13 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         return this;
     }
 
-    public UpdateQuery<TTable, TDialect> Where(IOperator condition)
+    public UpdateQuery<TTable, TDialect> Where(IGenericSql condition)
     {
         _wheres.Add(condition);
         return this;
     }
     
-    public UpdateQuery<TTable, TDialect> Where(params IOperator[] conditions)
+    public UpdateQuery<TTable, TDialect> Where(params IGenericSql[] conditions)
     {
         _wheres.AddRange(conditions);
         return this;
@@ -79,7 +79,7 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
             sb.Append(kv.Key);
             sb.Append(" = ");
 
-            if (kv.Value is ISql op)
+            if (kv.Value is IGenericSql op)
             {
                 sb.Append('(').Append(op.BuildSql(parameters)).Append(')');
             }
