@@ -91,6 +91,12 @@ namespace Test.Shared
 
             [Column("Description")]
             public static string Description { get; set; }
+            
+            [Column("ParentDepartmentId")]
+            public static int? ParentDepartmentId { get; set; }
+            
+            [Column("ManagerId")]
+            public static int ManagerId { get; set; }
         }
     }
     

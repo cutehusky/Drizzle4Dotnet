@@ -337,7 +337,7 @@ public class SelectQueryPgTests
     public void Select_WithInSubquery()
     {
         var subQuery = _db
-            .Select(UserProjectsTable.ModelAll)
+            .Select(UserProjectsTable.Id)
             .From(userProjects)
             .Where(Eq(UserProjectsTable.ProjectId, 2));
 
@@ -349,6 +349,24 @@ public class SelectQueryPgTests
         var (sql, parameters) = query.Build();
 
         Print("SELECT with IN SUBQUERY", sql, parameters);
+    }
+    
+    
+    [Test]
+    public void Select_WithInSubqueryAndValues()
+    {
+        var subQuery = _db.Select(DepartmentsTable.ManagerId)
+            .From(departments)
+            .Where(Eq(DepartmentsTable.Name, "Engineering"));
+
+        var query = _db.Select(UsersTable.Id)
+            .From(users)
+            .Where(In<int, PgSqlSqlDialectImpl>(UsersTable.Id, 10, 20, subQuery));
+        
+        
+        var (sql, parameters) = query.Build();
+
+        Print("SELECT with IN SUBQUERY and VALUES", sql, parameters);
     }
 
     // [Test]
@@ -418,12 +436,12 @@ public class SelectQueryPgTests
     public void Select_WithNestedSubqueries()
     {
         var innerSub = _db
-            .Select(UserProjectsTable.ModelAll)
+            .Select(UserProjectsTable.UserId)
             .From(userProjects)
             .Where(Eq(UserProjectsTable.ProjectId, 3));
 
         var outerSub = _db
-            .Select(UsersTable.ModelAll)
+            .Select(UsersTable.Id)
             .From(users)
             .Where(In(UsersTable.Id, innerSub));
 
