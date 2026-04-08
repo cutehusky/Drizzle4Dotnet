@@ -16,6 +16,8 @@ public interface IQueryBuilder<TDialect> where TDialect : ISqlDialect
 
     public InsertQuery<TTable, TDialect> Insert<TTable>(TTable table) where TTable : ITable<TDialect>;
     public DeleteQuery<TTable, TDialect> Delete<TTable>(TTable table) where TTable : ITable<TDialect>;
+
+    public SelectQuery<TReturn, TDialect> SelectDistinct<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns);
 }
 
 public class QueryBuilder<TDialect> : IQueryBuilder<TDialect> where TDialect : ISqlDialect
@@ -38,6 +40,11 @@ public class QueryBuilder<TDialect> : IQueryBuilder<TDialect> where TDialect : I
     public DeleteQuery<TTable, TDialect> Delete<TTable>(TTable table) where TTable : ITable<TDialect>
     {
         return new DeleteQuery<TTable, TDialect>(table, null);
+    }
+    
+    public SelectQuery<TReturn, TDialect> SelectDistinct<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
+    {
+        return new SelectQuery<TReturn, TDialect>(selectedColumns, null).Distinct();
     }
 }
 
@@ -110,6 +117,11 @@ public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposabl
     public SelectQuery<TReturn, TDialect> Select<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
     {
         return new SelectQuery<TReturn, TDialect>(selectedColumns, this);
+    }
+    
+    public SelectQuery<TReturn, TDialect> SelectDistinct<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
+    {
+        return new SelectQuery<TReturn, TDialect>(selectedColumns, this).Distinct();
     }
     
     public UpdateQuery<TTable, TDialect> Update<TTable>(TTable table) where TTable : ITable<TDialect>

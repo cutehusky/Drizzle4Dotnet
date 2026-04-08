@@ -1,33 +1,32 @@
 using Drizzle4Dotnet.Core;
-using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
-using Test;
-
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+
+namespace Test.Select;
 
 [TestFixture]
 public class SelectQueryPgTests
 {
     private QueryBuilder<PgSqlSqlDialectImpl> _db;
 
-    private UsersTable users;
-    private DepartmentsTable departments;
-    private RolesTable roles;
-    private ManagersTable managers;
-    private ProjectsTable projects;
-    private UserProjectsTable userProjects;
+    private Shared.UsersTable users;
+    private Shared.DepartmentsTable departments;
+    private Shared.RolesTable roles;
+    private Shared.ManagersTable managers;
+    private Shared.ProjectsTable projects;
+    private Shared.UserProjectsTable userProjects;
 
     [SetUp]
     public void Setup()
     {
         _db = new QueryBuilder<PgSqlSqlDialectImpl>();
 
-        users = new UsersTable();
-        departments = new DepartmentsTable();
-        roles = new RolesTable();
-        managers = new ManagersTable();
-        projects = new ProjectsTable();
-        userProjects = new UserProjectsTable();
+        users = new Shared.UsersTable();
+        departments = new Shared.DepartmentsTable();
+        roles = new Shared.RolesTable();
+        managers = new Shared.ManagersTable();
+        projects = new Shared.ProjectsTable();
+        userProjects = new Shared.UserProjectsTable();
     }
     
     private void Print(string title, string sql, Dictionary<string, object> parameters)
@@ -46,7 +45,7 @@ public class SelectQueryPgTests
     public void Select_Basic()
     {
         var query = _db
-            .Select(UserSelect.Record)
+            .Select(global::UserSelect.Record)
             .From(users);
 
         var (sql, parameters) = query.Build();
@@ -58,11 +57,11 @@ public class SelectQueryPgTests
     public void Select_WithWhere()
     {
         var query = _db
-            .Select(UserSelect.Record)
+            .Select(global::UserSelect.Record)
             .From(users)
             .Where(And(
-                Eq(UsersTable.Id, 1),
-                Like(UsersTable.Email, "%@example.com")
+                Eq(Shared.UsersTable.Id, 1),
+                Like(Shared.UsersTable.Email, "%@example.com")
             ));
 
         var (sql, parameters) = query.Build();
@@ -74,10 +73,10 @@ public class SelectQueryPgTests
     public void Select_WithJoin()
     {
         var query = _db
-            .Select(UserSelect.Record)
+            .Select(global::UserSelect.Record)
             .From(users)
             .InnerJoin(departments,
-                Eq(UsersTable.DepartmentId, DepartmentsTable.Id));
+                Eq(Shared.UsersTable.DepartmentId, Shared.DepartmentsTable.Id));
 
         var (sql, parameters) = query.Build();
 
@@ -88,12 +87,12 @@ public class SelectQueryPgTests
     public void Select_WithMultipleJoins()
     {
         var query = _db
-            .Select(UserSelect.Record)
+            .Select(global::UserSelect.Record)
             .From(users)
             .InnerJoin(departments,
-                Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
+                Eq(Shared.UsersTable.DepartmentId, Shared.DepartmentsTable.Id))
             .InnerJoin(roles,
-                Eq(UsersTable.RoleId, RolesTable.Id));
+                Eq(Shared.UsersTable.RoleId, Shared.RolesTable.Id));
 
         var (sql, parameters) = query.Build();
 
@@ -104,10 +103,10 @@ public class SelectQueryPgTests
     public void Select_SelfJoin_Alias()
     {
         var query = _db
-            .Select(UserSelect.Record)
+            .Select(global::UserSelect.Record)
             .From(users)
             .InnerJoin(managers,
-                Eq(UsersTable.ManagerId, ManagersTable.Id));
+                Eq(Shared.UsersTable.ManagerId, Shared.ManagersTable.Id));
 
         var (sql, parameters) = query.Build();
 
@@ -118,12 +117,12 @@ public class SelectQueryPgTests
     public void Select_ManyToMany()
     {
         var query = _db
-            .Select(ProjectSelect.Record)
+            .Select(Shared.ProjectSelect.Record)
             .From(userProjects)
             .InnerJoin(projects,
-                Eq(UserProjectsTable.ProjectId, ProjectsTable.Id))
+                Eq(Shared.UserProjectsTable.ProjectId, Shared.ProjectsTable.Id))
             .InnerJoin(users,
-                Eq(UserProjectsTable.UserId, UsersTable.Id));
+                Eq(Shared.UserProjectsTable.UserId, Shared.UsersTable.Id));
 
         var (sql, parameters) = query.Build();
 
@@ -134,12 +133,12 @@ public class SelectQueryPgTests
     public void Select_ComplexWhere()
     {
         var query = _db
-            .Select(UserSelect.Record)
+            .Select(global::UserSelect.Record)
             .From(users)
             .Where(
-                Eq(UsersTable.IsActive, true),
-                Eq(UsersTable.Age, 30),
-                Like(UsersTable.Email, "%@company.com")
+                Eq(Shared.UsersTable.IsActive, true),
+                Eq(Shared.UsersTable.Age, 30),
+                Like(Shared.UsersTable.Email, "%@company.com")
             );
 
         var (sql, parameters) = query.Build();
@@ -151,9 +150,9 @@ public class SelectQueryPgTests
     public void Select_NullCheck()
     {
         var query = _db
-            .Select(UserSelect.Record)
+            .Select(global::UserSelect.Record)
             .From(users)
-            .Where(IsNull(UsersTable.ManagerId));
+            .Where(IsNull(Shared.UsersTable.ManagerId));
 
         var (sql, parameters) = query.Build();
 
@@ -164,15 +163,15 @@ public class SelectQueryPgTests
     public void Select_FullComplex()
     {
         var query = _db
-            .Select(UserSelect.Record)
+            .Select(global::UserSelect.Record)
             .From(users)
             .InnerJoin(departments,
-                Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
+                Eq(Shared.UsersTable.DepartmentId, Shared.DepartmentsTable.Id))
             .InnerJoin(managers,
-                Eq(UsersTable.ManagerId, ManagersTable.Id))
+                Eq(Shared.UsersTable.ManagerId, Shared.ManagersTable.Id))
             .Where(And(
-                Eq(DepartmentsTable.Id, 1),
-                Like(UsersTable.Email, "%@example.com")
+                Eq(Shared.DepartmentsTable.Id, 1),
+                Like(Shared.UsersTable.Email, "%@example.com")
             ));
 
         var (sql, parameters) = query.Build();
@@ -180,134 +179,138 @@ public class SelectQueryPgTests
         Print("FULL COMPLEX QUERY", sql, parameters);
     }
     
+    [Test]
+    public void Select_WithOrderBy()
+    {
+        var query = _db
+            .Select(global::UserSelect.Record)
+            .From(users)
+            .OrderBy(Shared.UsersTable.Name)
+            .OrderBy(Shared.UsersTable.Age, false);
+
+        var (sql, parameters) = query.Build();
+
+        Print("SELECT with ORDER BY", sql, parameters);
+    }
+
+    [Test]
+    public void Select_WithLimitOffset()
+    {
+        var query = _db
+            .Select(global::UserSelect.Record)
+            .From(users)
+            .OrderBy(Shared.UsersTable.Id)
+            .Limit(10)
+            .Offset(20);
+
+        var (sql, parameters) = query.Build();
+
+        Print("SELECT with LIMIT/OFFSET", sql, parameters);
+    }
+
+    // [Test]
+    // public void Select_WithGroupBy()
+    // {
+    //     var query = _db
+    //         .Select(
+    //             DepartmentsTable.Id,
+    //             DepartmentsTable.Name,
+    //             Count(UsersTable.Id).As("UserCount")
+    //         )
+    //         .From(users)
+    //         .InnerJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
+    //         .GroupBy(DepartmentsTable.Id, DepartmentsTable.Name)
+    //         .Having(Gt(Count(UsersTable.Id), 5));
+    //
+    //     var (sql, parameters) = query.Build();
+    //
+    //     Print("SELECT with GROUP BY and HAVING", sql, parameters);
+    // }
+
+    [Test]
+    public void Select_WithDistinct()
+    {
+        var query = _db
+            .SelectDistinct(global::UserSelect.Record)
+            .From(users);
+
+        var (sql, parameters) = query.Build();
+
+        Print("SELECT DISTINCT", sql, parameters);
+    }
+
+    [Test]
+    public void Select_WithSubquery()
+    {
+        var subQuery = _db
+            .Select(Shared.UserSelect.Mapping)
+            .From(users)
+            .Where(Eq(Shared.UsersTable.IsActive, true));
     
-}
-
-[DbSelect]
-public partial class UserSelect
-{
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int Id { get;set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
-    public string Email { get; set;}
+        var query = _db
+            .Select(Shared.UserSelect.Record)
+            .From(users)
+            .Where(In(Shared.UsersTable.Id, subQuery));
     
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public string Name { get; set;}
-}
+        var (sql, parameters) = query.Build();
+    
+        Print("SELECT with SUBQUERY", sql, parameters);
+    }
 
+    [Test]
+    public void Select_WithComplexJoinsAndWhere()
+    {
+        var query = _db
+            .Select(Shared.UserWithRelationsSelect.Record)
+            .From(users)
+            .InnerJoin(departments, Eq(Shared.UsersTable.DepartmentId, Shared.DepartmentsTable.Id))
+            .InnerJoin(roles, Eq(Shared.UsersTable.RoleId, Shared.RolesTable.Id))
+            .LeftJoin(managers, Eq(Shared.UsersTable.ManagerId, Shared.ManagersTable.Id))
+            .Where(
+                Eq(Shared.UsersTable.IsActive, true),
+                Gt(Shared.UsersTable.Age, 25),
+                Like(Shared.UsersTable.Email, "%@company.com")
+            )
+            .OrderBy(Shared.UsersTable.Name)
+            .Limit(50);
 
-[DbSelect]
-public partial class UserWithRelationsSelect
-{
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int UserId { get; set; }
+        var (sql, parameters) = query.Build();
 
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public string UserName { get; set; }
+        Print("COMPLEX JOIN + WHERE + ORDER + LIMIT", sql, parameters);
+    }
 
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
-    public string Email { get; set; }
-
-    [MapWith(typeof(DepartmentsTable), DepartmentsTable.ColumnNames.Name)]
-    public string DepartmentName { get; set; }
-
-    [MapWith(typeof(RolesTable), RolesTable.ColumnNames.Name)]
-    public string RoleName { get; set; }
-
-    [MapWith(typeof(ManagersTable), ManagersTable.ColumnNames.Name)]
-    public string ManagerName { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.IsActive)]
-    public bool IsActive { get; set; }
-}
-
-[DbSelect]
-public partial class ProjectSelect
-{
-    [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.Id)]
-    public int ProjectId { get; set; }
-
-    [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.Name)]
-    public string ProjectName { get; set; }
-
-    [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.Code)]
-    public string Code { get; set; }
-
-    [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.Budget)]
-    public decimal Budget { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public string OwnerName { get; set; }
-
-    [MapWith(typeof(DepartmentsTable), DepartmentsTable.ColumnNames.Name)]
-    public string DepartmentName { get; set; }
-
-    [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.IsActive)]
-    public bool IsActive { get; set; }
-}
-
-[DbSelect]
-public partial class UserProjectSelect
-{
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int UserId { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public string UserName { get; set; }
-
-    [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.Id)]
-    public int ProjectId { get; set; }
-
-    [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.Name)]
-    public string ProjectName { get; set; }
-
-    [MapWith(typeof(UserProjectsTable), UserProjectsTable.ColumnNames.Role)]
-    public string Role { get; set; }
-
-    [MapWith(typeof(UserProjectsTable), UserProjectsTable.ColumnNames.Allocation)]
-    public double Allocation { get; set; }
-
-    [MapWith(typeof(UserProjectsTable), UserProjectsTable.ColumnNames.AssignedAt)]
-    public DateTime AssignedAt { get; set; }
-}
-
-[DbSelect]
-public partial class UserFullSelect
-{
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int Id { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Guid)]
-    public Guid Guid { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public string Name { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
-    public string Email { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Age)]
-    public int Age { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Salary)]
-    public decimal Salary { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Rating)]
-    public double Rating { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.IsActive)]
-    public bool IsActive { get; set; }
-
-    [MapWith(typeof(DepartmentsTable), DepartmentsTable.ColumnNames.Name)]
-    public string DepartmentName { get; set; }
-
-    [MapWith(typeof(RolesTable), RolesTable.ColumnNames.Name)]
-    public string RoleName { get; set; }
-
-    [MapWith(typeof(ManagersTable), ManagersTable.ColumnNames.Name)]
-    public string ManagerName { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.CreatedAt)]
-    public DateTime CreatedAt { get; set; }
+    // [Test]
+    // public void Select_WithCaseExpression()
+    // {
+    //     var query = _db
+    //         .Select(
+    //             UsersTable.Id,
+    //             Case()
+    //                 .When(Eq(UsersTable.IsActive, true), "Active")
+    //                 .Else("Inactive")
+    //                 .As("Status")
+    //         )
+    //         .From(users);
+    //
+    //     var (sql, parameters) = query.Build();
+    //
+    //     Print("SELECT with CASE expression", sql, parameters);
+    // }
+    
+    // [Test]
+    // public void Select_WithAggregateFunctions()
+    // {
+    //     var query = _db
+    //         .Select(
+    //             Count(UsersTable.Id).As("TotalUsers"),
+    //             Avg(UsersTable.Age).As("AverageAge"),
+    //             Max(UsersTable.Salary).As("MaxSalary"),
+    //             Min(UsersTable.Salary).As("MinSalary")
+    //         )
+    //         .From(users);
+    //
+    //     var (sql, parameters) = query.Build();
+    //
+    //     Print("SELECT with AGGREGATE functions", sql, parameters);
+    // }
 }

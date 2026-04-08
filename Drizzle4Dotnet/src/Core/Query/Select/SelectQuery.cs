@@ -115,6 +115,12 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         _groupBys.Add(columns);
         return this;
     }
+    
+    public SelectQuery<TReturn, TDialect> GroupBy(params IGenericColumn<TDialect>[] columns)
+    {
+        _groupBys.AddRange(columns);
+        return this;
+    }
 
     public SelectQuery<TReturn, TDialect> Having(IOperator condition)
     {

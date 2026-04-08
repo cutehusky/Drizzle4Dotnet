@@ -56,6 +56,9 @@ public static class Operators
     public static BinarySqlListValueNode<T> In<T>(ISql<T> c1, IEnumerable<T> values) => new(c1, values, _operatorIn);
     public static BinarySqlListValueNode<T> NotIn<T>(ISql<T> c1, IEnumerable<T> values) => new(c1, values, _operatorNotIn);
     
+    public static BinaryNode In(ISql c1, ISql c2) => new(c1, c2, _operatorIn);
+    public static BinaryNode NotIn(ISql c1, ISql c2) => new(c1, c2, _operatorNotIn);
+
     public static UnaryNode Not(ISql condition) => new(condition, _operatorNot, prefix: true);
     
     public static BinaryNode Add(ISql c1, ISql c2) => new(c1, c2, "+");
