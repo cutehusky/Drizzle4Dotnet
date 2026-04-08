@@ -9,18 +9,32 @@ using Drizzle4Dotnet.Core.Shared;
 namespace Drizzle4Dotnet.Core;
 
 
-public sealed class DbClient<TDialect> where TDialect : ISqlDialect
+public sealed class DbClient<TDialect>: IAsyncDisposable where TDialect : ISqlDialect
 {
     private readonly DbConnection _conn;
+    private readonly DbTransaction? _transaction;
 
-    public DbClient(DbConnection conn)
+    public DbClient(DbConnection conn,  DbTransaction? transaction = null)
     {
         _conn = conn;
+        _transaction = transaction;
     }
+    
+    public async Task<DbClient<TDialect>> BeginTransactionAsync()
+    {
+        var transaction = await _conn.BeginTransactionAsync();
+        return new DbClient<TDialect>(_conn, transaction);
+    }
+
+    public async Task CommitAsync() => await (_transaction?.CommitAsync() ?? Task.CompletedTask);
+    public async Task RollbackAsync() => await (_transaction?.RollbackAsync() ?? Task.CompletedTask);
+
 
     public async Task<List<T>> ExecuteAsync<T>(IReturning<T, TDialect> query)
     {
         await using var cmd = _conn.CreateCommand();
+        cmd.Transaction = _transaction;
+
         var parameters = new Dictionary<string, object?>();
         cmd.CommandText = query.BuildSql(parameters);
 
@@ -45,6 +59,8 @@ public sealed class DbClient<TDialect> where TDialect : ISqlDialect
     public async Task ExecuteAsync(ISql query)
     {
         await using var cmd = _conn.CreateCommand();
+        cmd.Transaction = _transaction;
+
         var parameters = new Dictionary<string, object?>();
         cmd.CommandText = query.BuildSql(parameters);
 
@@ -56,7 +72,7 @@ public sealed class DbClient<TDialect> where TDialect : ISqlDialect
             cmd.Parameters.Add(p);
         }
 
-        await using var reader = await cmd.ExecuteReaderAsync();
+        await cmd.ExecuteNonQueryAsync();
     }
     
     public SelectQuery<TReturn, TDialect> Select<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
@@ -77,5 +93,14 @@ public sealed class DbClient<TDialect> where TDialect : ISqlDialect
     public DeleteQuery<TTable, TDialect> Delete<TTable>(TTable table) where TTable : ITable<TDialect>
     {
         return new DeleteQuery<TTable, TDialect>(table, this);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _conn.DisposeAsync();
+        if (_transaction != null)
+        {
+            await _transaction.DisposeAsync();
+        }
     }
 }
