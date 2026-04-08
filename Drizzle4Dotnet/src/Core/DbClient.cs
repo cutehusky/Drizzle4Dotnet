@@ -97,10 +97,24 @@ public sealed class DbClient<TDialect>: IAsyncDisposable where TDialect : ISqlDi
 
     public async ValueTask DisposeAsync()
     {
-        await _conn.DisposeAsync();
         if (_transaction != null)
         {
             await _transaction.DisposeAsync();
+        }
+    }
+    
+    public async Task RunInTransactionAsync(Func<DbClient<TDialect>, Task> action)
+    {
+        await using var txClient = await BeginTransactionAsync();
+        try
+        {
+            await action(txClient);
+            await txClient.CommitAsync();
+        }
+        catch
+        {
+            await txClient.RollbackAsync();
+            throw;
         }
     }
 }
