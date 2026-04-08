@@ -23,4 +23,9 @@ public class PgSqlSqlDialectImpl: ISqlDialect
     {
         return $"@{parameterName}";
     }
+
+    public static string BuildParameterName(int parameterIndex)
+    {
+        return $"@p{parameterIndex}";
+    }
 }

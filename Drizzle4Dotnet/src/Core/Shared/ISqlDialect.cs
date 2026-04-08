@@ -9,4 +9,6 @@ public interface ISqlDialect
     static abstract string BuildColumnName(string tableName, string columnName);
     
     static abstract string BuildParameterName(string parameterName);
+    
+    static abstract string BuildParameterName(int parameterIndex);
 }

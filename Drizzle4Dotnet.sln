@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Drizzle4Dotnet", "Drizzle4D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SourceGenerators", "SourceGenerators\SourceGenerators\SourceGenerators.csproj", "{AA8A2ADB-448E-4279-B161-EF719A44E467}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmark", "Benchmark\Benchmark.csproj", "{E5ECC7FE-9C5E-409D-95DD-616E627F7FC9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{AA8A2ADB-448E-4279-B161-EF719A44E467}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AA8A2ADB-448E-4279-B161-EF719A44E467}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AA8A2ADB-448E-4279-B161-EF719A44E467}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5ECC7FE-9C5E-409D-95DD-616E627F7FC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5ECC7FE-9C5E-409D-95DD-616E627F7FC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5ECC7FE-9C5E-409D-95DD-616E627F7FC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5ECC7FE-9C5E-409D-95DD-616E627F7FC9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
