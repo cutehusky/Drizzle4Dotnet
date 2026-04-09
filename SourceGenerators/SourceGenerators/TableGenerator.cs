@@ -77,6 +77,7 @@ public class TableGenerator : IIncrementalGenerator
                              ) 
                     ? "" : symbol.ContainingNamespace.ToDisplayString(),
                 ClassName = symbol.Name,
+                TableType = ETableType.DbTable,
                 
                 Columns = columns,
                 DbTableName = dbTableName,
@@ -106,7 +107,7 @@ public class TableGenerator : IIncrementalGenerator
                     ) 
                         ? "" : symbol.ContainingNamespace.ToDisplayString(),
                 ClassName = symbol.Name,
-                IsAlias = true,
+                TableType = ETableType.Alias,
                 
                 AliasName = aliasName,
                 SourceTableFullName = sourceTableFullName
@@ -149,7 +150,7 @@ public class TableGenerator : IIncrementalGenerator
                     ) 
                         ? "" : symbol.ContainingNamespace.ToDisplayString(),
                 ClassName = symbol.Name,
-                IsVirtual = true,
+                TableType = ETableType.Virtual,
                 
                 AliasName = aliasName,
                 Columns = columns,
@@ -173,10 +174,10 @@ public class TableGenerator : IIncrementalGenerator
             var sb = new StringBuilder();
             var targetModel = table;
 
-            if (table.IsAlias)
+            if (table.TableType == ETableType.Alias)
             {
                 var source = validTables.FirstOrDefault(m => 
-                    !m.IsAlias && !m.IsVirtual && 
+                    m.TableType ==  ETableType.DbTable && 
                     ($"{m.Namespace}.{m.ClassName}" == table.SourceTableFullName 
                      || m.ClassName == table.SourceTableFullName));
             
@@ -207,18 +208,18 @@ public class TableGenerator : IIncrementalGenerator
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Data.Common;");
             
-            var refName = table.IsAlias || table.IsVirtual ? table.AliasName! : table.DbTableName!;
-            var baseInterface = table.IsAlias
+            var refName = table.TableType != ETableType.DbTable ? table.AliasName! : table.DbTableName!;
+            var baseInterface = table.TableType == ETableType.Alias
                 ? "ITableAlias<PgSqlSqlDialectImpl>"
-                : table.IsVirtual
+                : table.TableType == ETableType.Virtual
                     ? "IVirtualTable<PgSqlSqlDialectImpl>"
                     : "IDbTable<PgSqlSqlDialectImpl>";
-            var tableProperties = table.IsAlias || table.IsVirtual
+            var tableProperties = table.TableType != ETableType.DbTable
                 ? $@"   public static string Alias {{ get => ""{table.AliasName!}""; }}" 
                 : $@"   public static string TableName {{ get => ""{table.DbTableName!}""; }}
     public static string SchemaName {{ get => ""{table.DbSchemaName!}""; }}";
 
-            var sqlBuilder = table.IsAlias || !table.IsVirtual
+            var sqlBuilder = table.TableType != ETableType.Virtual
                 ? @"
         private static readonly string _sql;
 
@@ -240,9 +241,9 @@ public {table.ClassName}(IGenericSql baseSql) {{
 
         {sqlBuilder}
 ");
-            var tableSql = table.IsAlias
+            var tableSql = table.TableType == ETableType.Alias
                 ? $"_sql = $\"{{PgSqlSqlDialectImpl.BuildTableName(\"{table.DbSchemaName}\", \"{table.DbTableName}\")}} AS {table.AliasName}\";" 
-                : table.IsVirtual 
+                : table.TableType == ETableType.Virtual 
                     ? ""
                     : $"_sql = PgSqlSqlDialectImpl.BuildTableName(\"{table.DbSchemaName}\", \"{table.DbTableName}\");";
 
@@ -374,13 +375,19 @@ public {table.ClassName}(IGenericSql baseSql) {{
         }
     }
 
+    enum ETableType
+    {
+        DbTable,
+        Alias,
+        Virtual
+    }
+
     private class TableModel
     {
         public string Namespace { get; set; } = "";
         public string ClassName { get; set; } = "";
 
-        public bool IsAlias { get; set; } = false;
-        public bool IsVirtual { get; set; } = false;
+        public ETableType  TableType { get; set; }
         
         // For Table
         public string? DbTableName { get; set; }

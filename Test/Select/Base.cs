@@ -1,5 +1,4 @@
 using Drizzle4Dotnet.Core;
-using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
