@@ -1,53 +1,32 @@
-using Drizzle4Dotnet.Core.Schema.Columns;
-using Drizzle4Dotnet.Core.Schema.Tables;
-using Drizzle4Dotnet.Core.Shared;
 using Microsoft.EntityFrameworkCore;
-using MyNamespace;
 
 public class User
 {
-    public int Id { get; set; }
-    public string Name { get; set; }
-    public string Email { get; set; }
-}
+    public  int Id { get; set; }
 
+    public  Guid Guid { get; set; }
 
-[DbSelect]
-public partial class UserSelect
-{
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int Id { get; set; }
+    public  string Name { get; set; }
 
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
-    public string Email { get; set; }
+    public  string Email { get; set; }
 
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public string Name { get; set; }
-}
+    public  int Age { get; set; }
 
-namespace MyNamespace
-{
-    [Table("Users")]
-    public partial class UsersTable
-    {
-        public static class Columns
-        {
-            [Column("Id")]
-            public static int Id { get; set; }
+    public  decimal Salary { get; set; }
 
-            [Column("Name")]
-            public static string Name { get; set; }
+    public  double Rating { get; set; }
 
-            [Column("Email")]
-            public static string Email { get; set; }
-        
-            [Column("DepartmentId")]
-            public static int DepartmentId { get; set; }
-            
-            [Column("ManagerId")]
-            public static int ManagerId { get; set; }
-        }
-    }
+    public  bool IsActive { get; set; }
+
+    public  int DepartmentId { get; set; }
+
+    public  int? ManagerId { get; set; }
+
+    public  int RoleId { get; set; }
+
+    public  DateTime CreatedAt { get; set; }
+
+    public  DateTime? UpdatedAt { get; set; }
 }
 
 
