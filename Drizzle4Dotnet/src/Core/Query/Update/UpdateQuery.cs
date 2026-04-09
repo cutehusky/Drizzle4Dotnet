@@ -57,17 +57,16 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         _wheres.AddRange(conditions);
         return this;
     }
-
-    public override string BuildSql(Dictionary<string, object?> parameters)
+    
+    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
     {
         if (_setValues.Count == 0)
         {
             throw new InvalidOperationException("No columns set for update.");
         }
         
-        var sb = new StringBuilder();
         sb.Append("UPDATE ");
-        sb.Append(_table.BuildSql(parameters));
+        _table.BuildSql(parameters, sb);
         sb.Append(" SET ");
 
         bool firstSet = true;
@@ -80,7 +79,9 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
 
             if (kv.Value is IGenericSql op)
             {
-                sb.Append('(').Append(op.BuildSql(parameters)).Append(')');
+                sb.Append('(');
+                op.BuildSql(parameters, sb);
+                sb.Append(')');
             }
             else
             {
@@ -91,19 +92,13 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
             firstSet = false;
         }
 
-        if (_wheres.Count > 0)
-        {
-            sb.Append(" WHERE ");
-            for (int i = 0; i < _wheres.Count; i++)
-            {
-                if (i > 0) sb.Append(" AND ");
-            
-                sb.Append('(');
-                sb.Append(_wheres[i].BuildSql(parameters));
-                sb.Append(')');
-            }
-        }
-
+        AppendClause(sb, " WHERE ", " AND ", _wheres, parameters, wrapInParentheses: true);
+    }
+    
+    public override string BuildSql(Dictionary<string, object?> parameters)
+    {
+        var sb = new StringBuilder();
+        BuildSql(parameters, sb);
         return sb.ToString();
     }
 }

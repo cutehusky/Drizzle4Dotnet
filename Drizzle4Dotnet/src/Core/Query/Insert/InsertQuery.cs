@@ -63,15 +63,16 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         return this;
     }
     
-    public override string BuildSql(Dictionary<string, object?> parameters)
+    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
     {
         if (_values.Count == 0)
             throw new InvalidOperationException("No values provided for insert.");
 
         var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
 
-        var sb = new StringBuilder();
-        sb.Append("INSERT INTO ").Append(_table.BuildSql(parameters)).Append(" (");
+        sb.Append("INSERT INTO ");
+        _table.BuildSql(parameters, sb);
+        sb.Append(" (");
 
         for (int i = 0; i < allColumns.Count; i++)
         {
@@ -104,7 +105,12 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
             }
             sb.Append(')');
         }
-
+    }
+    
+    public override string BuildSql(Dictionary<string, object?> parameters)
+    {
+        var sb = new StringBuilder();
+        BuildSql(parameters, sb);
         return sb.ToString();
     }
 }

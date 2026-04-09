@@ -14,12 +14,14 @@ public abstract class QueryBase<TDialect>: IGenericSql where TDialect : ISqlDial
     }
 
     public abstract string BuildSql(Dictionary<string, object?> parameters);
-    
+    public abstract void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb);
+
     public (string, Dictionary<string, object?>) Build()
     {
         var parameters = new Dictionary<string, object?>();
-        var sql = BuildSql(parameters);
-        return (sql, parameters);
+        var sb = new StringBuilder();
+        BuildSql(parameters, sb);
+        return (sb.ToString(), parameters);
     }
     
     protected void AppendClause(StringBuilder sb, string header, string separator, IReadOnlyList<IGenericSql> items, 
@@ -32,7 +34,7 @@ public abstract class QueryBase<TDialect>: IGenericSql where TDialect : ISqlDial
         {
             if (i > 0) sb.Append(separator);
             if (wrapInParentheses) sb.Append('(');
-            sb.Append(items[i].BuildSql(parameters));
+            items[i].BuildSql(parameters, sb);
             if (wrapInParentheses) sb.Append(')');
         }
     }

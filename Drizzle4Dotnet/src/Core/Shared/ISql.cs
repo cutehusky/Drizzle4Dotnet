@@ -1,8 +1,12 @@
+using System.Text;
+
 namespace Drizzle4Dotnet.Core.Shared;
 
 public interface IGenericSql
 {
     string BuildSql(Dictionary<string, object?> parameters);
+
+    void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb);
 }
 
 public interface ISql<TReturn>: IGenericSql
@@ -31,6 +35,13 @@ public readonly struct AliasedSql: ISql
     {
         return $"({_sql.BuildSql(parameters)}) AS {_alias}";
     }
+
+    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    {
+        sb.Append('(');
+        _sql.BuildSql(parameters, sb);
+        sb.Append(") AS ").Append(_alias);
+    }
 }
 
 
@@ -51,6 +62,13 @@ public readonly struct AliasedSql<T>: ISql<T>
     public string BuildSql(Dictionary<string, object?> parameters)
     {
         return $"({_sql.BuildSql(parameters)}) AS {_alias}";
+    }
+
+    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    {
+        sb.Append('(');
+        _sql.BuildSql(parameters, sb);
+        sb.Append(") AS ").Append(_alias);
     }
 }
 

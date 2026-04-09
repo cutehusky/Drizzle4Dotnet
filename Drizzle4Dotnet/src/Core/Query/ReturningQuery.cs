@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
@@ -27,5 +28,12 @@ public class ReturningQuery<TReturn, TDialect> : QueryBase<TDialect>, IReturning
     public override string BuildSql(Dictionary<string, object?> parameters)
     {
         return $"{_baseQuery.BuildSql(parameters)} RETURNING {SelectedColumns.BuildSql(parameters)}";
+    }
+
+    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    {
+        _baseQuery.BuildSql(parameters, sb);
+        sb.Append(" RETURNING ");
+        SelectedColumns.BuildSql(parameters, sb);
     }
 }

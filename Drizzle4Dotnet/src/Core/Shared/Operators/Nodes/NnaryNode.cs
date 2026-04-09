@@ -25,6 +25,17 @@ public readonly struct NnaryNode<T, TReturn>: IOperator<TReturn>
         sb.Append(')');
         return sb.ToString();
     }
+
+    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    {
+        sb.Append('(');
+        for (int i = 0; i < _cols.Length; i++)
+        {
+            if (i > 0) sb.Append(_seperator);
+            _cols[i].BuildSql(parameters, sb);
+        }
+        sb.Append(')');
+    }
 }
 
 
@@ -56,6 +67,19 @@ public readonly struct NnaryAnyNode<T, TReturn, TDialect>: IOperator<TReturn> wh
         sb.Append(')');
         return sb.ToString();
     }
+
+    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    {
+        _c1.BuildSql(parameters, sb);
+        sb.Append(_op);
+        sb.Append('(');
+        for (int i = 0; i < _cols.Length; i++)
+        {
+            if (i > 0) sb.Append(_seperator);
+            _cols[i].BuildSql(parameters, sb);
+        }
+        sb.Append(')');
+    }
 }
 
 public readonly struct SqlValue<T, TDialect> where TDialect : ISqlDialect
@@ -82,6 +106,22 @@ public readonly struct SqlValue<T, TDialect> where TDialect : ISqlDialect
         parameters[paramName] = _value;
         return $"@{paramName}";
     }
+    
+    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    {
+        if (_isSql && _sql != null)
+        {
+            sb.Append('(');
+            _sql.BuildSql(parameters, sb);
+            sb.Append(')');
+        }
+        else
+        {
+            var paramName = $"p{parameters.Count}";
+            parameters[paramName] = _value;
+            sb.Append('@').Append(paramName);
+        }
+    }
 }
 
 internal readonly struct SqlConverter<T> : ISql<T>
@@ -89,4 +129,8 @@ internal readonly struct SqlConverter<T> : ISql<T>
     private readonly ISql<T> _inner;
     public SqlConverter(ISql<T> inner) => _inner = inner;
     public string BuildSql(Dictionary<string, object?> p) => _inner.BuildSql(p);
+    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    {
+        _inner.BuildSql(parameters, sb);
+    }
 }

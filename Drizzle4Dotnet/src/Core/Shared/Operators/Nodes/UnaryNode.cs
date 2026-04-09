@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
 public readonly struct UnaryNode<T> : IOperator<T>
@@ -18,6 +20,22 @@ public readonly struct UnaryNode<T> : IOperator<T>
         return _prefix 
             ? $"{_op} ({_expression.BuildSql(parameters)})"  
             : $"{_expression.BuildSql(parameters)} {_op}";
+    }
+
+    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    {
+        if (_prefix)
+        {
+            sb.Append(_op).Append(' ');
+            sb.Append('(');
+            _expression.BuildSql(parameters, sb);
+            sb.Append(')');
+        }
+        else
+        {
+            _expression.BuildSql(parameters, sb);
+            sb.Append(' ').Append(_op);
+        }
     }
 }
 
@@ -40,5 +58,21 @@ public readonly struct UnaryNode<T, TReturn> : IOperator<TReturn>
         return _prefix 
             ? $"{_op} ({_expression.BuildSql(parameters)})"  
             : $"{_expression.BuildSql(parameters)} {_op}";
+    }
+
+    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    {
+        if (_prefix)
+        {
+            sb.Append(_op).Append(' ');
+            sb.Append('(');
+            _expression.BuildSql(parameters, sb);
+            sb.Append(')');
+        }
+        else
+        {
+            _expression.BuildSql(parameters, sb);
+            sb.Append(' ').Append(_op);
+        }
     }
 }

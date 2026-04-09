@@ -204,6 +204,7 @@ public class TableGenerator : IIncrementalGenerator
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Columns;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Tables;");
             sb.AppendLine("using Drizzle4Dotnet.Dialect;");
+            sb.AppendLine("using System.Text;");
             
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Data.Common;");
@@ -223,10 +224,18 @@ public class TableGenerator : IIncrementalGenerator
                 ? @"
         private static readonly string _sql;
 
-        public string BuildSql(Dictionary<string, object?> parameters) => _sql;"
+        public string BuildSql(Dictionary<string, object?> parameters) => _sql;
+        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) => sb.Append(_sql);
+"
                 : $@"
 private readonly IGenericSql _baseSql;
 public string BuildSql(Dictionary<string, object?> parameters) => $""({{_baseSql.BuildSql(parameters)}}) AS {table.AliasName}"";
+public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) {{
+    sb.Append('(');
+    _baseSql.BuildSql(parameters, sb);
+    sb.Append($"") AS {table.AliasName}"");
+}}
+    
 public {table.ClassName}(IGenericSql baseSql) {{
     _baseSql = baseSql;
 }}
@@ -288,6 +297,11 @@ public {table.ClassName}(IGenericSql baseSql) {{
     {{
         public string BuildSql(Dictionary<string, object?> parameters) => $""{sqlFragments}"";
 
+        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+        {{
+            sb.Append($""{sqlFragments}"");
+        }}
+
         public SelectResult Mapper(DbDataReader r)
         {{
             return new SelectResult(
@@ -299,6 +313,10 @@ public {table.ClassName}(IGenericSql baseSql) {{
     private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel, PgSqlSqlDialectImpl>
     {{
         public string BuildSql(Dictionary<string, object?> parameters) => $""{sqlFragments}"";
+        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+        {{
+            sb.Append($""{sqlFragments}"");
+        }}
 
         public SelectModel Mapper(DbDataReader r)
         {{

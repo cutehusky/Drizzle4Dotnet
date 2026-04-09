@@ -32,29 +32,31 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         ): base(selectedColumns, dbClient)
     {
     }
-
-    public override string BuildSql(Dictionary<string, object?> parameters)
+    
+    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
     {
-        var sb = new StringBuilder(); 
-        
         sb.Append("SELECT ");
         if (_distinct) sb.Append("DISTINCT ");
-        sb.Append(SelectedColumns.BuildSql(parameters));
+        SelectedColumns.BuildSql(parameters, sb);
 
         // FROM
         if (_from != null)
         {
-            sb.Append(" FROM ").Append(_from.BuildSql(parameters));
+            sb.Append(" FROM ");
+            _from.BuildSql(parameters, sb);
         }
 
         if (_joins.Count > 0)
         {
             foreach (var (table, type, on) in _joins)
             {
-                sb.Append(' ').Append(type).Append(" JOIN ").Append(table.BuildSql(parameters));
+                sb.Append(' ').Append(type).Append(" JOIN ");
+                table.BuildSql(parameters, sb);
                 if (on != null)
                 {
-                    sb.Append(" ON (").Append(on.BuildSql(parameters)).Append(')');
+                    sb.Append(" ON (");
+                    on.BuildSql(parameters, sb);
+                    sb.Append(')');
                 }
             }
         }
@@ -76,7 +78,8 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
             {
                 if (i > 0) sb.Append(", ");
                 var (expr, isAsc) = _orderBys[i];
-                sb.Append(expr.BuildSql(parameters)).Append(isAsc ? " ASC" : " DESC");
+                expr.BuildSql(parameters, sb);
+                sb.Append(isAsc ? " ASC" : " DESC");
             }
         }
 
@@ -85,11 +88,15 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         if (_offset.HasValue) sb.Append(" OFFSET ").Append(_offset.Value);
         
         if (_lockClause != null) sb.Append(' ').Append(_lockClause);
-
-        return sb.ToString();
     }
     
-    
+    public override string BuildSql(Dictionary<string, object?> parameters)
+    {
+        var sb = new StringBuilder(); 
+        BuildSql(parameters, sb);
+        return sb.ToString();
+    }
+
     public SelectQuery<TReturn, TDialect> From(IGenericTable<TDialect> table)
     {
         _from = table;

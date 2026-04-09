@@ -1,3 +1,4 @@
+using System.Text;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
@@ -14,6 +15,8 @@ public class DbColumn<T, TTable, TDialect>: IColumnOfTable<TTable>, IColumnOfDia
     }
     
     public string BuildSql(Dictionary<string, object?> parameters) => _sql;
+    
+    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) => sb.Append(_sql);
     
     public string Sql => _sql;
 

@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Text;
 using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Query.Select;
@@ -75,7 +76,9 @@ public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposabl
         cmd.Transaction = _transaction;
 
         var parameters = new Dictionary<string, object?>();
-        cmd.CommandText = query.BuildSql(parameters);
+        var sb = new StringBuilder();
+        query.BuildSql(parameters, sb);
+        cmd.CommandText = sb.ToString();
 
         foreach (var entry in parameters)
         {
@@ -101,7 +104,9 @@ public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposabl
         cmd.Transaction = _transaction;
 
         var parameters = new Dictionary<string, object?>();
-        cmd.CommandText = query.BuildSql(parameters);
+        var sb = new StringBuilder();
+        query.BuildSql(parameters, sb);
+        cmd.CommandText = sb.ToString();
 
         foreach (var entry in parameters)
         {

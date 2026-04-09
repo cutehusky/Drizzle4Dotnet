@@ -73,6 +73,7 @@ public class DbSelectGenerator : IIncrementalGenerator
         sb.AppendLine("using System.Collections.Generic;");
         sb.AppendLine("using System.Data.Common;");
         sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Columns;");
+        sb.AppendLine("using System.Text;");
         sb.AppendLine("namespace Drizzle4Dotnet.Core.Shared;");
 
         for (int i = 1; i <= 16; i++)
@@ -83,8 +84,9 @@ public class DbSelectGenerator : IIncrementalGenerator
             var fields = string.Join("\n    ", range.Select(n => $"private readonly ISql<T{n}> _col{n};"));
             var ctorParams = string.Join(", ", range.Select(n => $"ISql<T{n}> col{n}"));
             var ctorAssigns = string.Join("\n        ", range.Select(n => $"_col{n} = col{n};"));
-            var sqlParts = string.Join(", ", range.Select(n => $"{{_col{n}.BuildSql(parameters)}}"));
             var mapperParts = string.Join(",\n            ", range.Select(n => $"r.IsDBNull({n - 1}) ? default! : r.GetFieldValue<T{n}>({n - 1})"));
+            var builderInvocations = string.Join("\n        sb.Append(\", \");\n        ", 
+                range.Select(n => $"_col{n}.BuildSql(parameters, sb);"));
 
             sb.AppendLine($@"
 public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{interfaceType}, TDialect> 
@@ -99,8 +101,16 @@ public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{
 
     public string BuildSql(Dictionary<string, object?> parameters)
     {{
-        return $""{sqlParts}"";
+        var sb = new StringBuilder();
+        BuildSql(parameters, sb);
+        return sb.ToString();
     }}
+
+    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    {{
+        {builderInvocations}
+    }}
+
 
     public {interfaceType} Mapper(DbDataReader r)
     {{
@@ -127,6 +137,7 @@ public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Data.Common;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Shared;");
+            sb.AppendLine("using System.Text;");
             sb.AppendLine("using Drizzle4Dotnet.Dialect;");
 
             if (!string.IsNullOrEmpty(model.Namespace))
@@ -155,6 +166,7 @@ public partial class {model.Name}: ISelection<{model.Name}, {model.Name}.SelectR
     private sealed class GeneratedStructSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl>
     {{
         public string BuildSql(Dictionary<string, object?> parameters) => _sql;
+        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) => sb.Append(_sql);
 
         private static readonly string _sql;
 
@@ -173,6 +185,7 @@ public partial class {model.Name}: ISelection<{model.Name}, {model.Name}.SelectR
     private sealed class GeneratedModelSelection : ISelectedColumns<{model.Name}, PgSqlSqlDialectImpl>
     {{
         public string BuildSql(Dictionary<string, object?> parameters) => _sql;
+        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) => sb.Append(_sql);
 
         private static readonly string _sql;
 
