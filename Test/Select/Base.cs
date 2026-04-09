@@ -1,4 +1,7 @@
 using Drizzle4Dotnet.Core;
+using Drizzle4Dotnet.Core.Query;
+using Drizzle4Dotnet.Core.Schema.Columns;
+using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
 using Test.Shared;
@@ -371,24 +374,22 @@ public class SelectQueryPgTests
         Print("SELECT with IN SUBQUERY and VALUES", sql, parameters);
     }
 
-    // [Test]
-    // public void Select_FromSubquery_AsDerivedTable()
-    // {
-    //     var subQuery = _db
-    //         .Select(UsersTable.Id, UsersTable.Email)
-    //         .From(users)
-    //         .Where(Eq(UsersTable.IsActive, true));
-    //
-    //     var derived = subQuery.As("active_users");
-    //
-    //     var query = _db
-    //         .Select(derived.Column("Id"), derived.Column("Email"))
-    //         .From(derived);
-    //
-    //     var (sql, parameters) = query.Build();
-    //
-    //     Print("SELECT FROM SUBQUERY (Derived Table)", sql, parameters);
-    // }
+    [Test]
+    public void Select_FromSubquery_AsDerivedTable()
+    {
+        var subQuery = _db
+            .Select(UsersTable.Id, UsersTable.Email)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true));
+
+        var query = _db
+            .Select(ActiveUsers.Id, ActiveUsers.Email)
+            .From(new ActiveUsers(subQuery));
+    
+        var (sql, parameters) = query.Build();
+    
+        Print("SELECT FROM SUBQUERY (Derived Table)", sql, parameters);
+    }
 
     [Test]
     public void Select_SubqueryInSelectList()
@@ -477,5 +478,22 @@ public class SelectQueryPgTests
         var (sql, parameters) = query.Build();
     
         Print("SELECT with AGGREGATED SUBQUERY", sql, parameters);
+    }
+}
+
+
+[Virtual("active_users")]
+public partial class ActiveUsers
+{
+    public static class Columns
+    {            
+        [Column("Id")]
+        public static int Id { get; set; }
+        
+        [Column("Email")]
+        public static string Email { get; set; }    
+        
+        [Column("ManagerId")]
+        public static int ManagerId { get; set; }
     }
 }

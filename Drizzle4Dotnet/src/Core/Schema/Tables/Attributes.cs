@@ -7,6 +7,13 @@ public class TableAttribute(string name, string schema = "") : Attribute
 }
 
 [AttributeUsage(AttributeTargets.Class)]
-public class AliasAttribute( Type table, string alias) : Attribute
+public class AliasAttribute(Type table, string alias) : Attribute
 {
 }
+
+
+[AttributeUsage(AttributeTargets.Class)]
+public class VirtualAttribute(string alias) : Attribute
+{
+}
+

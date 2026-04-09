@@ -4,13 +4,19 @@ namespace Drizzle4Dotnet.Core.Schema.Tables;
 
 public interface IGenericTable<TDialect> where TDialect : ISqlDialect
 {
-    public string Sql { get; }
+    public string BuildSql(Dictionary<string, object?> parameters);
 }
 
 public interface ITable<TDialect>: IGenericTable<TDialect> where TDialect : ISqlDialect
 {
     public static abstract string TableRefName { get; }
 }
+
+
+public interface IVirtualTable<TDialect>: ITableAlias<TDialect> where TDialect : ISqlDialect
+{
+}
+
 
 public interface IDbTable<TDialect>: ITable<TDialect> where TDialect : ISqlDialect
 {

@@ -44,14 +44,14 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         // FROM
         if (_from != null)
         {
-            sb.Append(" FROM ").Append(_from.Sql);
+            sb.Append(" FROM ").Append(_from.BuildSql(parameters));
         }
 
         if (_joins.Count > 0)
         {
             foreach (var (table, type, on) in _joins)
             {
-                sb.Append(' ').Append(type).Append(" JOIN ").Append(table.Sql);
+                sb.Append(' ').Append(type).Append(" JOIN ").Append(table.BuildSql(parameters));
                 if (on != null)
                 {
                     sb.Append(" ON (").Append(on.BuildSql(parameters)).Append(')');

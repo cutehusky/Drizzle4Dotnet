@@ -145,7 +145,7 @@ public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{
                     $"{p.Name} = r.IsDBNull({i}) ? default({p.Type}) : r.GetFieldValue<{p.Type}>({i})"));
 
             sb.AppendLine($@"
-public partial class {model.Name}
+public partial class {model.Name}: ISelection<{model.Name}, {model.Name}.SelectResult, PgSqlSqlDialectImpl>
 {{
     public readonly record struct SelectResult({selectStructProperties});
 

@@ -7,3 +7,9 @@ public interface ISelectedColumns<TReturn, TDialect>: ISql where TDialect : ISql
     TReturn Mapper(DbDataReader r);
 }
 
+
+public interface ISelection<TReturnModel, TReturnRecord, TDialect> where TDialect : ISqlDialect
+{
+    public static abstract ISelectedColumns<TReturnRecord, TDialect> Record { get; }
+    public static abstract ISelectedColumns<TReturnModel, TDialect> Mapping { get; }
+}

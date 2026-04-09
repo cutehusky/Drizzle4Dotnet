@@ -31,7 +31,7 @@ public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
     {
         var sb = new StringBuilder();
         sb.Append("DELETE FROM ");
-        sb.Append(_table.Sql);
+        sb.Append(_table.BuildSql(parameters));
 
         AppendClause(sb, " WHERE ", " AND ", _wheres, parameters, wrapInParentheses: true);
 

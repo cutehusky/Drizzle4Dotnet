@@ -71,7 +71,7 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
 
         var sb = new StringBuilder();
-        sb.Append("INSERT INTO ").Append(_table.Sql).Append(" (");
+        sb.Append("INSERT INTO ").Append(_table.BuildSql(parameters)).Append(" (");
 
         for (int i = 0; i < allColumns.Count; i++)
         {
