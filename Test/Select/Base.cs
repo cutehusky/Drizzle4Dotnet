@@ -1,4 +1,5 @@
 using Drizzle4Dotnet.Core;
+using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
 using Test.Shared;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
@@ -217,7 +218,7 @@ public class SelectQueryPgTests
             .Select(
                 DepartmentsTable.Id,
                 DepartmentsTable.Name,
-                Count(UsersTable.Id)//.As("UserCount")
+                Count(UsersTable.Id).As("UserCount")
             )
             .From(users)
             .InnerJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
@@ -304,14 +305,10 @@ public class SelectQueryPgTests
     {
         var query = _db
             .Select(
-                // Count(UsersTable.Id).As("TotalUsers"),
-                // Avg(UsersTable.Age).As("AverageAge"),
-                // Max(UsersTable.Salary).As("MaxSalary"),
-                // Min(UsersTable.Salary).As("MinSalary")
-                Count(UsersTable.Id),
-                Avg(UsersTable.Age),
-                Max(UsersTable.Salary),
-                Min(UsersTable.Salary)
+                Count(UsersTable.Id).As("TotalUsers"),
+                Avg(UsersTable.Age).As("AverageAge"),
+                Max(UsersTable.Salary).As("MaxSalary"),
+                Min(UsersTable.Salary).As("MinSalary")
             )
             .From(users);
     
@@ -393,26 +390,26 @@ public class SelectQueryPgTests
     //     Print("SELECT FROM SUBQUERY (Derived Table)", sql, parameters);
     // }
 
-    // [Test]
-    // public void Select_SubqueryInSelectList()
-    // {
-    //     var subQuery = _db
-    //         .Select(Count(UserProjectsTable.ProjectId))
-    //         .From(userProjects)
-    //         .Where(Eq(UserProjectsTable.UserId, UsersTable.Id));
-    //
-    //     var query = _db
-    //         .Select(
-    //             UsersTable.Id,
-    //             UsersTable.Name,
-    //             subQuery.As("ProjectCount")
-    //         )
-    //         .From(users);
-    //
-    //     var (sql, parameters) = query.Build();
-    //
-    //     Print("SELECT with SUBQUERY in SELECT list", sql, parameters);
-    // }
+    [Test]
+    public void Select_SubqueryInSelectList()
+    {
+        var subQuery = _db
+            .Select(Count(UserProjectsTable.ProjectId))
+            .From(userProjects)
+            .Where(Eq(UserProjectsTable.UserId, UsersTable.Id));
+    
+        var query = _db
+            .Select(
+                UsersTable.Id,
+                UsersTable.Name,
+                subQuery.As("ProjectCount")
+            )
+            .From(users);
+    
+        var (sql, parameters) = query.Build();
+    
+        Print("SELECT with SUBQUERY in SELECT list", sql, parameters);
+    }
 
     [Test]
     public void Select_ComplexExistsAndJoins()
@@ -472,7 +469,7 @@ public class SelectQueryPgTests
             .Select(
                 UsersTable.Id,
                 UsersTable.Name,
-                subQuery//.As("AvgAllocation")
+                subQuery.As("AvgAllocation")
             )
             .From(users)
             .Where(Eq(UsersTable.IsActive, true));

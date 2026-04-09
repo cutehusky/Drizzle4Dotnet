@@ -12,7 +12,7 @@ public class DbColumn<T, TTable, TDialect>: IColumnOfTable<TTable>, IColumnOfDia
         _sql = TDialect.BuildColumnName(TTable.TableRefName, columnName);
         _identifier = TDialect.BuildIdentifier(columnName);
     }
-
+    
     public string BuildSql(Dictionary<string, object?> parameters) => _sql;
     
     public string Sql => _sql;
