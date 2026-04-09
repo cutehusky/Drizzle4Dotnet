@@ -15,8 +15,8 @@ public enum ELockType
 
 public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDialect : ISqlDialect
 {
-    private ITableType<TDialect>? _from;
-    private readonly List<(ITableType<TDialect>, string, IGenericSql?)> _joins = new();
+    private IGenericTable<TDialect>? _from;
+    private readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> _joins = new();
     private readonly List<IGenericSql> _wheres = new();
     private readonly List<(IGenericSql, bool)> _orderBys = new();
     private int? _limit;
@@ -90,7 +90,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     }
     
     
-    public SelectQuery<TReturn, TDialect> From(ITableType<TDialect> table)
+    public SelectQuery<TReturn, TDialect> From(IGenericTable<TDialect> table)
     {
         _from = table;
         return this;
@@ -153,7 +153,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
 
     // ====== JOINS ======
     private SelectQuery<TReturn, TDialect> JoinInternal(
-        ITableType<TDialect> table,
+        IGenericTable<TDialect> table,
         IGenericSql on,
         string type)
     {
@@ -161,19 +161,19 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         return this;
     }
 
-    public SelectQuery<TReturn, TDialect> InnerJoin(ITableType<TDialect> table, IGenericSql on)
+    public SelectQuery<TReturn, TDialect> InnerJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "INNER");
 
-    public SelectQuery<TReturn, TDialect> LeftJoin(ITableType<TDialect> table, IGenericSql on)
+    public SelectQuery<TReturn, TDialect> LeftJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "LEFT");
 
-    public SelectQuery<TReturn, TDialect> RightJoin(ITableType<TDialect> table, IGenericSql on)
+    public SelectQuery<TReturn, TDialect> RightJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "RIGHT");
 
-    public SelectQuery<TReturn, TDialect> FullJoin(ITableType<TDialect> table, IGenericSql on)
+    public SelectQuery<TReturn, TDialect> FullJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "FULL");
 
-    public SelectQuery<TReturn, TDialect> CrossJoin(ITableType<TDialect> table)
+    public SelectQuery<TReturn, TDialect> CrossJoin(IGenericTable<TDialect> table)
     {
         _joins.Add((table, "CROSS", null));
         return this;
