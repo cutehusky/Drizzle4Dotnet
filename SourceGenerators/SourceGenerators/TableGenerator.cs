@@ -113,49 +113,6 @@ public class TableGenerator : IIncrementalGenerator
                 SourceTableFullName = sourceTableFullName
             };
         }
-        
-        if (virtualTableAttr != null && tableAttr == null && aliasAttr == null)
-        {
-            var aliasName = symbol.Name; // default to class name
-            if (virtualTableAttr.ConstructorArguments.Length > 0)
-            {
-                aliasName = virtualTableAttr.ConstructorArguments[0].Value?.ToString() ?? symbol.Name;
-            }
-            
-            var columns = new List<(string PropName, string DbColumnName, string Type)>();
-            foreach (var member in symbol.GetMembers().OfType<INamedTypeSymbol>())
-            {
-                if (member == null)
-                    continue;
-                if (member.Name != "Columns")
-                    continue;
-                foreach (var subMember in member.GetMembers().OfType<IPropertySymbol>())
-                {
-                    var colAttr = subMember.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name == "ColumnAttribute");
-                    if (colAttr != null && colAttr.ConstructorArguments.Length > 0)
-                    {
-                        var dbColumnName = colAttr.ConstructorArguments[0].Value?.ToString() ?? subMember.Name;
-                        var colType = subMember.Type.ToDisplayString();
-                        columns.Add((subMember.Name, dbColumnName, colType));
-                    }
-                }
-                break;
-            }
-
-            return new TableModel
-            {
-                Namespace = (symbol.ContainingNamespace == null 
-                             || symbol.ContainingNamespace.IsGlobalNamespace
-                             ||  symbol.ContainingNamespace.ToDisplayString() == "<global namespace>"
-                    ) 
-                        ? "" : symbol.ContainingNamespace.ToDisplayString(),
-                ClassName = symbol.Name,
-                TableType = ETableType.Virtual,
-                
-                AliasName = aliasName,
-                Columns = columns,
-            };
-        }
         return null;
     }
 
@@ -209,37 +166,14 @@ public class TableGenerator : IIncrementalGenerator
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Data.Common;");
             
-            var refName = table.TableType != ETableType.DbTable ? table.AliasName! : table.DbTableName!;
-            var baseInterface = table.TableType == ETableType.Alias
-                ? "ITableAlias<PgSqlSqlDialectImpl>"
-                : table.TableType == ETableType.Virtual
-                    ? "IVirtualTable<PgSqlSqlDialectImpl>"
-                    : "IDbTable<PgSqlSqlDialectImpl>";
-            var tableProperties = table.TableType != ETableType.DbTable
-                ? $@"   public static string Alias {{ get => ""{table.AliasName!}""; }}" 
-                : $@"   public static string TableName {{ get => ""{table.DbTableName!}""; }}
-    public static string SchemaName {{ get => ""{table.DbSchemaName!}""; }}";
-
-            var sqlBuilder = table.TableType != ETableType.Virtual
-                ? @"
-        private static readonly string _sql;
-
-        public string BuildSql(Dictionary<string, object?> parameters) => _sql;
-        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) => sb.Append(_sql);
-"
-                : $@"
-private readonly IGenericSql _baseSql;
-public string BuildSql(Dictionary<string, object?> parameters) => $""({{_baseSql.BuildSql(parameters)}}) AS {table.AliasName}"";
-public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) {{
-    sb.Append('(');
-    _baseSql.BuildSql(parameters, sb);
-    sb.Append($"") AS {table.AliasName}"");
-}}
-    
-public {table.ClassName}(IGenericSql baseSql) {{
-    _baseSql = baseSql;
-}}
-";
+            var refName = table.TableType == ETableType.DbTable ? table.DbTableName! : table.AliasName!;
+            var baseInterface = table.TableType == ETableType.DbTable
+                ? "IDbTable<PgSqlSqlDialectImpl>"
+                : "ITableAlias<PgSqlSqlDialectImpl>";
+            var tableProperties = table.TableType == ETableType.DbTable
+                ? $@"   public static string TableName {{ get => ""{table.DbTableName!}""; }}
+    public static string SchemaName {{ get => ""{table.DbSchemaName!}""; }}" 
+                : $@"   public static string Alias {{ get => ""{table.AliasName!}""; }}";
             
             sb.AppendLine($@"
     partial class {table.ClassName} : {baseInterface}
@@ -248,13 +182,14 @@ public {table.ClassName}(IGenericSql baseSql) {{
 
         public static string TableRefName {{ get => ""{refName}""; }}
 
-        {sqlBuilder}
+        private static readonly string _sql;
+
+        public string BuildSql(Dictionary<string, object?> parameters) => _sql;
+        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) => sb.Append(_sql);
 ");
-            var tableSql = table.TableType == ETableType.Alias
-                ? $"_sql = $\"{{PgSqlSqlDialectImpl.BuildTableName(\"{table.DbSchemaName}\", \"{table.DbTableName}\")}} AS {table.AliasName}\";" 
-                : table.TableType == ETableType.Virtual 
-                    ? ""
-                    : $"_sql = PgSqlSqlDialectImpl.BuildTableName(\"{table.DbSchemaName}\", \"{table.DbTableName}\");";
+            var tableSql = table.TableType == ETableType.DbTable
+                ? $"_sql = PgSqlSqlDialectImpl.BuildTableName(\"{table.DbSchemaName}\", \"{table.DbTableName}\");"
+                : $"_sql = $\"{{PgSqlSqlDialectImpl.BuildTableName(\"{table.DbSchemaName}\", \"{table.DbTableName}\")}} AS {table.AliasName}\";";
 
             sb.AppendLine($@"
         static {table.ClassName}() {{
@@ -423,7 +358,6 @@ public {table.ClassName}(IGenericSql baseSql) {{
     {
         DbTable,
         Alias,
-        Virtual
     }
 
     private class TableModel
@@ -436,13 +370,10 @@ public {table.ClassName}(IGenericSql baseSql) {{
         // For Table
         public string? DbTableName { get; set; }
         public string? DbSchemaName { get; set; }
-        
-        // For Table / virtual
         public List<(string PropName, string DbColumnName, string Type)>? Columns { get; set; }
         
-        // For Alias / virtual
-        public string? AliasName { get; set; }
         // For Alias
+        public string? AliasName { get; set; }
         public string? SourceTableFullName { get; set; } 
     }
 }

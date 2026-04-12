@@ -11,9 +11,3 @@ public class AliasAttribute(Type table, string alias) : Attribute
 {
 }
 
-
-[AttributeUsage(AttributeTargets.Class)]
-public class VirtualAttribute(string alias) : Attribute
-{
-}
-
