@@ -1,6 +1,4 @@
 using Drizzle4Dotnet.Core;
-using Drizzle4Dotnet.Core.Schema.Columns;
-using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
 using Test.Shared;
@@ -377,13 +375,13 @@ public class SelectQueryPgTests
     public void Select_FromSubquery_AsDerivedTable()
     {
         var subQuery = _db
-            .Select(UsersTable.Id, UsersTable.Email)
+            .Select(UsersTable.ModelAll)
             .From(users)
-            .Where(Eq(UsersTable.IsActive, true));
-
+            .Where(Eq(UsersTable.IsActive, true)).AsSubQuery("active_users");
+    
         var query = _db
-            .Select(ActiveUsers.Id, ActiveUsers.Email)
-            .From(new ActiveUsers(subQuery));
+            .Select(subQuery.Id, subQuery.Email)
+            .From(subQuery);
     
         var (sql, parameters) = query.Build();
     
@@ -479,20 +477,20 @@ public class SelectQueryPgTests
         Print("SELECT with AGGREGATED SUBQUERY", sql, parameters);
     }
 }
-
-
-[Virtual("active_users")]
-public partial class ActiveUsers
-{
-    public static class Columns
-    {            
-        [Column("Id")]
-        public static int Id { get; set; }
-        
-        [Column("Email")]
-        public static string Email { get; set; }    
-        
-        [Column("ManagerId")]
-        public static int ManagerId { get; set; }
-    }
-}
+//
+//
+// [Virtual("active_users")]
+// public partial class ActiveUsers
+// {
+//     public static class Columns
+//     {            
+//         [Column("Id")]
+//         public static int Id { get; set; }
+//         
+//         [Column("Email")]
+//         public static string Email { get; set; }    
+//         
+//         [Column("ManagerId")]
+//         public static int ManagerId { get; set; }
+//     }
+// }

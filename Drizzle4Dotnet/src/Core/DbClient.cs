@@ -12,6 +12,8 @@ namespace Drizzle4Dotnet.Core;
 public interface IQueryBuilder<TDialect> where TDialect : ISqlDialect
 {
     public SelectQuery<TReturn, TDialect> Select<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns);
+    
+    public  SelectQuery<TReturn, TDialect, TVirtualTable> Select<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>;
 
     public UpdateQuery<TTable, TDialect> Update<TTable>(TTable table) where TTable : ITable<TDialect>;
 
@@ -19,6 +21,8 @@ public interface IQueryBuilder<TDialect> where TDialect : ISqlDialect
     public DeleteQuery<TTable, TDialect> Delete<TTable>(TTable table) where TTable : ITable<TDialect>;
 
     public SelectQuery<TReturn, TDialect> SelectDistinct<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns);
+    
+    public SelectQuery<TReturn, TDialect, TVirtualTable> SelectDistinct<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>;
 }
 
 public class QueryBuilder<TDialect> : IQueryBuilder<TDialect> where TDialect : ISqlDialect
@@ -26,6 +30,11 @@ public class QueryBuilder<TDialect> : IQueryBuilder<TDialect> where TDialect : I
     public SelectQuery<TReturn, TDialect> Select<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
     {
         return new SelectQuery<TReturn, TDialect>(selectedColumns, null);
+    }
+
+    public  SelectQuery<TReturn, TDialect, TVirtualTable> Select<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>
+    {
+        return new  SelectQuery<TReturn, TDialect, TVirtualTable>(selectedColumns, null);
     }
     
     public UpdateQuery<TTable, TDialect> Update<TTable>(TTable table) where TTable : ITable<TDialect>
@@ -45,7 +54,12 @@ public class QueryBuilder<TDialect> : IQueryBuilder<TDialect> where TDialect : I
     
     public SelectQuery<TReturn, TDialect> SelectDistinct<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
     {
-        return new SelectQuery<TReturn, TDialect>(selectedColumns, null).Distinct();
+        return new  SelectQuery<TReturn, TDialect>(selectedColumns, null).Distinct();
+    }
+
+    public SelectQuery<TReturn, TDialect, TVirtualTable> SelectDistinct<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>
+    {
+        return new  SelectQuery<TReturn, TDialect, TVirtualTable>(selectedColumns, null).Distinct();
     }
 }
 
@@ -70,6 +84,34 @@ public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposabl
     public async Task RollbackAsync() => await (_transaction?.RollbackAsync() ?? Task.CompletedTask);
 
 
+    public async Task<List<T>> ExecuteGetListAsync<T, TVirtualTable>(IReturning<T, TDialect, TVirtualTable> query) where TVirtualTable : IVirtualTable<TDialect>
+    {
+        await using var cmd = _conn.CreateCommand();
+        cmd.Transaction = _transaction;
+
+        var parameters = new Dictionary<string, object?>();
+        var sb = new StringBuilder();
+        query.BuildSql(parameters, sb);
+        cmd.CommandText = sb.ToString();
+
+        foreach (var entry in parameters)
+        {
+            var p = cmd.CreateParameter();
+            p.ParameterName = entry.Key;
+            p.Value = entry.Value ?? DBNull.Value;
+            cmd.Parameters.Add(p);
+        }
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        var result = new List<T>();
+        var mapper = query.Mapper;
+        while (await reader.ReadAsync())
+        {
+            result.Add(mapper(reader));
+        }
+        return result;
+    }
+    
     public async Task<List<T>> ExecuteGetListAsync<T>(IReturning<T, TDialect> query)
     {
         await using var cmd = _conn.CreateCommand();
@@ -127,6 +169,16 @@ public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposabl
     public SelectQuery<TReturn, TDialect> SelectDistinct<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
     {
         return new SelectQuery<TReturn, TDialect>(selectedColumns, this).Distinct();
+    }
+    
+    public SelectQuery<TReturn, TDialect, TVirtualTable> Select<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>
+    {
+        return new SelectQuery<TReturn, TDialect, TVirtualTable>(selectedColumns, this);
+    }
+    
+    public SelectQuery<TReturn, TDialect, TVirtualTable> SelectDistinct<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>
+    {
+        return new SelectQuery<TReturn, TDialect, TVirtualTable>(selectedColumns, this).Distinct();
     }
     
     public UpdateQuery<TTable, TDialect> Update<TTable>(TTable table) where TTable : ITable<TDialect>

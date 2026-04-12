@@ -14,7 +14,7 @@ public class ReturningQuery<TReturn, TDialect> : QueryBase<TDialect>, IReturning
     public ReturningQuery(
         Query<TDialect> baseQuery,
         ISelectedColumns<TReturn, TDialect> selectedColumns
-        ): base(baseQuery.DbClient)
+    ): base(baseQuery.DbClient)
     {
         _baseQuery = baseQuery;
         SelectedColumns = selectedColumns;
@@ -35,5 +35,43 @@ public class ReturningQuery<TReturn, TDialect> : QueryBase<TDialect>, IReturning
         _baseQuery.BuildSql(parameters, sb);
         sb.Append(" RETURNING ");
         SelectedColumns.BuildSql(parameters, sb);
+    }
+}
+
+
+public class ReturningQuery<TReturn, TDialect, TVirtualTable> : QueryBase<TDialect>, IReturning<TReturn, TDialect, TVirtualTable> where  TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
+{
+    private readonly Query<TDialect> _baseQuery;
+    public ISelectedColumns<TReturn, TDialect, TVirtualTable> SelectedColumns { get; }
+    
+    public ReturningQuery(
+        Query<TDialect> baseQuery,
+        ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns
+    ): base(baseQuery.DbClient)
+    {
+        _baseQuery = baseQuery;
+        SelectedColumns = selectedColumns;
+    }
+    
+    public TaskAwaiter<List<TReturn>> GetAwaiter()
+    {
+        return DbClient.ExecuteGetListAsync(this).GetAwaiter();
+    }
+
+    public override string BuildSql(Dictionary<string, object?> parameters)
+    {
+        return $"{_baseQuery.BuildSql(parameters)} RETURNING {SelectedColumns.BuildSql(parameters)}";
+    }
+
+    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    {
+        _baseQuery.BuildSql(parameters, sb);
+        sb.Append(" RETURNING ");
+        SelectedColumns.BuildSql(parameters, sb);
+    }
+    
+    public TVirtualTable AsSubQuery(string alias)
+    {
+        return (TVirtualTable) TVirtualTable.Create(this, alias);
     }
 }

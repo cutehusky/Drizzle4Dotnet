@@ -1,19 +1,16 @@
 using System.Text;
-using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Schema.Columns;
 
-public class DbColumn<T, TTable, TDialect>: IColumnOfTable<TTable>, IColumnOfDialect<T, TDialect> where TTable : ITable<TDialect> where TDialect : ISqlDialect
+public class VirtualColumn<T, TDialect>: IColumnOfDialect<T, TDialect> where TDialect : ISqlDialect
 {
     private readonly string _sql;
     private readonly string _identifier;
-    private readonly string _columnName;
-    public DbColumn(string columnName)
+    public VirtualColumn(string alias, string columnName)
     {
-        _sql = TDialect.BuildColumnName(TTable.TableRefName, columnName);
+        _sql = TDialect.BuildColumnName(alias, columnName);
         _identifier = TDialect.BuildIdentifier(columnName);
-        _columnName = columnName;
     }
     
     public string BuildSql(Dictionary<string, object?> parameters) => _sql;
@@ -23,5 +20,4 @@ public class DbColumn<T, TTable, TDialect>: IColumnOfTable<TTable>, IColumnOfDia
     public string Sql => _sql;
 
     public string Identifier => _identifier;
-    public string ColumnName => _columnName;
 }

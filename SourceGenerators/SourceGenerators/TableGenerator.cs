@@ -284,8 +284,8 @@ public {table.ClassName}(IGenericSql baseSql) {{
                 table.Columns!.Select((p, i) =>
                     $"{p.PropName} = r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
             sb.AppendLine($@"
-    public static ISelectedColumns<SelectResult, PgSqlSqlDialectImpl> ResultAll {{ get; }} = new GeneratedResultSelection();
-    public static ISelectedColumns<SelectModel, PgSqlSqlDialectImpl> ModelAll {{ get; }} = new GeneratedModelSelection();
+    public static ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, GeneratedSubqueryTable> ResultAll {{ get; }} = new GeneratedResultSelection();
+    public static ISelectedColumns<SelectModel, PgSqlSqlDialectImpl, GeneratedSubqueryTable> ModelAll {{ get; }} = new GeneratedModelSelection();
 
     public readonly record struct SelectResult({selectStructProperties});
 
@@ -293,7 +293,33 @@ public {table.ClassName}(IGenericSql baseSql) {{
         {selectModelProperties}
     }}
 
-    private sealed class GeneratedResultSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl>
+    public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>
+    {{
+        private readonly IGenericSql _baseSql;
+        private readonly string _aliasName;
+        public string BuildSql(Dictionary<string, object?> parameters) => $""({{_baseSql.BuildSql(parameters)}}) AS {{_aliasName}}"";
+        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) {{
+            sb.Append('(');
+            _baseSql.BuildSql(parameters, sb);
+            sb.Append($"") AS "");
+            sb.Append(_aliasName);
+        }}
+
+        {string.Join("\n        ", table.Columns!.Select(p => $"public VirtualColumn<{p.Type}, PgSqlSqlDialectImpl> {p.PropName} {{ get; set; }}"))}
+
+        public GeneratedSubqueryTable(
+            string aliasName,
+            IGenericSql baseSql
+        ) {{
+            _baseSql = baseSql;
+            _aliasName = aliasName;
+            {string.Join("\n            ", table.Columns!.Select(p => $"this.{p.PropName} = new VirtualColumn<{p.Type}, PgSqlSqlDialectImpl>(aliasName, \"{p.DbColumnName}\");"))}
+        }}
+
+        public static IVirtualTable<PgSqlSqlDialectImpl> Create(IGenericSql baseSql, string aliasName) => new GeneratedSubqueryTable(aliasName, baseSql);
+    }}
+
+    private sealed class GeneratedResultSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, GeneratedSubqueryTable>
     {{
         public string BuildSql(Dictionary<string, object?> parameters) => $""{sqlFragments}"";
 
@@ -310,7 +336,7 @@ public {table.ClassName}(IGenericSql baseSql) {{
         }}
     }}
 
-    private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel, PgSqlSqlDialectImpl>
+    private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel, PgSqlSqlDialectImpl, GeneratedSubqueryTable>
     {{
         public string BuildSql(Dictionary<string, object?> parameters) => $""{sqlFragments}"";
         public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)

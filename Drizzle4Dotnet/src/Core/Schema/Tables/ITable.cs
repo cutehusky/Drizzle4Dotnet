@@ -15,8 +15,9 @@ public interface ITable<TDialect>: IGenericTable<TDialect> where TDialect : ISql
 }
 
 
-public interface IVirtualTable<TDialect>: ITableAlias<TDialect> where TDialect : ISqlDialect
+public interface IVirtualTable<TDialect>: IGenericTable<TDialect> where TDialect : ISqlDialect
 {
+    public static abstract IVirtualTable<TDialect> Create(IGenericSql baseQuery, string alias);
 }
 
 
