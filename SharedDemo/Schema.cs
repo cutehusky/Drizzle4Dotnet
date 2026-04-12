@@ -1,7 +1,7 @@
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 
-namespace Test.Shared
+namespace SharedDemo
 {
     [Table("Users")]
     public partial class UsersTable

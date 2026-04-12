@@ -176,6 +176,7 @@ public class TableGenerator : IIncrementalGenerator
                 ? $@"   public static string TableName {{ get => ""{table.DbTableName!}""; }}
     public static string SchemaName {{ get => ""{table.DbSchemaName!}""; }}" 
                 : $@"   public static string Alias {{ get => ""{table.AliasName!}""; }}";
+            var selectSqlFragments = string.Join(", ", table.Columns!.Select(p => $"{{{p.PropName}.Sql}}"));
             
             sb.AppendLine($@"
     partial class {table.ClassName} : {baseInterface}
@@ -191,12 +192,14 @@ public class TableGenerator : IIncrementalGenerator
 ");
             var tableSql = table.TableType == ETableType.DbTable
                 ? $"_sql = PgSqlSqlDialectImpl.BuildTableName(\"{table.DbSchemaName}\", \"{table.DbTableName}\");"
-                : $"_sql = $\"{{PgSqlSqlDialectImpl.BuildTableName(\"{table.DbSchemaName}\", \"{table.DbTableName}\")}} AS {table.AliasName}\";";
+                : $"_sql = $\"{{PgSqlSqlDialectImpl.BuildTableName(\"{table.DbSchemaName}\", \"{table.DbTableName}\")}} AS {{ PgSqlSqlDialectImpl.BuildIdentifier(\"{table.AliasName}\")}}\";";
 
             sb.AppendLine($@"
         static {table.ClassName}() {{
                 {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new DbColumn<{c.Type}, {table.ClassName}, PgSqlSqlDialectImpl>(\"{c.DbColumnName}\");"))}
                 {tableSql}
+                GeneratedModelSelection._sql = $""{selectSqlFragments}"";
+                GeneratedResultSelection._sql = $""{selectSqlFragments}"";
         }}");
 
             sb.AppendLine(string.Join("\n        ", table.Columns!.Select(c => $"public static DbColumn<{c.Type}, {table.ClassName}, PgSqlSqlDialectImpl> {c.PropName} {{ get; set; }}")));
@@ -214,7 +217,6 @@ public class TableGenerator : IIncrementalGenerator
             var selectStructProperties = string.Join(", ", table.Columns!.Select(p => $"{p.Type} {p.PropName}"));
             var selectModelProperties = string.Join("\n        ",
                 table.Columns!.Select(p => $"public {p.Type} {p.PropName} {{ get; set; }} = default!;"));
-            var sqlFragments = string.Join(", ", table.Columns!.Select(p => $"{{{p.PropName}.Sql}}"));
             var selectStructMapper = string.Join(",\n                ",
                 table.Columns!.Select((p, i) => $"r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
             var selectModelMapper = string.Join(",\n                ",
@@ -258,11 +260,12 @@ public class TableGenerator : IIncrementalGenerator
 
     private sealed class GeneratedResultSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, GeneratedSubqueryTable>
     {{
-        public string BuildSql(Dictionary<string, object?> parameters) => $""{sqlFragments}"";
+        public static string _sql;
+        public string BuildSql(Dictionary<string, object?> parameters) => _sql;
 
         public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
         {{
-            sb.Append($""{sqlFragments}"");
+            sb.Append(_sql);
         }}
 
         public SelectResult Mapper(DbDataReader r)
@@ -275,10 +278,12 @@ public class TableGenerator : IIncrementalGenerator
 
     private sealed class GeneratedModelSelection : ISelectedColumns<SelectModel, PgSqlSqlDialectImpl, GeneratedSubqueryTable>
     {{
-        public string BuildSql(Dictionary<string, object?> parameters) => $""{sqlFragments}"";
+        public static string _sql;
+
+        public string BuildSql(Dictionary<string, object?> parameters) => _sql;
         public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
         {{
-            sb.Append($""{sqlFragments}"");
+            sb.Append(_sql);
         }}
 
         public SelectModel Mapper(DbDataReader r)

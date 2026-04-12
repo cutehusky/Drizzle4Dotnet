@@ -1,9 +1,12 @@
 using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
-using Test.Shared;
+using SharedDemo;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
 using static Drizzle4Dotnet.Core.Shared.Operators.Functions;
+using ProjectSelect = SharedDemo.ProjectSelect;
+using UserSelect = SharedDemo.UserSelect;
+using UserWithRelationsSelect = SharedDemo.UserWithRelationsSelect;
 
 namespace Test.Select;
 
@@ -251,7 +254,7 @@ public class SelectQueryPgTests
             .Where(Eq(UsersTable.IsActive, true));
     
         var query = _db
-            .Select(Shared.UserSelect.Record)
+            .Select(UserSelect.Record)
             .From(users)
             .Where(In(UsersTable.Id, subQuery));
     

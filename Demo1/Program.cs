@@ -1,46 +1,11 @@
 ﻿using Drizzle4Dotnet.Core;
-using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
-using MyNamespace;
 using Npgsql;
+using SharedDemo;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
 
 
-[DbSelect]
-public partial class UserSelect1
-{
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int Id { get; set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
-    public string Email { get; set;}
-    
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public string Name { get; set;}
-    
-    [MapWith(typeof(DepartmentsTable), DepartmentsTable.ColumnNames.Name)]
-    public int DepartmentName { get; set;}
-    
-    [MapWith(typeof(ManagersTable), ManagersTable.ColumnNames.Name)]
-    public int ManagerName { get;set; }
-}
-
-
-[DbSelect]
-public partial class UserSelect
-{
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int Id { get;set; }
-
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
-    public string Email { get; set;}
-    
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public string Name { get; set;}
-}
-
-
-public class EntryPoint {
+public static class EntryPoint {
     public static async Task Main()
     {
         var connString = "Host=localhost;Username=postgres;Password=postgres;Database=postgres";
@@ -79,7 +44,7 @@ public class EntryPoint {
         }
 
         var query = db
-            .Select(UserSelect1.Record)
+            .Select(UserSelect.Record)
             .From(users)
             .InnerJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
             .InnerJoin(managers, Eq(UsersTable.ManagerId, ManagersTable.Id))

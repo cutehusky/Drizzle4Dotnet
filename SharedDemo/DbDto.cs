@@ -1,6 +1,6 @@
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Test.Shared;
+namespace SharedDemo;
 
 
 [DbSelect]

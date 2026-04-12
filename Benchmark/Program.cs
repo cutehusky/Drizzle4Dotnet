@@ -5,8 +5,8 @@ using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Dialect;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using SharedDemo;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
-using Test.Shared;
 
 [MemoryDiagnoser]
 public class OrmBenchmark
@@ -152,29 +152,31 @@ FROM ""Users"";";
         using var cmd = Connection.CreateCommand();
         cmd.CommandText = Sql;
         using var reader = cmd.ExecuteReader();
+        var users = new List<User>();
         while (reader.Read())
         {
             var user = MapUser(reader);
+            users.Add(user);
         }
     }
     
     [Benchmark]
     public void Dapper_Select_All()
     {
-        var user = Connection.Query<User>(Sql, new { id = 1 }).AsList();
+        var users = Connection.Query<User>(Sql).AsList();
     }
 
     [Benchmark]
     public async Task Drizzle_Select_All()
     {
-        var user = await Db.Select(UsersTable.ModelAll)
+        var users = await Db.Select(UsersTable.ModelAll)
             .From(Users);
     }
     
     [Benchmark]
     public async Task EfCore_Select_All()
     {
-        var res = await EfContext.Users
+        var users = await EfContext.Users
             .AsNoTracking()
             .ToListAsync();
     }
