@@ -39,35 +39,51 @@ public class OrmBenchmark
     
     public User MapUser(NpgsqlDataReader reader)
     {
-        var ordId = reader.GetOrdinal("Id");
-        var ordGuid = reader.GetOrdinal("Guid");
-        var ordName = reader.GetOrdinal("Name");
-        var ordEmail = reader.GetOrdinal("Email");
-        var ordAge = reader.GetOrdinal("Age");
-        var ordSalary = reader.GetOrdinal("Salary");
-        var ordRating = reader.GetOrdinal("Rating");
-        var ordIsActive = reader.GetOrdinal("IsActive");
-        var ordDepartmentId = reader.GetOrdinal("DepartmentId");
-        var ordManagerId = reader.GetOrdinal("ManagerId");
-        var ordRoleId = reader.GetOrdinal("RoleId");
-        var ordCreatedAt = reader.GetOrdinal("CreatedAt");
-        var ordUpdatedAt = reader.GetOrdinal("UpdatedAt");
+        // var ordId = reader.GetOrdinal("Id");
+        // var ordGuid = reader.GetOrdinal("Guid");
+        // var ordName = reader.GetOrdinal("Name");
+        // var ordEmail = reader.GetOrdinal("Email");
+        // var ordAge = reader.GetOrdinal("Age");
+        // var ordSalary = reader.GetOrdinal("Salary");
+        // var ordRating = reader.GetOrdinal("Rating");
+        // var ordIsActive = reader.GetOrdinal("IsActive");
+        // var ordDepartmentId = reader.GetOrdinal("DepartmentId");
+        // var ordManagerId = reader.GetOrdinal("ManagerId");
+        // var ordRoleId = reader.GetOrdinal("RoleId");
+        // var ordCreatedAt = reader.GetOrdinal("CreatedAt");
+        // var ordUpdatedAt = reader.GetOrdinal("UpdatedAt");
 
+        // return new User
+        // {
+        //     Id = reader.GetInt32(ordId),
+        //     Guid = reader.GetGuid(ordGuid),
+        //     Name = reader.GetString(ordName),
+        //     Email = reader.GetString(ordEmail),
+        //     Age = reader.GetInt32(ordAge),
+        //     Salary = reader.GetDecimal(ordSalary),
+        //     Rating = reader.GetDouble(ordRating),
+        //     IsActive = reader.GetBoolean(ordIsActive),
+        //     DepartmentId = reader.GetInt32(ordDepartmentId),
+        //     ManagerId = reader.IsDBNull(ordManagerId) ? null : reader.GetInt32(ordManagerId),
+        //     RoleId = reader.GetInt32(ordRoleId),
+        //     CreatedAt = reader.GetDateTime(ordCreatedAt),
+        //     UpdatedAt = reader.IsDBNull(ordUpdatedAt) ? null : reader.GetDateTime(ordUpdatedAt)
+        // };
         return new User
         {
-            Id = reader.GetInt32(ordId),
-            Guid = reader.GetGuid(ordGuid),
-            Name = reader.GetString(ordName),
-            Email = reader.GetString(ordEmail),
-            Age = reader.GetInt32(ordAge),
-            Salary = reader.GetDecimal(ordSalary),
-            Rating = reader.GetDouble(ordRating),
-            IsActive = reader.GetBoolean(ordIsActive),
-            DepartmentId = reader.GetInt32(ordDepartmentId),
-            ManagerId = reader.IsDBNull(ordManagerId) ? null : reader.GetInt32(ordManagerId),
-            RoleId = reader.GetInt32(ordRoleId),
-            CreatedAt = reader.GetDateTime(ordCreatedAt),
-            UpdatedAt = reader.IsDBNull(ordUpdatedAt) ? null : reader.GetDateTime(ordUpdatedAt)
+            Id = reader.GetInt32(0),
+            Guid = reader.GetGuid(1),
+            Name = reader.GetString(2),
+            Email = reader.GetString(3),
+            Age = reader.GetInt32(4),
+            Salary = reader.GetDecimal(5),
+            Rating = reader.GetDouble(6),
+            IsActive = reader.GetBoolean(7),
+            DepartmentId = reader.GetInt32(8),
+            ManagerId = reader.IsDBNull(9) ? null : reader.GetInt32(9),
+            RoleId = reader.GetInt32(10),
+            CreatedAt = reader.GetDateTime(11),
+            UpdatedAt = reader.IsDBNull(12) ? null : reader.GetDateTime(12)
         };
     }
 }
@@ -92,22 +108,24 @@ FROM ""Users""
 WHERE ""Id"" = @id;";
     
     [Benchmark(Baseline = true)]
-    public void Adonet_Raw_Select_One()
+    public async Task Adonet_Raw_Select_One()
     {
         using var cmd = Connection.CreateCommand();
         cmd.CommandText = Sql;
         cmd.Parameters.AddWithValue("@id", 1);
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
+        await using var reader = await cmd.ExecuteReaderAsync();
+        var users = new List<User>();
+        while (await reader.ReadAsync())
         {
             var user = MapUser(reader);
+            users.Add(user);
         }
     }
     
     [Benchmark]
-    public void Dapper_Select_One()
+    public async Task Dapper_Select_One()
     {
-        var user = Connection.Query<User>(Sql, new { id = 1 }).First();
+        var user = (await Connection.QueryAsync<User>(Sql, new { id = 1 })).First();
     }
 
     [Benchmark]
@@ -147,24 +165,25 @@ public class SelectAll: OrmBenchmark
 FROM ""Users"";";
     
     [Benchmark(Baseline = true)]
-    public void Adonet_Raw_Select_All()
+    public async Task Adonet_Raw_Select_All_Async()
     {
-        using var cmd = Connection.CreateCommand();
+        await using var cmd = Connection.CreateCommand();
         cmd.CommandText = Sql;
-        using var reader = cmd.ExecuteReader();
+        await using var reader = await cmd.ExecuteReaderAsync();
         var users = new List<User>();
-        while (reader.Read())
+        while (await reader.ReadAsync())
         {
             var user = MapUser(reader);
             users.Add(user);
         }
     }
-    
+
     [Benchmark]
-    public void Dapper_Select_All()
+    public async Task Dapper_Select_All_Async()
     {
-        var users = Connection.Query<User>(Sql).AsList();
+        var users = (await Connection.QueryAsync<User>(Sql)).AsList();
     }
+
 
     [Benchmark]
     public async Task Drizzle_Select_All()

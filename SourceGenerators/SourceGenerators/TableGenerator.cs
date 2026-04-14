@@ -222,16 +222,20 @@ public class TableGenerator : IIncrementalGenerator
             //     table.Columns!.Select((p, i) =>
             //         $"{p.PropName} = r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
             var selectStructMapper = string.Join(",\n                ", table.Columns!.Select((p, i) => {
-                if (!p.Type.EndsWith("?") && !p.Type.StartsWith("Nullable<")) {
-                    return $"r.GetFieldValue<{p.Type}>({i})";
+                var isNullable = Utils.IsNullable(p.Type);
+                var method = Utils.GetDataReaderMethod(p.Type);
+                if (!isNullable) {
+                    return $"r.Get{method}({i})";
                 }
-                return $"r.IsDBNull({i}) ? default : r.GetFieldValue<{p.Type}>({i})";
+                return $"r.IsDBNull({i}) ? default : r.Get{method}({i})";
             }));
             var selectModelMapper = string.Join(",\n                ", table.Columns!.Select((p, i) => {
-                if (!p.Type.EndsWith("?") && !p.Type.StartsWith("Nullable<")) {
-                    return $"{p.PropName} = r.GetFieldValue<{p.Type}>({i})";
+                var isNullable = Utils.IsNullable(p.Type);
+                var method = Utils.GetDataReaderMethod(p.Type);
+                if (!isNullable) {
+                    return $"{p.PropName} = r.Get{method}({i})";
                 }
-                return $"{p.PropName} = r.IsDBNull({i}) ? default : r.GetFieldValue<{p.Type}>({i})";
+                return $"{p.PropName} = r.IsDBNull({i}) ? default : r.Get{method}({i})";
             }));
             sb.AppendLine($@"
     public static ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, GeneratedSubqueryTable> ResultAll {{ get; }} = new GeneratedResultSelection();
@@ -374,6 +378,7 @@ public class TableGenerator : IIncrementalGenerator
         DbTable,
         Alias,
     }
+
 
     private class TableModel
     {

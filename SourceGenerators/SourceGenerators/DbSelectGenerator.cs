@@ -151,17 +151,21 @@ public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{
             //         $"{p.Name} = r.IsDBNull({i}) ? default({p.Type}) : r.GetFieldValue<{p.Type}>({i})"));
             
             var selectStructMapper = string.Join(",\n                ", model.Properties.Select((p, i) => {
-                if (!p.Type.EndsWith("?") && !p.Type.StartsWith("Nullable<")) {
-                    return $"r.GetFieldValue<{p.Type}>({i})";
+                var isNullable = Utils.IsNullable(p.Type);
+                var method = Utils.GetDataReaderMethod(p.Type);
+                if (!isNullable) {
+                    return $"r.Get{method}({i})";
                 }
-                return $"r.IsDBNull({i}) ? default : r.GetFieldValue<{p.Type}>({i})";
+                return $"r.IsDBNull({i}) ? default : r.Get{method}({i})";
             }));
             var selectModelMapper = string.Join(",\n                ",
                 model.Properties.Select((p, i) => {
-                    if (!p.Type.EndsWith("?") && !p.Type.StartsWith("Nullable<")) {
-                        return $"{p.Name} = r.GetFieldValue<{p.Type}>({i})";
+                    var isNullable = Utils.IsNullable(p.Type);
+                    var method = Utils.GetDataReaderMethod(p.Type);
+                    if (!isNullable) {
+                        return $"{p.Name} = r.Get{method}({i})";
                     }
-                    return $"{p.Name} = r.IsDBNull({i}) ? default : r.GetFieldValue<{p.Type}>({i})";
+                    return $"{p.Name} = r.IsDBNull({i}) ? default : r.Get{method}({i})";
                 }));
 
 
