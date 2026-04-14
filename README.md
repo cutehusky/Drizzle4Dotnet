@@ -200,15 +200,57 @@ var query = _db
 ## 🏗 Table Definition Example
 
 ```csharp
-partial class DepartmentsTable : IDbTable<PgSqlSqlDialectImpl>
-{
-    public static string TableName => "Departments";
-    public static string SchemaName => "public";
+[Table("Users")]
+    public partial class UsersTable
+    {
+        public static class Columns
+        {
+            [Column("Id")]
+            public static int Id { get; set; }
 
-    public static DbColumn<int, DepartmentsTable, PgSqlSqlDialectImpl> Id { get; set; }
-    public static DbColumn<string, DepartmentsTable, PgSqlSqlDialectImpl> Name { get; set; }
-    public static DbColumn<string, DepartmentsTable, PgSqlSqlDialectImpl> Code { get; set; }
-}
+            [Column("Guid")]
+            public static Guid Guid { get; set; }
+
+            [Column("Name")]
+            public static string Name { get; set; }
+
+            [Column("Email")]
+            public static string Email { get; set; }
+
+            [Column("Age")]
+            public static int Age { get; set; }
+
+            [Column("Salary")]
+            public static decimal Salary { get; set; }
+
+            [Column("Rating")]
+            public static double Rating { get; set; }
+
+            [Column("IsActive")]
+            public static bool IsActive { get; set; }
+
+            [Column("DepartmentId")]
+            public static int DepartmentId { get; set; }
+
+            [Column("ManagerId")]
+            public static int? ManagerId { get; set; }
+
+            [Column("RoleId")]
+            public static int RoleId { get; set; }
+
+            [Column("CreatedAt")]
+            public static DateTime CreatedAt { get; set; }
+
+            [Column("UpdatedAt")]
+            public static DateTime? UpdatedAt { get; set; }
+        }
+    }
+
+
+    [Alias(typeof(UsersTable), "Manager")]
+    public partial class ManagersTable
+    {
+    }
 ```
 
 Generated features include:
@@ -218,6 +260,7 @@ Generated features include:
 * Result record structs
 * Model classes
 * Subquery/CTE support
+
 
 
 ---
