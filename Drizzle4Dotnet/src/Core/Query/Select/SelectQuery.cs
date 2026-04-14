@@ -1,4 +1,3 @@
-using System.Text;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
@@ -33,68 +32,61 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     {
     }
     
-    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        sb.Append("SELECT ");
-        if (_distinct) sb.Append("DISTINCT ");
-        SelectedColumns.BuildSql(parameters, sb);
+        sqlBuilder.Append("SELECT ");
+        if (_distinct) sqlBuilder.Append("DISTINCT ");
+        SelectedColumns.BuildSql(sqlBuilder);
 
         // FROM
         if (_from != null)
         {
-            sb.Append(" FROM ");
-            _from.BuildSql(parameters, sb);
+            sqlBuilder.Append(" FROM ");
+            _from.BuildSql(sqlBuilder);
         }
 
         if (_joins.Count > 0)
         {
             foreach (var (table, type, on) in _joins)
             {
-                sb.Append(' ').Append(type).Append(" JOIN ");
-                table.BuildSql(parameters, sb);
+                sqlBuilder.Append(' ').Append(type).Append(" JOIN ");
+                table.BuildSql(sqlBuilder);
                 if (on != null)
                 {
-                    sb.Append(" ON (");
-                    on.BuildSql(parameters, sb);
-                    sb.Append(')');
+                    sqlBuilder.Append(" ON (");
+                    on.BuildSql(sqlBuilder);
+                    sqlBuilder.Append(')');
                 }
             }
         }
 
         // WHERE
-        AppendClause(sb, " WHERE ", " AND ", _wheres, parameters, wrapInParentheses: true);
+        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
 
         // GROUP BY
-        AppendClause(sb, " GROUP BY ", ", ", _groupBys, parameters);
+        AppendClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
 
         // HAVING
-        AppendClause(sb, " HAVING ", " AND ", _havings, parameters, wrapInParentheses: true);
+        AppendClause(sqlBuilder, " HAVING ", " AND ", _havings, wrapInParentheses: true);
 
         // ORDER BY
         if (_orderBys.Count > 0)
         {
-            sb.Append(" ORDER BY ");
+            sqlBuilder.Append(" ORDER BY ");
             for (int i = 0; i < _orderBys.Count; i++)
             {
-                if (i > 0) sb.Append(", ");
+                if (i > 0) sqlBuilder.Append(", ");
                 var (expr, isAsc) = _orderBys[i];
-                expr.BuildSql(parameters, sb);
-                sb.Append(isAsc ? " ASC" : " DESC");
+                expr.BuildSql(sqlBuilder);
+                sqlBuilder.Append(isAsc ? " ASC" : " DESC");
             }
         }
 
         // LIMIT & OFFSET
-        if (_limit.HasValue) sb.Append(" LIMIT ").Append(_limit.Value);
-        if (_offset.HasValue) sb.Append(" OFFSET ").Append(_offset.Value);
+        if (_limit.HasValue) sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
+        if (_offset.HasValue) sqlBuilder.Append(" OFFSET ").Append(sqlBuilder.AddParameter(_offset.Value));
         
-        if (_lockClause != null) sb.Append(' ').Append(_lockClause);
-    }
-    
-    public override string BuildSql(Dictionary<string, object?> parameters)
-    {
-        var sb = new StringBuilder(); 
-        BuildSql(parameters, sb);
-        return sb.ToString();
+        if (_lockClause != null) sqlBuilder.Append(' ').Append(_lockClause);
     }
 
     public SelectQuery<TReturn, TDialect> From(IGenericTable<TDialect> table)
@@ -230,68 +222,61 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
     {
     }
     
-    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        sb.Append("SELECT ");
-        if (_distinct) sb.Append("DISTINCT ");
-        SelectedColumns.BuildSql(parameters, sb);
+        sqlBuilder.Append("SELECT ");
+        if (_distinct) sqlBuilder.Append("DISTINCT ");
+        SelectedColumns.BuildSql(sqlBuilder);
 
         // FROM
         if (_from != null)
         {
-            sb.Append(" FROM ");
-            _from.BuildSql(parameters, sb);
+            sqlBuilder.Append(" FROM ");
+            _from.BuildSql(sqlBuilder);
         }
 
         if (_joins.Count > 0)
         {
             foreach (var (table, type, on) in _joins)
             {
-                sb.Append(' ').Append(type).Append(" JOIN ");
-                table.BuildSql(parameters, sb);
+                sqlBuilder.Append(' ').Append(type).Append(" JOIN ");
+                table.BuildSql(sqlBuilder);
                 if (on != null)
                 {
-                    sb.Append(" ON (");
-                    on.BuildSql(parameters, sb);
-                    sb.Append(')');
+                    sqlBuilder.Append(" ON (");
+                    on.BuildSql(sqlBuilder);
+                    sqlBuilder.Append(')');
                 }
             }
         }
 
         // WHERE
-        AppendClause(sb, " WHERE ", " AND ", _wheres, parameters, wrapInParentheses: true);
+        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
 
         // GROUP BY
-        AppendClause(sb, " GROUP BY ", ", ", _groupBys, parameters);
+        AppendClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
 
         // HAVING
-        AppendClause(sb, " HAVING ", " AND ", _havings, parameters, wrapInParentheses: true);
+        AppendClause(sqlBuilder, " HAVING ", " AND ", _havings, wrapInParentheses: true);
 
         // ORDER BY
         if (_orderBys.Count > 0)
         {
-            sb.Append(" ORDER BY ");
+            sqlBuilder.Append(" ORDER BY ");
             for (int i = 0; i < _orderBys.Count; i++)
             {
-                if (i > 0) sb.Append(", ");
+                if (i > 0) sqlBuilder.Append(", ");
                 var (expr, isAsc) = _orderBys[i];
-                expr.BuildSql(parameters, sb);
-                sb.Append(isAsc ? " ASC" : " DESC");
+                expr.BuildSql(sqlBuilder);
+                sqlBuilder.Append(isAsc ? " ASC" : " DESC");
             }
         }
 
         // LIMIT & OFFSET
-        if (_limit.HasValue) sb.Append(" LIMIT ").Append(_limit.Value);
-        if (_offset.HasValue) sb.Append(" OFFSET ").Append(_offset.Value);
+        if (_limit.HasValue) sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
+        if (_offset.HasValue) sqlBuilder.Append(" OFFSET ").Append(sqlBuilder.AddParameter(_offset.Value));
         
-        if (_lockClause != null) sb.Append(' ').Append(_lockClause);
-    }
-    
-    public override string BuildSql(Dictionary<string, object?> parameters)
-    {
-        var sb = new StringBuilder(); 
-        BuildSql(parameters, sb);
-        return sb.ToString();
+        if (_lockClause != null) sqlBuilder.Append(' ').Append(_lockClause);
     }
 
     public  SelectQuery<TReturn, TDialect, TVirtualTable> From(IGenericTable<TDialect> table)

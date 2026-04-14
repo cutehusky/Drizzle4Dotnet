@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Text;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
@@ -25,16 +24,11 @@ public class ReturningQuery<TReturn, TDialect> : QueryBase<TDialect>, IReturning
         return DbClient.ExecuteGetListAsync(this).GetAwaiter();
     }
 
-    public override string BuildSql(Dictionary<string, object?> parameters)
+    public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        return $"{_baseQuery.BuildSql(parameters)} RETURNING {SelectedColumns.BuildSql(parameters)}";
-    }
-
-    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        _baseQuery.BuildSql(parameters, sb);
-        sb.Append(" RETURNING ");
-        SelectedColumns.BuildSql(parameters, sb);
+        _baseQuery.BuildSql(sqlBuilder);
+        sqlBuilder.Append(" RETURNING ");
+        SelectedColumns.BuildSql(sqlBuilder);
     }
 }
 
@@ -58,16 +52,11 @@ public class ReturningQuery<TReturn, TDialect, TVirtualTable> : QueryBase<TDiale
         return DbClient.ExecuteGetListAsync(this).GetAwaiter();
     }
 
-    public override string BuildSql(Dictionary<string, object?> parameters)
+    public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        return $"{_baseQuery.BuildSql(parameters)} RETURNING {SelectedColumns.BuildSql(parameters)}";
-    }
-
-    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        _baseQuery.BuildSql(parameters, sb);
-        sb.Append(" RETURNING ");
-        SelectedColumns.BuildSql(parameters, sb);
+        _baseQuery.BuildSql(sqlBuilder);
+        sqlBuilder.Append(" RETURNING ");
+        SelectedColumns.BuildSql(sqlBuilder);
     }
     
     public TVirtualTable AsSubQuery(string alias)

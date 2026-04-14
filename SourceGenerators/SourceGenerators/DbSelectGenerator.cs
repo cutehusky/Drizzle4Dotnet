@@ -85,8 +85,8 @@ public class DbSelectGenerator : IIncrementalGenerator
             var ctorParams = string.Join(", ", range.Select(n => $"ISql<T{n}> col{n}"));
             var ctorAssigns = string.Join("\n        ", range.Select(n => $"_col{n} = col{n};"));
             var mapperParts = string.Join(",\n            ", range.Select(n => $"r.IsDBNull({n - 1}) ? default! : r.GetFieldValue<T{n}>({n - 1})"));
-            var builderInvocations = string.Join("\n        sb.Append(\", \");\n        ", 
-                range.Select(n => $"_col{n}.BuildSql(parameters, sb);"));
+            var builderInvocations = string.Join("\n        sqlBuilder.Append(\", \");\n        ", 
+                range.Select(n => $"_col{n}.BuildSql(sqlBuilder);"));
 
             sb.AppendLine($@"
 public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{interfaceType}, TDialect> 
@@ -99,14 +99,7 @@ public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{
         {ctorAssigns}
     }}
 
-    public string BuildSql(Dictionary<string, object?> parameters)
-    {{
-        var sb = new StringBuilder();
-        BuildSql(parameters, sb);
-        return sb.ToString();
-    }}
-
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {{
         {builderInvocations}
     }}
@@ -151,11 +144,26 @@ public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{
             
             var sqlFragments = string.Join(", ", model.Properties.Select(p => $"{{{p.ColumnSql}.Sql}}"));
 
-            var selectStructMapper = string.Join(",\n                ", model.Properties.Select((p, i) => 
-                $"r.IsDBNull({i}) ? default({p.Type}) : r.GetFieldValue<{p.Type}>({i})"));
+            // var selectStructMapper = string.Join(",\n                ", model.Properties.Select((p, i) => 
+            //     $"r.IsDBNull({i}) ? default({p.Type}) : r.GetFieldValue<{p.Type}>({i})"));
+            // var selectModelMapper = string.Join(",\n                ",
+            //     model.Properties.Select((p, i) =>
+            //         $"{p.Name} = r.IsDBNull({i}) ? default({p.Type}) : r.GetFieldValue<{p.Type}>({i})"));
+            
+            var selectStructMapper = string.Join(",\n                ", model.Properties.Select((p, i) => {
+                if (!p.Type.EndsWith("?") && !p.Type.StartsWith("Nullable<")) {
+                    return $"r.GetFieldValue<{p.Type}>({i})";
+                }
+                return $"r.IsDBNull({i}) ? default : r.GetFieldValue<{p.Type}>({i})";
+            }));
             var selectModelMapper = string.Join(",\n                ",
-                model.Properties.Select((p, i) =>
-                    $"{p.Name} = r.IsDBNull({i}) ? default({p.Type}) : r.GetFieldValue<{p.Type}>({i})"));
+                model.Properties.Select((p, i) => {
+                    if (!p.Type.EndsWith("?") && !p.Type.StartsWith("Nullable<")) {
+                        return $"{p.Name} = r.GetFieldValue<{p.Type}>({i})";
+                    }
+                    return $"{p.Name} = r.IsDBNull({i}) ? default : r.GetFieldValue<{p.Type}>({i})";
+                }));
+
 
             sb.AppendLine($@"
 public partial class {model.Name}: ISelection<{
@@ -173,12 +181,11 @@ public partial class {model.Name}: ISelection<{
     {{
         private readonly IGenericSql _baseSql;
         private readonly string _aliasName;
-        public string BuildSql(Dictionary<string, object?> parameters) => $""({{_baseSql.BuildSql(parameters)}}) AS {{_aliasName}}"";
-        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) {{
-            sb.Append('(');
-            _baseSql.BuildSql(parameters, sb);
-            sb.Append($"") AS "");
-            sb.Append(_aliasName);
+        public void BuildSql(ISqlBuilder sqlBuilder) {{
+            sqlBuilder.Append('(');
+            _baseSql.BuildSql(sqlBuilder);
+            sqlBuilder.Append($"") AS "");
+            sqlBuilder.Append(_aliasName);
         }}
 
         {string.Join("\n        ", model.Properties.Select(p => $"public VirtualColumn<{p.Type}, PgSqlSqlDialectImpl> {p.Name} {{ get; set; }}"))}
@@ -197,8 +204,7 @@ public partial class {model.Name}: ISelection<{
 
     private sealed class GeneratedStructSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, {model.Name}.GeneratedSubqueryTable>
     {{
-        public string BuildSql(Dictionary<string, object?> parameters) => _sql;
-        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) => sb.Append(_sql);
+        public void BuildSql(ISqlBuilder sqlBuilder) => sqlBuilder.Append(_sql);
 
         private static readonly string _sql;
 
@@ -216,8 +222,7 @@ public partial class {model.Name}: ISelection<{
 
     private sealed class GeneratedModelSelection : ISelectedColumns<{model.Name}, PgSqlSqlDialectImpl, {model.Name}.GeneratedSubqueryTable>
     {{
-        public string BuildSql(Dictionary<string, object?> parameters) => _sql;
-        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) => sb.Append(_sql);
+        public void BuildSql(ISqlBuilder sqlBuilder) => sqlBuilder.Append(_sql);
 
         private static readonly string _sql;
 

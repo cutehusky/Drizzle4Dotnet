@@ -13,9 +13,7 @@ public class VirtualColumn<T, TDialect>: IColumnOfDialect<T, TDialect> where TDi
         _identifier = TDialect.BuildIdentifier(columnName);
     }
     
-    public string BuildSql(Dictionary<string, object?> parameters) => _sql;
-    
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) => sb.Append(_sql);
+    public void BuildSql(ISqlBuilder sqlBuilder) => sqlBuilder.Append(_sql);
     
     public string Sql => _sql;
 

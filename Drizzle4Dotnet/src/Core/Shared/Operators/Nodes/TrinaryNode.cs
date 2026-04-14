@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
 
@@ -20,19 +18,13 @@ public readonly struct TrinaryNode<T>: IOperator<T>
         _operator2 = operator2;
     }
 
-
-    public string BuildSql(Dictionary<string, object?> parameters)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        return $"{_col1.BuildSql(parameters)} {_operator1} {_col2.BuildSql(parameters)} {_operator2} {_col3.BuildSql(parameters)}";
-    }
-
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        _col1.BuildSql(parameters, sb);
-        sb.Append(' ').Append(_operator1).Append(' ');
-        _col2.BuildSql(parameters, sb);
-        sb.Append(' ').Append(_operator2).Append(' ');
-        _col3.BuildSql(parameters, sb);
+        _col1.BuildSql(sqlBuilder);
+        sqlBuilder.Append(' ').Append(_operator1).Append(' ');
+        _col2.BuildSql(sqlBuilder);
+        sqlBuilder.Append(' ').Append(_operator2).Append(' ');
+        _col3.BuildSql(sqlBuilder);
     }
 }
 
@@ -53,19 +45,13 @@ public readonly struct TrinaryNode<T, TReturn>: IOperator<TReturn>
         _operator2 = operator2;
     }
 
-
-    public string BuildSql(Dictionary<string, object?> parameters)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        return $"{_col1.BuildSql(parameters)} {_operator1} {_col2.BuildSql(parameters)} {_operator2} {_col3.BuildSql(parameters)}";
-    }
-
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        _col1.BuildSql(parameters, sb);
-        sb.Append(' ').Append(_operator1).Append(' ');
-        _col2.BuildSql(parameters, sb);
-        sb.Append(' ').Append(_operator2).Append(' ');
-        _col3.BuildSql(parameters, sb);
+        _col1.BuildSql(sqlBuilder);
+        sqlBuilder.Append(' ').Append(_operator1).Append(' ');
+        _col2.BuildSql(sqlBuilder);
+        sqlBuilder.Append(' ').Append(_operator2).Append(' ');
+        _col3.BuildSql(sqlBuilder);
     }
 }
 
@@ -86,26 +72,19 @@ public readonly struct TrinaryNodeV2Val<T, TReturn>: IOperator<TReturn>
         _operator1 = operator1;
         _operator2 = operator2;
     }
-
-
-    public string BuildSql(Dictionary<string, object?> parameters)
+    
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        var paramName = $"@p{parameters.Count}";
-        parameters[paramName] = _col2;
+        _col1.BuildSql(sqlBuilder);
         
-        return $"{_col1.BuildSql(parameters)} {_operator1} {paramName} {_operator2} {_col3.BuildSql(parameters)}";
-    }
-
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        var paramName = $"@p{parameters.Count}";
-        parameters[paramName] = _col2;
+        sqlBuilder.Append(' ').Append(_operator1).Append(' ');
         
-        _col1.BuildSql(parameters, sb);
-        sb.Append(' ').Append(_operator1).Append(' ');
-        sb.Append(paramName);
-        sb.Append(' ').Append(_operator2).Append(' ');
-        _col3.BuildSql(parameters, sb);
+        var paramName = sqlBuilder.AddParameter(_col2);
+        sqlBuilder.Append(paramName);
+        
+        sqlBuilder.Append(' ').Append(_operator2).Append(' ');
+        
+        _col3.BuildSql(sqlBuilder);
     }
 }
 
@@ -126,23 +105,18 @@ public readonly struct TrinaryNodeV3Val<T, TReturn> : IOperator<TReturn>
         _operator2 = operator2;
     }
 
-    public string BuildSql(Dictionary<string, object?> parameters)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        var p3 = $"@p{parameters.Count}";
-        parameters[p3] = _col3;
-        return $"{_col1.BuildSql(parameters)} {_operator1} {_col2.BuildSql(parameters)} {_operator2} {p3}";
-    }
-
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        var p3 = $"@p{parameters.Count}";
-        parameters[p3] = _col3;
+        _col1.BuildSql(sqlBuilder);
         
-        _col1.BuildSql(parameters, sb);
-        sb.Append(' ').Append(_operator1).Append(' ');
-        _col2.BuildSql(parameters, sb);
-        sb.Append(' ').Append(_operator2).Append(' ');
-        sb.Append(p3);
+        sqlBuilder.Append(' ').Append(_operator1).Append(' ');
+        
+        _col2.BuildSql(sqlBuilder);
+        
+        sqlBuilder.Append(' ').Append(_operator2).Append(' ');
+        
+        var paramName = sqlBuilder.AddParameter(_col3);
+        sqlBuilder.Append(paramName);
     }
 }
 
@@ -163,26 +137,18 @@ public readonly struct TrinaryNodeV23Val<T, TReturn> : IOperator<TReturn>
         _operator2 = operator2;
     }
 
-    public string BuildSql(Dictionary<string, object?> parameters)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        var p2 = $"@p{parameters.Count}";
-        parameters[p2] = _col2;
-        var p3 = $"@p{parameters.Count}";
-        parameters[p3] = _col3;
-        return $"{_col1.BuildSql(parameters)} {_operator1} {p2} {_operator2} {p3}";
-    }
-    
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        var p2 = $"@p{parameters.Count}";
-        parameters[p2] = _col2;
-        var p3 = $"@p{parameters.Count}";
-        parameters[p3] = _col3;
+        _col1.BuildSql(sqlBuilder);
         
-        _col1.BuildSql(parameters, sb);
-        sb.Append(' ').Append(_operator1).Append(' ');
-        sb.Append(p2);
-        sb.Append(' ').Append(_operator2).Append(' ');
-        sb.Append(p3);
+        sqlBuilder.Append(' ').Append(_operator1).Append(' ');
+        
+        var paramName2 = sqlBuilder.AddParameter(_col2);
+        sqlBuilder.Append(paramName2);
+        
+        sqlBuilder.Append(' ').Append(_operator2).Append(' ');
+        
+        var paramName3 = sqlBuilder.AddParameter(_col3);
+        sqlBuilder.Append(paramName3);
     }
 }

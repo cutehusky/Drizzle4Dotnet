@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
 
@@ -16,21 +14,11 @@ public readonly struct BinarySqlValueNode<T, TReturn> : IOperator<TReturn>
         _operator = @operator;
     }
 
-    public string BuildSql(Dictionary<string, object?> parameters)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        string paramName = $"@p{parameters.Count}";
-        parameters.Add(paramName, _value);
-
-        return $"{_col.BuildSql(parameters)} {_operator} {paramName}";
-    }
-
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        string paramName = $"@p{parameters.Count}";
-        parameters.Add(paramName, _value);
-
-        _col.BuildSql(parameters, sb);
-        sb.Append(' ').Append(_operator).Append(' ').Append(paramName);
+        _col.BuildSql(sqlBuilder);
+        string paramName = sqlBuilder.AddParameter(_value);
+        sqlBuilder.Append(' ').Append(_operator).Append(' ').Append(paramName);
     }
 }
 
@@ -46,52 +34,30 @@ public readonly struct BinarySqlListValueNode<T, TReturn> : IOperator<TReturn>
         _value = value;
         _operator = @operator;
     }
-    
-    
-    public string BuildSql(Dictionary<string, object?> parameters)
+
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
+        _col.BuildSql(sqlBuilder);
         var paramNames = new List<string>();
 
         foreach (var val in _value)
         {
-            string name = $"@p{parameters.Count}";
-            parameters.Add(name, val);
-            paramNames.Add(name);
+            paramNames.Add(sqlBuilder.AddParameter(val));
         }
 
         if (paramNames.Count == 0)
         {
-            return _operator.Contains("NOT") ? "1=1" : "1=0";
-        }
-
-        return $"{_col.BuildSql(parameters)} {_operator} ({string.Join(", ", paramNames)})";
-    }
-
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        var paramNames = new List<string>();
-
-        foreach (var val in _value)
-        {
-            string name = $"@p{parameters.Count}";
-            parameters.Add(name, val);
-            paramNames.Add(name);
-        }
-
-        if (paramNames.Count == 0)
-        {
-            sb.Append(_operator.Contains("NOT") ? " 1=1 " : " 1=0 ");
+            sqlBuilder.Append(_operator.Contains("NOT") ? " 1=1 " : " 1=0 ");
             return;
         }
 
-        _col.BuildSql(parameters, sb);
-        sb.Append(' ').Append(_operator).Append(" (");
+        sqlBuilder.Append(' ').Append(_operator).Append(" (");
         for (int i = 0; i < paramNames.Count; i++)
         {
-            if (i > 0) sb.Append(", ");
-            sb.Append(paramNames[i]);
+            if (i > 0) sqlBuilder.Append(", ");
+            sqlBuilder.Append(paramNames[i]);
         }
-        sb.Append(')');
+        sqlBuilder.Append(')');
     }
 }
 
@@ -109,21 +75,16 @@ public readonly struct BinaryNode<T> : IOperator<T>
         _operator = @operator;
         _wrapInParentheses = wrapInParentheses;
     }
-    
-    public string BuildSql(Dictionary<string, object?> parameters)
-    {
-        return _wrapInParentheses ? $"({_c1.BuildSql(parameters)}) {_operator} ({_c2.BuildSql(parameters)})" : $"{_c1.BuildSql(parameters)} {_operator} {_c2.BuildSql(parameters)}";
-    }
 
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (_wrapInParentheses) sb.Append('(');
-        _c1.BuildSql(parameters, sb);
-        if (_wrapInParentheses) sb.Append(')');
-        sb.Append(' ').Append(_operator).Append(' ');
-        if (_wrapInParentheses) sb.Append('(');
-        _c2.BuildSql(parameters, sb);
-        if (_wrapInParentheses) sb.Append(')');
+        if (_wrapInParentheses) sqlBuilder.Append('(');
+        _c1.BuildSql(sqlBuilder);
+        if (_wrapInParentheses) sqlBuilder.Append(')');
+        sqlBuilder.Append(' ').Append(_operator).Append(' ');
+        if (_wrapInParentheses) sqlBuilder.Append('(');
+        _c2.BuildSql(sqlBuilder);
+        if (_wrapInParentheses) sqlBuilder.Append(')');
     }
 }
 
@@ -141,20 +102,15 @@ public readonly struct BinaryNode<T1, T2, TReturn> : IOperator<TReturn>
         _operator = @operator;
         _wrapInParentheses = wrapInParentheses;
     }
-    
-    public string BuildSql(Dictionary<string, object?> parameters)
-    {
-        return _wrapInParentheses ? $"({_c1.BuildSql(parameters)}) {_operator} ({_c2.BuildSql(parameters)})" : $"{_c1.BuildSql(parameters)} {_operator} {_c2.BuildSql(parameters)}";
-    }
 
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (_wrapInParentheses) sb.Append('(');
-        _c1.BuildSql(parameters, sb);
-        if (_wrapInParentheses) sb.Append(')');
-        sb.Append(' ').Append(_operator).Append(' ');
-        if (_wrapInParentheses) sb.Append('(');
-        _c2.BuildSql(parameters, sb);
-        if (_wrapInParentheses) sb.Append(')');
+        if (_wrapInParentheses) sqlBuilder.Append('(');
+        _c1.BuildSql(sqlBuilder);
+        if (_wrapInParentheses) sqlBuilder.Append(')');
+        sqlBuilder.Append(' ').Append(_operator).Append(' ');
+        if (_wrapInParentheses) sqlBuilder.Append('(');
+        _c2.BuildSql(sqlBuilder);
+        if (_wrapInParentheses) sqlBuilder.Append(')');
     }
 }

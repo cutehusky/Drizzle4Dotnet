@@ -1,4 +1,3 @@
-using System.Text;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
@@ -58,47 +57,38 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         return this;
     }
     
-    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    public override void BuildSql(ISqlBuilder sqlBuilder)
     {
         if (_setValues.Count == 0)
         {
             throw new InvalidOperationException("No columns set for update.");
         }
         
-        sb.Append("UPDATE ");
-        _table.BuildSql(parameters, sb);
-        sb.Append(" SET ");
+        sqlBuilder.Append("UPDATE ");
+        _table.BuildSql(sqlBuilder);
+        sqlBuilder.Append(" SET ");
 
         bool firstSet = true;
         foreach (var kv in _setValues)
         {
-            if (!firstSet) sb.Append(", ");
+            if (!firstSet) sqlBuilder.Append(", ");
         
-            sb.Append(kv.Key);
-            sb.Append(" = ");
+            sqlBuilder.Append(kv.Key);
+            sqlBuilder.Append(" = ");
 
             if (kv.Value is IGenericSql op)
             {
-                sb.Append('(');
-                op.BuildSql(parameters, sb);
-                sb.Append(')');
+                sqlBuilder.Append('(');
+                op.BuildSql(sqlBuilder);
+                sqlBuilder.Append(')');
             }
             else
             {
-                string paramName = $"@p{parameters.Count}";
-                parameters.Add(paramName, kv.Value);
-                sb.Append(paramName);
+                sqlBuilder.Append(sqlBuilder.AddParameter(kv.Value));
             }
             firstSet = false;
         }
 
-        AppendClause(sb, " WHERE ", " AND ", _wheres, parameters, wrapInParentheses: true);
-    }
-    
-    public override string BuildSql(Dictionary<string, object?> parameters)
-    {
-        var sb = new StringBuilder();
-        BuildSql(parameters, sb);
-        return sb.ToString();
+        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
     }
 }

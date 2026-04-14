@@ -187,8 +187,7 @@ public class TableGenerator : IIncrementalGenerator
 
         private static readonly string _sql;
 
-        public string BuildSql(Dictionary<string, object?> parameters) => _sql;
-        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) => sb.Append(_sql);
+        public void BuildSql(ISqlBuilder sqlBuilder) => sqlBuilder.Append(_sql);
 ");
             var tableSql = table.TableType == ETableType.DbTable
                 ? $"_sql = PgSqlSqlDialectImpl.BuildTableName(\"{table.DbSchemaName}\", \"{table.DbTableName}\");"
@@ -217,11 +216,23 @@ public class TableGenerator : IIncrementalGenerator
             var selectStructProperties = string.Join(", ", table.Columns!.Select(p => $"{p.Type} {p.PropName}"));
             var selectModelProperties = string.Join("\n        ",
                 table.Columns!.Select(p => $"public {p.Type} {p.PropName} {{ get; set; }} = default!;"));
-            var selectStructMapper = string.Join(",\n                ",
-                table.Columns!.Select((p, i) => $"r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
-            var selectModelMapper = string.Join(",\n                ",
-                table.Columns!.Select((p, i) =>
-                    $"{p.PropName} = r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
+            // var selectStructMapper = string.Join(",\n                ",
+            //     table.Columns!.Select((p, i) => $"r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
+            // var selectModelMapper = string.Join(",\n                ",
+            //     table.Columns!.Select((p, i) =>
+            //         $"{p.PropName} = r.IsDBNull({i}) ? default! : r.GetFieldValue<{p.Type}>({i})"));
+            var selectStructMapper = string.Join(",\n                ", table.Columns!.Select((p, i) => {
+                if (!p.Type.EndsWith("?") && !p.Type.StartsWith("Nullable<")) {
+                    return $"r.GetFieldValue<{p.Type}>({i})";
+                }
+                return $"r.IsDBNull({i}) ? default : r.GetFieldValue<{p.Type}>({i})";
+            }));
+            var selectModelMapper = string.Join(",\n                ", table.Columns!.Select((p, i) => {
+                if (!p.Type.EndsWith("?") && !p.Type.StartsWith("Nullable<")) {
+                    return $"{p.PropName} = r.GetFieldValue<{p.Type}>({i})";
+                }
+                return $"{p.PropName} = r.IsDBNull({i}) ? default : r.GetFieldValue<{p.Type}>({i})";
+            }));
             sb.AppendLine($@"
     public static ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, GeneratedSubqueryTable> ResultAll {{ get; }} = new GeneratedResultSelection();
     public static ISelectedColumns<SelectModel, PgSqlSqlDialectImpl, GeneratedSubqueryTable> ModelAll {{ get; }} = new GeneratedModelSelection();
@@ -236,12 +247,11 @@ public class TableGenerator : IIncrementalGenerator
     {{
         private readonly IGenericSql _baseSql;
         private readonly string _aliasName;
-        public string BuildSql(Dictionary<string, object?> parameters) => $""({{_baseSql.BuildSql(parameters)}}) AS {{_aliasName}}"";
-        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb) {{
-            sb.Append('(');
-            _baseSql.BuildSql(parameters, sb);
-            sb.Append($"") AS "");
-            sb.Append(_aliasName);
+        public void BuildSql(ISqlBuilder sqlBuilder) {{
+            sqlBuilder.Append('(');
+            _baseSql.BuildSql(sqlBuilder);
+            sqlBuilder.Append($"") AS "");
+            sqlBuilder.Append(_aliasName);
         }}
 
         {string.Join("\n        ", table.Columns!.Select(p => $"public VirtualColumn<{p.Type}, PgSqlSqlDialectImpl> {p.PropName} {{ get; set; }}"))}
@@ -261,11 +271,10 @@ public class TableGenerator : IIncrementalGenerator
     private sealed class GeneratedResultSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, GeneratedSubqueryTable>
     {{
         public static string _sql;
-        public string BuildSql(Dictionary<string, object?> parameters) => _sql;
 
-        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+        public void BuildSql(ISqlBuilder sqlBuilder)
         {{
-            sb.Append(_sql);
+            sqlBuilder.Append(_sql);
         }}
 
         public SelectResult Mapper(DbDataReader r)
@@ -280,10 +289,9 @@ public class TableGenerator : IIncrementalGenerator
     {{
         public static string _sql;
 
-        public string BuildSql(Dictionary<string, object?> parameters) => _sql;
-        public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+        public void BuildSql(ISqlBuilder sqlBuilder)
         {{
-            sb.Append(_sql);
+            sqlBuilder.Append(_sql);
         }}
 
         public SelectModel Mapper(DbDataReader r)

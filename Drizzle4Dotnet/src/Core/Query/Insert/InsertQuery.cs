@@ -1,4 +1,3 @@
-using System.Text;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
@@ -63,54 +62,45 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         return this;
     }
     
-    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    public override void BuildSql(ISqlBuilder sqlBuilder)
     {
         if (_values.Count == 0)
             throw new InvalidOperationException("No values provided for insert.");
 
         var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
 
-        sb.Append("INSERT INTO ");
-        _table.BuildSql(parameters, sb);
-        sb.Append(" (");
+        sqlBuilder.Append("INSERT INTO ");
+        _table.BuildSql(sqlBuilder);
+        sqlBuilder.Append(" (");
 
         for (int i = 0; i < allColumns.Count; i++)
         {
-            if (i > 0) sb.Append(", ");
-            sb.Append(allColumns[i]);
+            if (i > 0) sqlBuilder.Append(", ");
+            sqlBuilder.Append(allColumns[i]);
         }
-        sb.Append(") VALUES ");
+        sqlBuilder.Append(") VALUES ");
 
         for (int rowIndex = 0; rowIndex < _values.Count; rowIndex++)
         {
-            if (rowIndex > 0) sb.Append(", ");
+            if (rowIndex > 0) sqlBuilder.Append(", ");
         
-            sb.Append('(');
+            sqlBuilder.Append('(');
             var row = _values[rowIndex];
         
             for (int colIndex = 0; colIndex < allColumns.Count; colIndex++)
             {
-                if (colIndex > 0) sb.Append(", ");
+                if (colIndex > 0) sqlBuilder.Append(", ");
             
                 if (row.TryGetValue(allColumns[colIndex], out var val))
                 {
-                    string pName = $"@p{parameters.Count}";
-                    parameters.Add(pName, val);
-                    sb.Append(pName);
+                    sqlBuilder.Append(sqlBuilder.AddParameter(val));
                 }
                 else
                 {
-                    sb.Append("NULL");
+                    sqlBuilder.Append("NULL");
                 }
             }
-            sb.Append(')');
+            sqlBuilder.Append(')');
         }
-    }
-    
-    public override string BuildSql(Dictionary<string, object?> parameters)
-    {
-        var sb = new StringBuilder();
-        BuildSql(parameters, sb);
-        return sb.ToString();
     }
 }

@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
 public readonly struct UnaryNode<T> : IOperator<T>
@@ -15,26 +13,19 @@ public readonly struct UnaryNode<T> : IOperator<T>
         _prefix = prefix;
     }
 
-    public string BuildSql(Dictionary<string, object?> parameters)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        return _prefix 
-            ? $"{_op} ({_expression.BuildSql(parameters)})"  
-            : $"{_expression.BuildSql(parameters)} {_op}";
-    }
-
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        if (_prefix)
+        if (_prefix) 
         {
-            sb.Append(_op).Append(' ');
-            sb.Append('(');
-            _expression.BuildSql(parameters, sb);
-            sb.Append(')');
+            sqlBuilder.Append(_op).Append(' ');
+            sqlBuilder.Append('(');
+            _expression.BuildSql(sqlBuilder);
+            sqlBuilder.Append(')');
         }
         else
         {
-            _expression.BuildSql(parameters, sb);
-            sb.Append(' ').Append(_op);
+            _expression.BuildSql(sqlBuilder);
+            sqlBuilder.Append(' ').Append(_op);
         }
     }
 }
@@ -52,27 +43,20 @@ public readonly struct UnaryNode<T, TReturn> : IOperator<TReturn>
         _op = op;
         _prefix = prefix;
     }
-
-    public string BuildSql(Dictionary<string, object?> parameters)
-    {
-        return _prefix 
-            ? $"{_op} ({_expression.BuildSql(parameters)})"  
-            : $"{_expression.BuildSql(parameters)} {_op}";
-    }
-
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
         if (_prefix)
         {
-            sb.Append(_op).Append(' ');
-            sb.Append('(');
-            _expression.BuildSql(parameters, sb);
-            sb.Append(')');
+            sqlBuilder.Append(_op).Append(' ');
+            sqlBuilder.Append('(');
+            _expression.BuildSql(sqlBuilder);
+            sqlBuilder.Append(')');
         }
         else
         {
-            _expression.BuildSql(parameters, sb);
-            sb.Append(' ').Append(_op);
+            _expression.BuildSql(sqlBuilder);
+            sqlBuilder.Append(' ').Append(_op);
         }
     }
 }

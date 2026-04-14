@@ -27,17 +27,10 @@ public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         return this;
     }
     
-    public override void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        sb.Append("DELETE FROM ");
-        _table.BuildSql(parameters, sb);
-        AppendClause(sb, " WHERE ", " AND ", _wheres, parameters, wrapInParentheses: true);
-    }
-
-    public override string BuildSql(Dictionary<string, object?> parameters)
-    {
-        var sb = new StringBuilder();
-        BuildSql(parameters, sb);
-        return sb.ToString();
+        sqlBuilder.Append("DELETE FROM ");
+        _table.BuildSql(sqlBuilder);
+        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
     }
 }

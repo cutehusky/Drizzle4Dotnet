@@ -1,12 +1,10 @@
-using System.Text;
 using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Schema.Tables;
 
 public interface IGenericTable<TDialect> where TDialect : ISqlDialect
 {
-    public string BuildSql(Dictionary<string, object?> parameters);
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb);
+    public void BuildSql(ISqlBuilder sqlBuilder);
 }
 
 public interface ITable<TDialect>: IGenericTable<TDialect> where TDialect : ISqlDialect

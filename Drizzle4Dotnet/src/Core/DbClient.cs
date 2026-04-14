@@ -1,5 +1,4 @@
 using System.Data.Common;
-using System.Text;
 using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Query.Select;
@@ -89,10 +88,10 @@ public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposabl
         await using var cmd = _conn.CreateCommand();
         cmd.Transaction = _transaction;
 
-        var parameters = new Dictionary<string, object?>();
-        var sb = new StringBuilder();
-        query.BuildSql(parameters, sb);
-        cmd.CommandText = sb.ToString();
+        var sqlBuilder = new SqlBuilder<TDialect>();
+        query.BuildSql(sqlBuilder);
+        var (sql, parameters) = sqlBuilder.Build();
+        cmd.CommandText = sql;
 
         foreach (var entry in parameters)
         {
@@ -117,10 +116,10 @@ public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposabl
         await using var cmd = _conn.CreateCommand();
         cmd.Transaction = _transaction;
 
-        var parameters = new Dictionary<string, object?>();
-        var sb = new StringBuilder();
-        query.BuildSql(parameters, sb);
-        cmd.CommandText = sb.ToString();
+        var sqlBuilder = new SqlBuilder<TDialect>();
+        query.BuildSql(sqlBuilder);
+        var (sql, parameters) = sqlBuilder.Build();
+        cmd.CommandText = sql;
 
         foreach (var entry in parameters)
         {
@@ -145,10 +144,10 @@ public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposabl
         await using var cmd = _conn.CreateCommand();
         cmd.Transaction = _transaction;
 
-        var parameters = new Dictionary<string, object?>();
-        var sb = new StringBuilder();
-        query.BuildSql(parameters, sb);
-        cmd.CommandText = sb.ToString();
+        var sqlBuilder = new SqlBuilder<TDialect>();
+        query.BuildSql(sqlBuilder);
+        var (sql, parameters) = sqlBuilder.Build();
+        cmd.CommandText = sql;
 
         foreach (var entry in parameters)
         {

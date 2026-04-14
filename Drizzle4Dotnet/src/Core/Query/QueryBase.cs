@@ -1,4 +1,3 @@
-using System.Text;
 using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query;
@@ -13,29 +12,27 @@ public abstract class QueryBase<TDialect>: IGenericSql where TDialect : ISqlDial
         DbClient = dbClient;
     }
 
-    public abstract string BuildSql(Dictionary<string, object?> parameters);
-    public abstract void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb);
+    public abstract void BuildSql(ISqlBuilder sqlBuilder);
 
     public (string, Dictionary<string, object?>) Build()
     {
-        var parameters = new Dictionary<string, object?>();
-        var sb = new StringBuilder();
-        BuildSql(parameters, sb);
-        return (sb.ToString(), parameters);
+        var builder = new SqlBuilder<TDialect>();
+        BuildSql(builder);
+        return builder.Build();
     }
     
-    protected void AppendClause(StringBuilder sb, string header, string separator, IReadOnlyList<IGenericSql> items, 
-        Dictionary<string, object?> parameters, bool wrapInParentheses = false)
+    protected void AppendClause(ISqlBuilder sqlBuilder, string header, string separator, IReadOnlyList<IGenericSql> items, 
+         bool wrapInParentheses = false)
     {
         if (items.Count == 0) return;
 
-        sb.Append(header);
+        sqlBuilder.Append(header);
         for (int i = 0; i < items.Count; i++)
         {
-            if (i > 0) sb.Append(separator);
-            if (wrapInParentheses) sb.Append('(');
-            items[i].BuildSql(parameters, sb);
-            if (wrapInParentheses) sb.Append(')');
+            if (i > 0) sqlBuilder.Append(separator);
+            if (wrapInParentheses) sqlBuilder.Append('(');
+            items[i].BuildSql(sqlBuilder);
+            if (wrapInParentheses) sqlBuilder.Append(')');
         }
     }
 }

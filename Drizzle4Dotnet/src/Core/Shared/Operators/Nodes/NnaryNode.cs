@@ -1,4 +1,3 @@
-using System.Text;
 using Drizzle4Dotnet.Core.Query.Select;
 
 namespace Drizzle4Dotnet.Core.Shared.Operators.Nodes;
@@ -13,28 +12,15 @@ public readonly struct NnaryNode<T, TReturn>: IOperator<TReturn>
         _seperator = seperator;
     }
     
-    public string BuildSql(Dictionary<string, object?> parameters)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        var sb = new StringBuilder();
-        sb.Append('(');
+        sqlBuilder.Append('(');
         for (int i = 0; i < _cols.Length; i++)
         {
-            if (i > 0) sb.Append(_seperator);
-            sb.Append(_cols[i].BuildSql(parameters));
+            if (i > 0) sqlBuilder.Append(_seperator);
+            _cols[i].BuildSql(sqlBuilder);
         }
-        sb.Append(')');
-        return sb.ToString();
-    }
-
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        sb.Append('(');
-        for (int i = 0; i < _cols.Length; i++)
-        {
-            if (i > 0) sb.Append(_seperator);
-            _cols[i].BuildSql(parameters, sb);
-        }
-        sb.Append(')');
+        sqlBuilder.Append(')');
     }
 }
 
@@ -53,32 +39,16 @@ public readonly struct NnaryAnyNode<T, TReturn, TDialect>: IOperator<TReturn> wh
         _seperator = seperator;
     }
     
-    public string BuildSql(Dictionary<string, object?> parameters)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        var sb = new StringBuilder();
-        sb.Append(_c1.BuildSql(parameters));
-        sb.Append(_op);
-        sb.Append('(');
+        _c1.BuildSql(sqlBuilder);
+        sqlBuilder.Append(' ').Append(_op).Append(" (");
         for (int i = 0; i < _cols.Length; i++)
         {
-            if (i > 0) sb.Append(_seperator);
-            sb.Append(_cols[i].BuildSql(parameters));
+            if (i > 0) sqlBuilder.Append(_seperator);
+            _cols[i].BuildSql(sqlBuilder);
         }
-        sb.Append(')');
-        return sb.ToString();
-    }
-
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        _c1.BuildSql(parameters, sb);
-        sb.Append(_op);
-        sb.Append('(');
-        for (int i = 0; i < _cols.Length; i++)
-        {
-            if (i > 0) sb.Append(_seperator);
-            _cols[i].BuildSql(parameters, sb);
-        }
-        sb.Append(')');
+        sqlBuilder.Append(')');
     }
 }
 
@@ -98,29 +68,18 @@ public readonly struct SqlValue<T, TDialect> where TDialect : ISqlDialect
         return new SqlValue<T, TDialect>(new SqlConverter<T>(query));
     }
     
-    public string BuildSql(Dictionary<string, object?> parameters)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (_isSql && _sql != null) return $"({_sql.BuildSql(parameters)})";
+        if (_isSql && _sql != null) 
+        {
+            sqlBuilder.Append('(');
+            _sql.BuildSql(sqlBuilder);
+            sqlBuilder.Append(')');
+            return;
+        }
         
-        var paramName = $"p{parameters.Count}";
-        parameters[paramName] = _value;
-        return $"@{paramName}";
-    }
-    
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
-    {
-        if (_isSql && _sql != null)
-        {
-            sb.Append('(');
-            _sql.BuildSql(parameters, sb);
-            sb.Append(')');
-        }
-        else
-        {
-            var paramName = $"p{parameters.Count}";
-            parameters[paramName] = _value;
-            sb.Append('@').Append(paramName);
-        }
+        var paramName = sqlBuilder.AddParameter(_value);
+        sqlBuilder.Append(paramName);
     }
 }
 
@@ -128,9 +87,8 @@ internal readonly struct SqlConverter<T> : ISql<T>
 {
     private readonly ISql<T> _inner;
     public SqlConverter(ISql<T> inner) => _inner = inner;
-    public string BuildSql(Dictionary<string, object?> p) => _inner.BuildSql(p);
-    public void BuildSql(Dictionary<string, object?> parameters, StringBuilder sb)
+    public void BuildSql(ISqlBuilder sqlBuilder)
     {
-        _inner.BuildSql(parameters, sb);
+        _inner.BuildSql(sqlBuilder);
     }
 }
