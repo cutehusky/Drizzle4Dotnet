@@ -50,15 +50,15 @@ public class DbSelectGenerator : IIncrementalGenerator
 //         {
 //             var range = Enumerable.Range(1, i).ToList();
 //             var tTypes = string.Join(", ", range.Select(n => $"T{n}"));
-//             var colParams = string.Join(", ", range.Select(n => $"ISql<T{n}> col{n}"));
+//             var colParams = string.Join(", ", range.Select(n => $"IAliasedSql<T{n}> col{n}"));
 //             var colArgs = string.Join(", ", range.Select(n => $"col{n}"));
 //             string returnType = i == 1 ? "T1" : $"({tTypes})";
 //
 //             sb.AppendLine($@"
-//     public static SelectQuery<{returnType}, TDialect> Select<{tTypes}, TDialect>(this IQueryBuilder<TDialect> builder, {colParams}) where TDialect : ISqlDialect
+//     public static SelectQuery<{returnType}, TDialect, TypedTupleGeneratedSubqueryTable<TDialect>> Select<{tTypes}, TDialect>(this IQueryBuilder<TDialect> builder, {colParams}) where TDialect : ISqlDialect
 //         => builder.Select(new TypedTupleSelectedColumns<{tTypes}, TDialect>({colArgs}));
 //
-//     public static SelectQuery<{returnType}, TDialect> SelectDistinct<{tTypes}, TDialect>(this IQueryBuilder<TDialect> builder, {colParams}) where TDialect : ISqlDialect
+//     public static SelectQuery<{returnType}, TDialect, TypedTupleGeneratedSubqueryTable<TDialect>> SelectDistinct<{tTypes}, TDialect>(this IQueryBuilder<TDialect> builder, {colParams}) where TDialect : ISqlDialect
 //         => builder.SelectDistinct(new TypedTupleSelectedColumns<{tTypes}, TDialect>({colArgs}));");
 //         }
 //         sb.AppendLine("}");
@@ -81,15 +81,15 @@ public class DbSelectGenerator : IIncrementalGenerator
             var range = Enumerable.Range(1, i).ToList();
             var tParams = string.Join(", ", range.Select(n => $"T{n}"));
             string interfaceType = i == 1 ? "T1" : $"({tParams})";
-            var fields = string.Join("\n    ", range.Select(n => $"private readonly ISql<T{n}> _col{n};"));
-            var ctorParams = string.Join(", ", range.Select(n => $"ISql<T{n}> col{n}"));
+            var fields = string.Join("\n    ", range.Select(n => $"private readonly IAliasedSql<T{n}> _col{n};"));
+            var ctorParams = string.Join(", ", range.Select(n => $"IAliasedSql<T{n}> col{n}"));
             var ctorAssigns = string.Join("\n        ", range.Select(n => $"_col{n} = col{n};"));
             var mapperParts = string.Join(",\n            ", range.Select(n => $"r.IsDBNull({n - 1}) ? default! : r.GetFieldValue<T{n}>({n - 1})"));
             var builderInvocations = string.Join("\n        sqlBuilder.Append(\", \");\n        ", 
                 range.Select(n => $"_col{n}.BuildSql(sqlBuilder);"));
 
             sb.AppendLine($@"
-public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{interfaceType}, TDialect> 
+public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{interfaceType}, TDialect, TypedTupleGeneratedSubqueryTable<TDialect>> 
     where TDialect : ISqlDialect
 {{
     {fields}
@@ -181,26 +181,41 @@ public partial class {model.Name}: ISelection<{
     public static ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, {model.Name}.GeneratedSubqueryTable> Record {{ get; }} = new GeneratedStructSelection();
     public static ISelectedColumns<{model.Name}, PgSqlSqlDialectImpl, {model.Name}.GeneratedSubqueryTable> Mapping {{ get; }} = new GeneratedModelSelection();
 
-    public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>
+    public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>, ICteTable<PgSqlSqlDialectImpl>
     {{
         private readonly IGenericSql _baseSql;
         private readonly string _aliasName;
+        private readonly bool _isCte = false;
         public void BuildSql(ISqlBuilder sqlBuilder) {{
+            if (_isCte) {{
+                sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(_aliasName));
+                sqlBuilder.Append("" AS ("");
+                _baseSql.BuildSql(sqlBuilder);
+                sqlBuilder.Append(')');
+                return;
+            }}
+
             sqlBuilder.Append('(');
             _baseSql.BuildSql(sqlBuilder);
-            sqlBuilder.Append($"") AS "");
-            sqlBuilder.Append(_aliasName);
+            sqlBuilder.Append("") AS "");
+            sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(_aliasName));
+        }}
+
+        public ICteTable<PgSqlSqlDialectImpl> AsCte() {{
+            return new GeneratedSubqueryTable(_aliasName, _baseSql, true);
         }}
 
         {string.Join("\n        ", model.Properties.Select(p => $"public VirtualColumn<{p.Type}, PgSqlSqlDialectImpl> {p.Name} {{ get; set; }}"))}
 
         public GeneratedSubqueryTable(
             string aliasName,
-            IGenericSql baseSql
+            IGenericSql baseSql,
+            bool isCte = false
         ) {{
             _baseSql = baseSql;
             _aliasName = aliasName;
-            {string.Join("\n            ", model.Properties.Select(p => $"this.{p.Name} = new VirtualColumn<{p.Type}, PgSqlSqlDialectImpl>(aliasName, {p.ColumnSql}.ColumnName);"))}
+            _isCte = isCte;
+            {string.Join("\n            ", model.Properties.Select(p => $"this.{p.Name} = new VirtualColumn<{p.Type}, PgSqlSqlDialectImpl>(aliasName, {p.ColumnSql}.Identifier);"))}
         }}
 
         public static IVirtualTable<PgSqlSqlDialectImpl> Create(IGenericSql baseSql, string aliasName) => new GeneratedSubqueryTable(aliasName, baseSql);

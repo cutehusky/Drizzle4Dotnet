@@ -7,12 +7,10 @@ public class DbColumn<T, TTable, TDialect>: IColumnOfTable<TTable>, IColumnOfDia
 {
     private readonly string _sql;
     private readonly string _identifier;
-    private readonly string _columnName;
     public DbColumn(string columnName)
     {
         _sql = TDialect.BuildColumnName(TTable.TableRefName, columnName);
-        _identifier = TDialect.BuildIdentifier(columnName);
-        _columnName = columnName;
+        _identifier = columnName;
     }
     
     public void BuildSql(ISqlBuilder sqlBuilder) => sqlBuilder.Append(_sql);
@@ -20,5 +18,4 @@ public class DbColumn<T, TTable, TDialect>: IColumnOfTable<TTable>, IColumnOfDia
     public string Sql => _sql;
 
     public string Identifier => _identifier;
-    public string ColumnName => _columnName;
 }

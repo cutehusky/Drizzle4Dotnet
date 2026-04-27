@@ -8,10 +8,17 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
 {
     private readonly TTable _table;
     private readonly List<Dictionary<string, object?>> _values = new();
+    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
 
     public InsertQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
     {
         _table = table;
+    }
+    
+    public InsertQuery<TTable, TDialect> With(IVirtualTable<TDialect> cteTable)
+    {
+        _cteTables.Add(cteTable.AsCte());
+        return this;
     }
     
     public InsertQuery<TTable, TDialect> Value(IInsertRecord<TTable, TDialect> record)
@@ -68,6 +75,17 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
             throw new InvalidOperationException("No values provided for insert.");
 
         var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
+        
+        if (_cteTables.Count > 0)
+        {
+            sqlBuilder.Append("WITH ");
+            for (int i = 0; i < _cteTables.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                _cteTables[i].BuildSql(sqlBuilder);
+            }
+            sqlBuilder.Append(' ');
+        }
 
         sqlBuilder.Append("INSERT INTO ");
         _table.BuildSql(sqlBuilder);
@@ -76,7 +94,7 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         for (int i = 0; i < allColumns.Count; i++)
         {
             if (i > 0) sqlBuilder.Append(", ");
-            sqlBuilder.Append(allColumns[i]);
+            sqlBuilder.Append(TDialect.BuildIdentifier(allColumns[i]));
         }
         sqlBuilder.Append(") VALUES ");
 

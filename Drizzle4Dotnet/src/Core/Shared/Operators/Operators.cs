@@ -114,8 +114,8 @@ public static class Operators
     public static BinarySqlListValueNode<T, bool> NotIn<T>(ISql<T> c1, IEnumerable<T> values) => new(c1, values, _operatorNotIn);
     public static BinaryNode<T, T, bool> In<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, _operatorIn, true);
     public static BinaryNode<T, T, bool> NotIn<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, _operatorNotIn, true);
-    public static NnaryAnyNode<T, bool, TDialect> In<T, TDialect>(ISql<T> c1, params SqlValue<T, TDialect>[] node) where TDialect : ISqlDialect => new(c1, node, _operatorIn);
-    public static NnaryAnyNode<T, bool, TDialect> NotIn<T, TDialect>(ISql<T> c1, params SqlValue<T, TDialect>[] node) where TDialect : ISqlDialect => new(c1, node, _operatorNotIn);
+    // public static NnaryAnyNode<T, bool, TDialect> In<T, TDialect>(ISql<T> c1, params SqlValue<T, TDialect>[] node) where TDialect : ISqlDialect => new(c1, node, _operatorIn);
+    // public static NnaryAnyNode<T, bool, TDialect> NotIn<T, TDialect>(ISql<T> c1, params SqlValue<T, TDialect>[] node) where TDialect : ISqlDialect => new(c1, node, _operatorNotIn);
     
     
     
@@ -135,14 +135,14 @@ public static class Operators
         this IColumnOfDialect<T, TDialect> c1, ISql<T> c2)
          where TDialect : ISqlDialect
         => new(c1, c2, _operatorNotIn, true);
-    public static NnaryAnyNode<T, bool, TDialect> In<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, params SqlValue<T, TDialect>[] node)
-         where TDialect : ISqlDialect
-        => new(c1, node, _operatorIn);
-    public static NnaryAnyNode<T, bool, TDialect> NotIn<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, params SqlValue<T, TDialect>[] node)
-         where TDialect : ISqlDialect
-        => new(c1, node, _operatorNotIn);
+    // public static NnaryAnyNode<T, bool, TDialect> In<T, TDialect>(
+    //     this IColumnOfDialect<T, TDialect> c1, params SqlValue<T, TDialect>[] node)
+    //      where TDialect : ISqlDialect
+    //     => new(c1, node, _operatorIn);
+    // public static NnaryAnyNode<T, bool, TDialect> NotIn<T, TDialect>(
+    //     this IColumnOfDialect<T, TDialect> c1, params SqlValue<T, TDialect>[] node)
+    //      where TDialect : ISqlDialect
+    //     => new(c1, node, _operatorNotIn);
     
     
     

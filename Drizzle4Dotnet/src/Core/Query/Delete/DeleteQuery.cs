@@ -1,4 +1,3 @@
-using System.Text;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
@@ -9,10 +8,17 @@ public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
 {
     private readonly TTable _table;
     private readonly List<IGenericSql> _wheres = new();
+    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
 
     public DeleteQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
     {
         _table = table;
+    }
+    
+    public DeleteQuery<TTable, TDialect> With(IVirtualTable<TDialect> cteTable)
+    {
+        _cteTables.Add(cteTable.AsCte());
+        return this;
     }
 
     public DeleteQuery<TTable, TDialect> Where(IGenericSql condition)
@@ -29,6 +35,17 @@ public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        if (_cteTables.Count > 0)
+        {
+            sqlBuilder.Append("WITH ");
+            for (int i = 0; i < _cteTables.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                _cteTables[i].BuildSql(sqlBuilder);
+            }
+            sqlBuilder.Append(' ');
+        }
+
         sqlBuilder.Append("DELETE FROM ");
         _table.BuildSql(sqlBuilder);
         AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);

@@ -9,6 +9,7 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
     private readonly TTable _table;
     private readonly Dictionary<string, object?> _setValues = new();
     private readonly List<IGenericSql> _wheres = new();
+    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
 
     public UpdateQuery(
         TTable table, 
@@ -21,6 +22,12 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
     public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, T value)
     {
         _setValues[column.Identifier] = value;
+        return this;
+    }
+    
+    public UpdateQuery<TTable, TDialect> With(IVirtualTable<TDialect> cteTable)
+    {
+        _cteTables.Add(cteTable.AsCte());
         return this;
     }
     
@@ -64,6 +71,17 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
             throw new InvalidOperationException("No columns set for update.");
         }
         
+        if (_cteTables.Count > 0)
+        {
+            sqlBuilder.Append("WITH ");
+            for (int i = 0; i < _cteTables.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                _cteTables[i].BuildSql(sqlBuilder);
+            }
+            sqlBuilder.Append(' ');
+        }
+
         sqlBuilder.Append("UPDATE ");
         _table.BuildSql(sqlBuilder);
         sqlBuilder.Append(" SET ");
@@ -73,7 +91,7 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         {
             if (!firstSet) sqlBuilder.Append(", ");
         
-            sqlBuilder.Append(kv.Key);
+            sqlBuilder.Append(TDialect.BuildIdentifier(kv.Key));
             sqlBuilder.Append(" = ");
 
             if (kv.Value is IGenericSql op)

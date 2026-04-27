@@ -24,6 +24,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     private readonly List<IGenericSql> _groupBys = new();
     private readonly List<IGenericSql> _havings = new();
     private string? _lockClause;
+    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect> selectedColumns,
@@ -32,8 +33,26 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     {
     }
     
+    public SelectQuery<TReturn, TDialect> With(IVirtualTable<TDialect> cteTable)
+    {
+        _cteTables.Add(cteTable.AsCte());
+        return this;
+    }
+    
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        // WITH
+        if (_cteTables.Count > 0)
+        {
+            sqlBuilder.Append("WITH ");
+            for (int i = 0; i < _cteTables.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                _cteTables[i].BuildSql(sqlBuilder);
+            }
+            sqlBuilder.Append(' ');
+        }
+        
         sqlBuilder.Append("SELECT ");
         if (_distinct) sqlBuilder.Append("DISTINCT ");
         SelectedColumns.BuildSql(sqlBuilder);
@@ -214,6 +233,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
     private readonly List<IGenericSql> _groupBys = new();
     private readonly List<IGenericSql> _havings = new();
     private string? _lockClause;
+    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns,
@@ -222,8 +242,26 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
     {
     }
     
+    public SelectQuery<TReturn, TDialect, TVirtualTable> With(IVirtualTable<TDialect> cteTable)
+    {
+        _cteTables.Add(cteTable.AsCte());
+        return this;
+    }
+    
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        // WITH
+        if (_cteTables.Count > 0)
+        {
+            sqlBuilder.Append("WITH ");
+            for (int i = 0; i < _cteTables.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                _cteTables[i].BuildSql(sqlBuilder);
+            }
+            sqlBuilder.Append(' ');
+        }
+        
         sqlBuilder.Append("SELECT ");
         if (_distinct) sqlBuilder.Append("DISTINCT ");
         SelectedColumns.BuildSql(sqlBuilder);

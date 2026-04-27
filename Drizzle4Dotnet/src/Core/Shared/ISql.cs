@@ -58,33 +58,16 @@ public interface ISql: IGenericSql
 {
 }
 
-public readonly struct AliasedSql: ISql
+public interface IAliasedSql<T>: ISql<T>
 {
-    private readonly string _alias;
-    private readonly IGenericSql _sql;
-
-    public AliasedSql(
-        IGenericSql sql,
-        string alias
-    )
-    {
-        _alias = alias;
-        _sql = sql;
-    }
-    
-    public void BuildSql(ISqlBuilder sqlBuilder)
-    {
-        sqlBuilder.Append('(');
-        _sql.BuildSql(sqlBuilder);
-        sqlBuilder.Append(") AS ").Append(_alias);
-    }
+    string Identifier { get; }
 }
 
-
-public readonly struct AliasedSql<T>: ISql<T>
+public readonly struct AliasedSql<T>: IAliasedSql<T>
 {
     private readonly string _alias;
     private readonly IGenericSql _sql;
+    public string Identifier => _alias;
 
     public AliasedSql(
         ISql<T> sql,
@@ -104,11 +87,6 @@ public readonly struct AliasedSql<T>: ISql<T>
 }
 
 public static class SqlExtensions {
-    public static AliasedSql As(this IGenericSql sql, string alias) 
-        => new AliasedSql(sql, alias);
-    
-    public static AliasedSql As(this ISql sql, string alias) 
-        => new AliasedSql(sql, alias);
     
     public static AliasedSql<T> As<T>(this ISql<T> sql, string alias) 
         => new AliasedSql<T>(sql, alias);

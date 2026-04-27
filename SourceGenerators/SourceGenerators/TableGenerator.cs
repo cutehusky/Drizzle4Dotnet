@@ -247,25 +247,40 @@ public class TableGenerator : IIncrementalGenerator
         {selectModelProperties}
     }}
 
-    public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>
+    public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>, ICteTable<PgSqlSqlDialectImpl>
     {{
         private readonly IGenericSql _baseSql;
         private readonly string _aliasName;
+        private readonly bool _isCte = false;
         public void BuildSql(ISqlBuilder sqlBuilder) {{
+            if (_isCte) {{
+                sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(_aliasName));
+                sqlBuilder.Append("" AS ("");
+                _baseSql.BuildSql(sqlBuilder);
+                sqlBuilder.Append(')');
+                return;
+            }}
+
             sqlBuilder.Append('(');
             _baseSql.BuildSql(sqlBuilder);
-            sqlBuilder.Append($"") AS "");
-            sqlBuilder.Append(_aliasName);
+            sqlBuilder.Append("") AS "");
+            sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(_aliasName));
+        }}
+
+        public ICteTable<PgSqlSqlDialectImpl> AsCte() {{
+            return new GeneratedSubqueryTable(_aliasName, _baseSql, true);
         }}
 
         {string.Join("\n        ", table.Columns!.Select(p => $"public VirtualColumn<{p.Type}, PgSqlSqlDialectImpl> {p.PropName} {{ get; set; }}"))}
 
         public GeneratedSubqueryTable(
             string aliasName,
-            IGenericSql baseSql
+            IGenericSql baseSql,
+            bool isCte = false
         ) {{
             _baseSql = baseSql;
             _aliasName = aliasName;
+            _isCte = isCte;
             {string.Join("\n            ", table.Columns!.Select(p => $"this.{p.PropName} = new VirtualColumn<{p.Type}, PgSqlSqlDialectImpl>(aliasName, \"{p.DbColumnName}\");"))}
         }}
 

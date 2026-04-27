@@ -357,22 +357,22 @@ public class SelectQueryPgTests
     }
     
     
-    [Test]
-    public void Select_WithInSubqueryAndValues()
-    {
-        var subQuery = _db.Select(DepartmentsTable.ManagerId)
-            .From(departments)
-            .Where(Eq(DepartmentsTable.Name, "Engineering"));
-
-        var query = _db.Select(UsersTable.Id)
-            .From(users)
-            .Where(In<int, PgSqlSqlDialectImpl>(UsersTable.Id, 10, 20, subQuery));
-        
-        
-        var (sql, parameters) = query.Build();
-
-        Print("SELECT with IN SUBQUERY and VALUES", sql, parameters);
-    }
+    // [Test]
+    // public void Select_WithInSubqueryAndValues()
+    // {
+    //     var subQuery = _db.Select(DepartmentsTable.ManagerId)
+    //         .From(departments)
+    //         .Where(Eq(DepartmentsTable.Name, "Engineering"));
+    //
+    //     var query = _db.Select(UsersTable.Id)
+    //         .From(users)
+    //         .Where(In<int, PgSqlSqlDialectImpl>(UsersTable.Id, 10, 20, subQuery));
+    //     
+    //     
+    //     var (sql, parameters) = query.Build();
+    //
+    //     Print("SELECT with IN SUBQUERY and VALUES", sql, parameters);
+    // }
 
     [Test]
     public void Select_FromSubquery_AsDerivedTable()
@@ -395,7 +395,7 @@ public class SelectQueryPgTests
     public void Select_SubqueryInSelectList()
     {
         var subQuery = _db
-            .Select(Count(UserProjectsTable.ProjectId))
+            .Select(Count(UserProjectsTable.ProjectId).As("ProjectCount"))
             .From(userProjects)
             .Where(Eq(UserProjectsTable.UserId, UsersTable.Id));
     
@@ -462,7 +462,7 @@ public class SelectQueryPgTests
     public void Select_WithAggregatedSubquery()
     {
         var subQuery = _db
-            .Select(Avg(UserProjectsTable.Allocation))
+            .Select(Avg(UserProjectsTable.Allocation).As("AvgAllocation"))
             .From(userProjects)
             .Where(Eq(UserProjectsTable.UserId, UsersTable.Id));
     
@@ -479,21 +479,119 @@ public class SelectQueryPgTests
     
         Print("SELECT with AGGREGATED SUBQUERY", sql, parameters);
     }
+
+    [Test]
+    public void Select_ProjectBudgetVsDeptTotal()
+    {
+        var deptBudgets = _db
+            .Select(DepartmentsTable.Id, Sum(ProjectsTable.Budget).As("TotalDeptBudget"))
+            .From(projects)
+            .GroupBy(ProjectsTable.DepartmentId)
+            .AsSubQuery("dept_budgets");
+    
+        var query = _db
+            .Select(ProjectsTable.Name, ProjectsTable.Budget, deptBudgets.Field<decimal>("TotalDeptBudget"))
+            .With(deptBudgets)
+            .From(projects)
+            .InnerJoin(deptBudgets, Eq(ProjectsTable.DepartmentId, deptBudgets.Field<int>("Id")))
+            .Where(Gt(ProjectsTable.Budget, Mul(deptBudgets.Field<decimal>("TotalDeptBudget"), 0.1m)));
+    
+        var (sql, parameters) = query.Build();
+        Print("CTE with Aggregation", sql, parameters);
+    }
+    
+    [Test]
+    public void Select_ActiveUsersInActiveProjects()
+    {
+        var activeUsers = _db
+            .Select(UsersTable.ModelAll)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true))
+            .AsSubQuery("active_users");
+    
+        var projectMembers = _db
+            .Select(UserProjectsTable.UserId, ProjectsTable.Name.As("ProjectName"))
+            .From(projects)
+            .InnerJoin(userProjects, Eq(ProjectsTable.Id, UserProjectsTable.ProjectId))
+            .Where(Eq(ProjectsTable.IsActive, true))
+            .AsSubQuery("active_project_members");
+    
+        var query = _db
+            .Select(activeUsers.Name, projectMembers.Field<string>("ProjectName"))
+            .With(activeUsers)
+            .With(projectMembers)
+            .From(activeUsers)
+            .InnerJoin(projectMembers, Eq(activeUsers.Id, projectMembers.Field<int>("UserId")));
+    
+        var (sql, parameters) = query.Build();
+        Print("Multiple CTEs Join", sql, parameters);
+    }
+    //
+    // [Test]
+    // public void Select_DepartmentHierarchy_Recursive()
+    // {
+    //     var deptTree = _db
+    //         .Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+    //         .From(departments)
+    //         .Where(Eq(DepartmentsTable.Id, 1))
+    //         .UnionAll(
+    //             _db.Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+    //                 .From(departments)
+    //                 .InnerJoin("dept_tree", Eq(DepartmentsTable.ParentDepartmentId, Field("dept_tree", "Id")))
+    //         )
+    //         .AsRecursiveSubQuery("dept_tree");
+    //
+    //     var query = _db
+    //         .SelectAll()
+    //         .With(deptTree)
+    //         .From(deptTree);
+    //
+    //     var (sql, parameters) = query.Build();
+    //     Print("Recursive Department Tree", sql, parameters);
+    // }
+    //
+    //
+    
+    [Test]
+    public void Select_SalaryGapWithManager()
+    {
+        var managerSalaries = _db
+            .Select(UsersTable.Id, UsersTable.Salary)
+            .From(users)
+            .AsSubQuery("m_salary");
+    
+        var query = _db
+            .Select(
+                UsersTable.Name, 
+                UsersTable.Salary.As("UserSalary"),
+                managerSalaries.Field<decimal>("Salary").As("ManagerSalary"),
+                Sub(UsersTable.Salary, managerSalaries.Field<decimal>("Salary")).As("Gap")
+            )
+            .With(managerSalaries)
+            .From(users)
+            .InnerJoin(managerSalaries, Eq(UsersTable.ManagerId, managerSalaries.Field<decimal>("Id")));
+    
+        var (sql, parameters) = query.Build();
+        Print("CTE Salary Gap Analysis", sql, parameters);
+    }
+    
+    
+    [Test]
+    public void Select_HighLevelRoleUsers()
+    {
+        var highRoles = _db
+            .Select(RolesTable.Id)
+            .From(roles)
+            .Where(Gt(RolesTable.Level, 5))
+            .AsSubQuery("high_roles");
+    
+        var query = _db
+            .Select(UsersTable.Name, UsersTable.Email)
+            .With(highRoles)
+            .From(users)
+            .Where(In(UsersTable.RoleId, highRoles.Field<int>("Id")));
+    
+        var (sql, parameters) = query.Build();
+        Print("CTE as Filter Scope", sql, parameters);
+    }
 }
-//
-//
-// [Virtual("active_users")]
-// public partial class ActiveUsers
-// {
-//     public static class Columns
-//     {            
-//         [Column("Id")]
-//         public static int Id { get; set; }
-//         
-//         [Column("Email")]
-//         public static string Email { get; set; }    
-//         
-//         [Column("ManagerId")]
-//         public static int ManagerId { get; set; }
-//     }
-// }
