@@ -510,7 +510,10 @@ public class SelectQueryPgTests
             .AsSubQuery("active_users");
     
         var projectMembers = _db
-            .Select(UserProjectsTable.UserId, ProjectsTable.Name.As("ProjectName"))
+            .Select(
+                UserProjectsTable.UserId, 
+                ProjectsTable.Name.As("ProjectName")
+                )
             .From(projects)
             .InnerJoin(userProjects, Eq(ProjectsTable.Id, UserProjectsTable.ProjectId))
             .Where(Eq(ProjectsTable.IsActive, true))
@@ -549,8 +552,6 @@ public class SelectQueryPgTests
     //     var (sql, parameters) = query.Build();
     //     Print("Recursive Department Tree", sql, parameters);
     // }
-    //
-    //
     
     [Test]
     public void Select_SalaryGapWithManager()

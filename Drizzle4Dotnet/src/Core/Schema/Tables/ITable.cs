@@ -19,7 +19,7 @@ public interface ICteTable<TDialect>: IGenericTable<TDialect> where TDialect : I
 public interface IVirtualTable<TDialect>: IGenericTable<TDialect> where TDialect : ISqlDialect
 {
     public ICteTable<TDialect> AsCte();
-    public static abstract IVirtualTable<TDialect> Create(IGenericSql baseQuery, string alias);
+    public static abstract IVirtualTable<TDialect> Create(IGenericSql baseQuery, string alias, object selectedColumns);
 }
 
 

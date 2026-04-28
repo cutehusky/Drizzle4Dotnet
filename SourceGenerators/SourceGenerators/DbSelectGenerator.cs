@@ -55,10 +55,10 @@ public class DbSelectGenerator : IIncrementalGenerator
 //             string returnType = i == 1 ? "T1" : $"({tTypes})";
 //
 //             sb.AppendLine($@"
-//     public static SelectQuery<{returnType}, TDialect, TypedTupleGeneratedSubqueryTable<TDialect>> Select<{tTypes}, TDialect>(this IQueryBuilder<TDialect> builder, {colParams}) where TDialect : ISqlDialect
+//     public static SelectQuery<{returnType}, TDialect, TypedTupleGeneratedSubqueryTable<{returnType}, TDialect>> Select<{tTypes}, TDialect>(this IQueryBuilder<TDialect> builder, {colParams}) where TDialect : ISqlDialect
 //         => builder.Select(new TypedTupleSelectedColumns<{tTypes}, TDialect>({colArgs}));
 //
-//     public static SelectQuery<{returnType}, TDialect, TypedTupleGeneratedSubqueryTable<TDialect>> SelectDistinct<{tTypes}, TDialect>(this IQueryBuilder<TDialect> builder, {colParams}) where TDialect : ISqlDialect
+//     public static SelectQuery<{returnType}, TDialect, TypedTupleGeneratedSubqueryTable<{returnType}, TDialect>> SelectDistinct<{tTypes}, TDialect>(this IQueryBuilder<TDialect> builder, {colParams}) where TDialect : ISqlDialect
 //         => builder.SelectDistinct(new TypedTupleSelectedColumns<{tTypes}, TDialect>({colArgs}));");
 //         }
 //         sb.AppendLine("}");
@@ -84,12 +84,13 @@ public class DbSelectGenerator : IIncrementalGenerator
             var fields = string.Join("\n    ", range.Select(n => $"private readonly IAliasedSql<T{n}> _col{n};"));
             var ctorParams = string.Join(", ", range.Select(n => $"IAliasedSql<T{n}> col{n}"));
             var ctorAssigns = string.Join("\n        ", range.Select(n => $"_col{n} = col{n};"));
-            var mapperParts = string.Join(",\n            ", range.Select(n => $"r.IsDBNull({n - 1}) ? default! : r.GetFieldValue<T{n}>({n - 1})"));
-            var builderInvocations = string.Join("\n        sqlBuilder.Append(\", \");\n        ", 
+            var mapperParts = string.Join(",\n            ",
+                range.Select(n => $"r.IsDBNull({n - 1}) ? default! : r.GetFieldValue<T{n}>({n - 1})"));
+            var builderInvocations = string.Join("\n        sqlBuilder.Append(\", \");\n        ",
                 range.Select(n => $"_col{n}.BuildSql(sqlBuilder);"));
 
             sb.AppendLine($@"
-public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{interfaceType}, TDialect, TypedTupleGeneratedSubqueryTable<TDialect>> 
+public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{interfaceType}, TDialect, TypedTupleGeneratedSubqueryTable<{interfaceType}, TDialect>> 
     where TDialect : ISqlDialect
 {{
     {fields}
@@ -110,6 +111,15 @@ public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{
         return (
             {mapperParts}
         );
+    }}
+
+    public IAliasedSql<T> Field<T>(string columnName)
+    {{
+{string.Join("\n", range.Select(n => $@"        if (columnName == _col{n}.Identifier)
+        {{
+            return _col{n} as IAliasedSql<T>;
+        }}"))}
+        throw new ArgumentException($""Column '{{columnName}}' not found in selection."");
     }}
 }}");
         }
@@ -218,7 +228,7 @@ public partial class {model.Name}: ISelection<{
             {string.Join("\n            ", model.Properties.Select(p => $"this.{p.Name} = new VirtualColumn<{p.Type}, PgSqlSqlDialectImpl>(aliasName, {p.ColumnSql}.Identifier);"))}
         }}
 
-        public static IVirtualTable<PgSqlSqlDialectImpl> Create(IGenericSql baseSql, string aliasName) => new GeneratedSubqueryTable(aliasName, baseSql);
+        public static IVirtualTable<PgSqlSqlDialectImpl> Create(IGenericSql baseSql, string aliasName, object _) => new GeneratedSubqueryTable(aliasName, baseSql);
     }}
 
     private sealed class GeneratedStructSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, {model.Name}.GeneratedSubqueryTable>
@@ -226,6 +236,10 @@ public partial class {model.Name}: ISelection<{
         public void BuildSql(ISqlBuilder sqlBuilder) => sqlBuilder.Append(_sql);
 
         private static readonly string _sql;
+
+        public IAliasedSql<T> Field<T>(string columnName) {{
+        throw new NotImplementedException(""Field selection not implemented for struct result."");
+    }}
 
         static GeneratedStructSelection() {{
             _sql = $""{sqlFragments}"";
@@ -247,6 +261,11 @@ public partial class {model.Name}: ISelection<{
 
         static GeneratedModelSelection() {{
             _sql = $""{sqlFragments}"";
+        }}
+
+
+        public IAliasedSql<T> Field<T>(string columnName) {{
+            throw new NotImplementedException(""Field selection not implemented for struct result."");
         }}
 
         public {model.Name} Mapper(DbDataReader r)

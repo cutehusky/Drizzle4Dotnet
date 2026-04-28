@@ -65,6 +65,6 @@ public abstract class Query<TReturn, TDialect, TVirtualTable>: QueryBase<TDialec
     
     public TVirtualTable AsSubQuery(string alias)
     {
-        return (TVirtualTable) TVirtualTable.Create(this, alias);
+        return (TVirtualTable) TVirtualTable.Create(this, alias, SelectedColumns);
     }
 }
