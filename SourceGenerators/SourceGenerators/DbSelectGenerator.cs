@@ -105,6 +105,12 @@ public class TypedTupleSelectedColumns<{tParams}, TDialect> : ITypedTupleSelecte
         {builderInvocations}
     }}
 
+    public ITypedTupleSelectedColumns<{interfaceType}, TDialect, TypedTupleGeneratedSubqueryTable<{interfaceType}, TDialect>> As(string alias)
+    {{
+        return new TypedTupleSelectedColumns<{tParams}, TDialect>(
+{string.Join(", ", range.Select(n => $"new VirtualColumn<T{n}, TDialect>(alias, _col{n}.Identifier)"))}
+        );    
+    }}
 
     public {interfaceType} Mapper(DbDataReader r)
     {{

@@ -29,6 +29,7 @@ public interface ITypedTupleSelectedColumns<
     IGetFieldByName
     where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
 {
+    ITypedTupleSelectedColumns<TReturn, TDialect, TVirtualTable> As(string alias);
 }
 
 
@@ -52,7 +53,11 @@ public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>:
 {
     protected readonly IGenericSql BaseSql;
     protected readonly string AliasName;
-    protected readonly ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> SelectedColumns;
+    protected ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> SelectedColumns;
+    
+    public ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> 
+        Selected => SelectedColumns.As(AliasName);
+    
     public virtual void BuildSql(ISqlBuilder sqlBuilder) {
         sqlBuilder.Append('(');
         BaseSql.BuildSql(sqlBuilder);
