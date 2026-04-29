@@ -81,7 +81,7 @@ public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>:
     {
         var col = SelectedColumns.Field<T>(columnName);
         if (col == null) 
-            throw new Exception($"Invalid data type requested for column {columnName} in subquery {_aliasName}");
+            throw new ArgumentException($"Invalid data type requested for column {columnName} in subquery {_aliasName}");
         return new VirtualColumn<T,TDialect>(_aliasName, col.Identifier);
     }
 
@@ -112,10 +112,8 @@ public class TypedTupleAnonymousGeneratedSubqueryTable<TShape, TReturn, TDialect
     TypedTupleGeneratedSubqueryTable<TReturn, TDialect>
     where TDialect : ISqlDialect
 {
-    private readonly Func<IGetFieldByName, TShape> _shapeFunc;
+    public TShape Shape { get; }
 
-    public TShape Shape => _shapeFunc(this);
-    
     public TypedTupleAnonymousGeneratedSubqueryTable(
         string aliasName,
         IGenericSql baseSql,
@@ -124,7 +122,7 @@ public class TypedTupleAnonymousGeneratedSubqueryTable<TShape, TReturn, TDialect
         bool isCte = false
     ) : base(aliasName, baseSql, selectedColumns, isCte)
     {
-        _shapeFunc = shapeFunc;
+        Shape = shapeFunc(this);
     }
 }
 
