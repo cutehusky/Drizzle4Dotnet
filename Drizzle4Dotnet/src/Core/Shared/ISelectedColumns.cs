@@ -8,13 +8,19 @@ public interface ISelectedColumns<TReturn, TDialect, TVirtualTable>: ISql where 
     TReturn Mapper(DbDataReader r);
 }
 
+public interface IGetFieldByName
+{
+    IAliasedSql<T> Field<T>(string columnName);
+}
+
 public interface ITypedTupleSelectedColumns<
     TReturn, 
     TDialect, 
     TVirtualTable
->: ISelectedColumns<TReturn, TDialect, TVirtualTable> where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
+>: ISelectedColumns<TReturn, TDialect, TVirtualTable>,
+    IGetFieldByName
+    where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
 {
-    IAliasedSql<T> Field<T>(string columnName);
 }
 
 
@@ -39,7 +45,9 @@ public interface ISelection<TReturnModel, TReturnRecord, TDialect> where TDialec
 
 
 public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>: 
-    IVirtualTable<TDialect>, ICteTable<TDialect> where TDialect : ISqlDialect
+    IVirtualTable<TDialect>, ICteTable<TDialect>,
+    IGetFieldByName
+    where TDialect : ISqlDialect
 {
     private readonly IGenericSql _baseSql;
     private readonly string _aliasName;
@@ -93,17 +101,18 @@ public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>:
 
 
 public class TypedTupleAnonymousGeneratedSubqueryTable<TShape, TReturn, TDialect>: 
-    TypedTupleGeneratedSubqueryTable<TReturn, TDialect> where TDialect : ISqlDialect
+    TypedTupleGeneratedSubqueryTable<TReturn, TDialect>
+    where TDialect : ISqlDialect
 {
-    private readonly Func<ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>>, TShape> _shapeFunc;
+    private readonly Func<IGetFieldByName, TShape> _shapeFunc;
 
-    public TShape Shape => _shapeFunc(SelectedColumns);
+    public TShape Shape => _shapeFunc(this);
     
     public TypedTupleAnonymousGeneratedSubqueryTable(
         string aliasName,
         IGenericSql baseSql,
         ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> selectedColumns,
-        Func<ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>>, TShape> shapeFunc,
+        Func<IGetFieldByName, TShape> shapeFunc,
         bool isCte = false
     ) : base(aliasName, baseSql, selectedColumns, isCte)
     {

@@ -489,7 +489,7 @@ public class SelectQueryPgTests
             .GroupBy(ProjectsTable.DepartmentId)
             .AsSubQuery("dept_budgets", (from) => new
             {
-                Id = DepartmentsTable.Id,
+                Id = from.Field<int>("Id"),
                 TotalDeptBudget = from.Field<decimal>("TotalDeptBudget")
             });
     

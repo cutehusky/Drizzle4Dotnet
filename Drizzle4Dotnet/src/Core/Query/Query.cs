@@ -68,18 +68,17 @@ public abstract class Query<TReturn, TDialect, TVirtualTable>: QueryBase<TDialec
         return (TVirtualTable) TVirtualTable.Create(this, alias, SelectedColumns);
     }
     
-    
     public TypedTupleAnonymousGeneratedSubqueryTable<
         T, TReturn, TDialect
     > AsSubQuery<T>(string alias,
-        Func<ITypedTupleSelectedColumns<TReturn, TDialect, TVirtualTable>, T> columnSelector
+        Func<IGetFieldByName, T> columnSelector
     )
     {
         return new TypedTupleAnonymousGeneratedSubqueryTable<T, TReturn, TDialect>(
             alias,
             this,
             (ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn,TDialect>>) SelectedColumns,
-            (Func<ITypedTupleSelectedColumns<TReturn,TDialect,TypedTupleGeneratedSubqueryTable<TReturn,TDialect>>,T>) columnSelector
+            columnSelector
         );
     }
 }
