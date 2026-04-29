@@ -522,8 +522,8 @@ public class SelectQueryPgTests
             .Where(Eq(ProjectsTable.IsActive, true))
             .AsSubQuery("active_project_members", (from) => new
             {
-                UserId = UserProjectsTable.UserId,
-                ProjectName = ProjectsTable.Name
+                UserId = from.Field(UserProjectsTable.UserId),
+                ProjectName = from.Field(ProjectsTable.Name)
             });
     
         var query = _db

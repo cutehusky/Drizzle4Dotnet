@@ -18,6 +18,7 @@ public interface ISelectedColumns<TReturn, TDialect, TVirtualTable>: ISql where 
 public interface IGetFieldByName
 {
     IAliasedSql<T> Field<T>(string columnName);
+    IAliasedSql<T> Field<T>(IAliasedSql<T> column);
 }
 
 public interface ITypedTupleSelectedColumns<
@@ -84,6 +85,15 @@ public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>:
             throw new ArgumentException($"Invalid data type requested for column {columnName} in subquery {_aliasName}");
         return new VirtualColumn<T,TDialect>(_aliasName, col.Identifier);
     }
+    
+    public IAliasedSql<T> Field<T>(IAliasedSql<T> column)
+    {
+        var col = SelectedColumns.Field(column);
+        if (col == null) 
+            throw new ArgumentException($"Invalid data type requested for column {column} in subquery {_aliasName}");
+        return new VirtualColumn<T,TDialect>(_aliasName, col.Identifier);
+    }
+
 
     public TypedTupleGeneratedSubqueryTable(
         string aliasName,

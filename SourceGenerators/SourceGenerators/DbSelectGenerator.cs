@@ -113,6 +113,13 @@ public class TypedTupleSelectedColumns<{tParams}, TDialect> : ITypedTupleSelecte
         );
     }}
 
+    IAliasedSql<T> Field<T>(IAliasedSql<T> column) {{
+{string.Join("\n        ", range.Select(n => $@"        if (column.Identifier == _col{n}.Identifier)
+        {{
+            return _col{n} as IAliasedSql<T>;
+        }}"))}
+        throw new ArgumentException($""""Column '{{{{columnName}}}}' not found in selection."""");
+    }}
     public IAliasedSql<T> Field<T>(string columnName)
     {{
 {string.Join("\n", range.Select(n => $@"        if (columnName == _col{n}.Identifier)
