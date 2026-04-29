@@ -46,76 +46,54 @@ public interface ISelection<TReturnModel, TReturnRecord, TDialect, TVirtualTable
 
 
 public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>: 
-    IVirtualTable<TDialect>, ICteTable<TDialect>,
+    IVirtualTable<TDialect>,
     IGetFieldByName
     where TDialect : ISqlDialect
 {
-    private readonly IGenericSql _baseSql;
-    private readonly string _aliasName;
-    private readonly bool _isCte = false;
-    private readonly ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> _selectedColumns;
-    public void BuildSql(ISqlBuilder sqlBuilder) {
-        if (_isCte) {
-            sqlBuilder.Append(TDialect.BuildIdentifier(_aliasName));
-            sqlBuilder.Append(" AS (");
-            _baseSql.BuildSql(sqlBuilder);
-            sqlBuilder.Append(')');
-            return;
-        }
-
+    protected readonly IGenericSql BaseSql;
+    protected readonly string AliasName;
+    protected readonly ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> SelectedColumns;
+    public virtual void BuildSql(ISqlBuilder sqlBuilder) {
         sqlBuilder.Append('(');
-        _baseSql.BuildSql(sqlBuilder);
+        BaseSql.BuildSql(sqlBuilder);
         sqlBuilder.Append(") AS ");
-        sqlBuilder.Append(TDialect.BuildIdentifier(_aliasName));
+        sqlBuilder.Append(TDialect.BuildIdentifier(AliasName));
     }
 
-    public void BuildRefSql(ISqlBuilder sqlBuilder)
+    public virtual void BuildRefSql(ISqlBuilder sqlBuilder)
     {
-        if (_isCte) {
-            sqlBuilder.Append(TDialect.BuildIdentifier(_aliasName));
-            return;
-        }
         BuildSql(sqlBuilder);
     }
 
-    public TypedTupleGeneratedSubqueryTable<TReturn, TDialect> AsCte() {
-        return new TypedTupleGeneratedSubqueryTable<TReturn, TDialect>(_aliasName, _baseSql, _selectedColumns, true);
+    public TypedTupleGeneratedCteTable<TReturn, TDialect> AsCte() {
+        return new TypedTupleGeneratedCteTable<TReturn, TDialect>(AliasName, BaseSql, SelectedColumns);
     }
 
     public IAliasedSql<T> Field<T>(string columnName)
     {
-        var col = _selectedColumns.Field<T>(columnName);
+        var col = SelectedColumns.Field<T>(columnName);
         if (col == null) 
-            throw new ArgumentException($"Invalid data type requested for column {columnName} in subquery {_aliasName}");
-        return new VirtualColumn<T,TDialect>(_aliasName, col.Identifier);
+            throw new ArgumentException($"Invalid data type requested for column {columnName} in subquery {AliasName}");
+        return new VirtualColumn<T,TDialect>(AliasName, col.Identifier);
     }
     
     public IAliasedSql<T> Field<T>(IAliasedSql<T> column)
     {
-        var col = _selectedColumns.Field(column);
+        var col = SelectedColumns.Field(column);
         if (col == null) 
-            throw new ArgumentException($"Invalid data type requested for column {column} in subquery {_aliasName}");
-        return new VirtualColumn<T,TDialect>(_aliasName, col.Identifier);
+            throw new ArgumentException($"Invalid data type requested for column {column} in subquery {AliasName}");
+        return new VirtualColumn<T,TDialect>(AliasName, col.Identifier);
     }
 
 
     public TypedTupleGeneratedSubqueryTable(
         string aliasName,
         IGenericSql baseSql,
-        ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> selectedColumns,
-        bool isCte = false
+        ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> selectedColumns
     ) {
-        _baseSql = baseSql;
-        _aliasName = aliasName;
-        _selectedColumns = selectedColumns;
-        _isCte = isCte;
-    }
-    
-    public TypedTupleGeneratedSubqueryTable(
-        TypedTupleGeneratedSubqueryTable<TReturn, TDialect> baseTable,
-        bool isCte = false
-    ) : this(baseTable._aliasName, baseTable._baseSql, baseTable._selectedColumns, isCte)
-    {
+        BaseSql = baseSql;
+        AliasName = aliasName;
+        SelectedColumns = selectedColumns;
     }
 
     public static IVirtualTable<TDialect> Create(
@@ -139,28 +117,74 @@ public class TypedTupleAnonymousGeneratedSubqueryTable<TShape, TReturn, TDialect
         string aliasName,
         IGenericSql baseSql,
         ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> selectedColumns,
-        Func<IGetFieldByName, TShape> shapeFunc,
-        bool isCte = false
-    ) : base(aliasName, baseSql, selectedColumns, isCte)
+        Func<IGetFieldByName, TShape> shapeFunc
+    ) : base(aliasName, baseSql, selectedColumns)
     {
         Shape = shapeFunc(this);
     }
     
     public TypedTupleAnonymousGeneratedSubqueryTable(
-        TypedTupleGeneratedSubqueryTable<TReturn, TDialect> baseTable,
-        TShape shape,
-        bool isCte = false
-    ) : base(baseTable, isCte)
+        string aliasName,
+        IGenericSql baseSql,
+        ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> selectedColumns,
+        TShape shape
+    ) : base(aliasName, baseSql, selectedColumns)
     {
         Shape = shape;
     }
     
-    public new TypedTupleAnonymousGeneratedSubqueryTable<TShape, TReturn, TDialect> AsCte() {
-        return new TypedTupleAnonymousGeneratedSubqueryTable<TShape, TReturn, TDialect>(
-            new TypedTupleGeneratedSubqueryTable<TReturn, TDialect>(this, true),
-            Shape,
-            true
+    public new TypedTupleAnonymousGeneratedCteTable<TShape, TReturn, TDialect> AsCte() {
+        return new TypedTupleAnonymousGeneratedCteTable<TShape, TReturn, TDialect>(
+            AliasName,
+            BaseSql,
+            SelectedColumns,
+            Shape
         );
     }
 }
+
+
+public class TypedTupleGeneratedCteTable<TReturn, TDialect>: 
+    TypedTupleGeneratedSubqueryTable<TReturn, TDialect>, ICteTable<TDialect>
+    where TDialect : ISqlDialect
+{
+    public TypedTupleGeneratedCteTable(string aliasName, IGenericSql baseSql, ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> selectedColumns) : base(aliasName, baseSql, selectedColumns)
+    {
+    }
+
+    public override void BuildSql(ISqlBuilder sqlBuilder) {
+        sqlBuilder.Append(TDialect.BuildIdentifier(AliasName));
+        sqlBuilder.Append(" AS (");
+        BaseSql.BuildSql(sqlBuilder);
+        sqlBuilder.Append(')');
+    }
+
+    public override void BuildRefSql(ISqlBuilder sqlBuilder)
+    {
+        sqlBuilder.Append(TDialect.BuildIdentifier(AliasName));
+    }
+}
+
+
+public class TypedTupleAnonymousGeneratedCteTable<TShape, TReturn, TDialect>: 
+    TypedTupleAnonymousGeneratedSubqueryTable<TShape, TReturn, TDialect>,
+    ICteTable<TDialect> where TDialect : ISqlDialect
+{
+    public TypedTupleAnonymousGeneratedCteTable(string aliasName, IGenericSql baseSql, ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> selectedColumns, TShape shape) : base(aliasName, baseSql, selectedColumns, shape)
+    {
+    }
+
+    public override void BuildSql(ISqlBuilder sqlBuilder) {
+        sqlBuilder.Append(TDialect.BuildIdentifier(AliasName));
+        sqlBuilder.Append(" AS (");
+        BaseSql.BuildSql(sqlBuilder);
+        sqlBuilder.Append(')');
+    }
+
+    public override void BuildRefSql(ISqlBuilder sqlBuilder)
+    {
+        sqlBuilder.Append(TDialect.BuildIdentifier(AliasName));
+    }
+}
+
 

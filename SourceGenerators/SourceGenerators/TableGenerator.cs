@@ -249,49 +249,65 @@ public class TableGenerator : IIncrementalGenerator
         {selectModelProperties}
     }}
 
+
     public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>, ICteTable<PgSqlSqlDialectImpl>
     {{
-        private readonly IGenericSql _baseSql;
-        private readonly string _aliasName;
-        private readonly bool _isCte = false;
-        public void BuildSql(ISqlBuilder sqlBuilder) {{
-            if (_isCte) {{
-                sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(_aliasName));
-                sqlBuilder.Append("" AS ("");
-                _baseSql.BuildSql(sqlBuilder);
-                sqlBuilder.Append(')');
-                return;
-            }}
-
+        protected readonly IGenericSql BaseSql;
+        protected readonly string AliasName;
+        public virtual void BuildSql(ISqlBuilder sqlBuilder) {{
             sqlBuilder.Append('(');
-            _baseSql.BuildSql(sqlBuilder);
+            BaseSql.BuildSql(sqlBuilder);
             sqlBuilder.Append("") AS "");
-            sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(_aliasName));
-        }}
-
-        public void BuildRefSql(ISqlBuilder sqlBuilder)
-        {{
-            sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(_aliasName));
+            sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(AliasName));
         }}
 
         public GeneratedSubqueryTable AsCte() {{
-            return new GeneratedSubqueryTable(_aliasName, _baseSql, true);
+            return new GeneratedCteTable(AliasName, BaseSql);
         }}
 
-        {string.Join("\n        ", table.Columns!.Select(p => $"public VirtualColumn<{p.Type}, PgSqlSqlDialectImpl> {p.PropName} {{ get; set; }}"))}
+        public virtual void BuildRefSql(ISqlBuilder sqlBuilder)
+        {{
+            sqlBuilder.Append('(');
+            BaseSql.BuildSql(sqlBuilder);
+            sqlBuilder.Append("") AS "");
+            sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(AliasName));
+        }}
+
+        {string.Join("\n        ", table.Columns.Select(p => $"public VirtualColumn<{p.Type}, PgSqlSqlDialectImpl> {p.PropName} {{ get; set; }}"))}
 
         public GeneratedSubqueryTable(
             string aliasName,
-            IGenericSql baseSql,
-            bool isCte = false
+            IGenericSql baseSql
         ) {{
-            _baseSql = baseSql;
-            _aliasName = aliasName;
-            _isCte = isCte;
-            {string.Join("\n            ", table.Columns!.Select(p => $"this.{p.PropName} = new VirtualColumn<{p.Type}, PgSqlSqlDialectImpl>(aliasName, \"{p.DbColumnName}\");"))}
+            BaseSql = baseSql;
+            AliasName = aliasName;
+            {string.Join("\n            ", table.Columns.Select(p => $"this.{p.PropName} = new VirtualColumn<{p.Type}, PgSqlSqlDialectImpl>(aliasName, {p.DbColumnName}.Identifier);"))}
         }}
 
         public static IVirtualTable<PgSqlSqlDialectImpl> Create(IGenericSql baseSql, string aliasName, object _) => new GeneratedSubqueryTable(aliasName, baseSql);
+    }}
+
+
+    public class GeneratedCteTable: GeneratedSubqueryTable, ICteTable<PgSqlSqlDialectImpl>
+    {{
+        public override void BuildSql(ISqlBuilder sqlBuilder) {{
+            sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(AliasName));
+            sqlBuilder.Append("" AS ("");
+            BaseSql.BuildSql(sqlBuilder);
+            sqlBuilder.Append(')');
+        }}
+
+        public override void BuildRefSql(ISqlBuilder sqlBuilder)
+        {{
+            sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(AliasName));
+        }}
+
+        public GeneratedCteTable(
+            string aliasName,
+            IGenericSql baseSql
+        ) : base(aliasName, baseSql)
+        {{
+        }}
     }}
 
     private sealed class GeneratedResultSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, GeneratedSubqueryTable>
