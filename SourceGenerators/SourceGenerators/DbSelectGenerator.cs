@@ -199,7 +199,7 @@ public partial class {model.Name}: ISelection<{
     public static ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, {model.Name}.GeneratedSubqueryTable> Record {{ get; }} = new GeneratedStructSelection();
     public static ISelectedColumns<{model.Name}, PgSqlSqlDialectImpl, {model.Name}.GeneratedSubqueryTable> Mapping {{ get; }} = new GeneratedModelSelection();
 
-    public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>, ICteTable<PgSqlSqlDialectImpl>
+    public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>
     {{
         protected readonly IGenericSql BaseSql;
         protected readonly string AliasName;
@@ -210,7 +210,7 @@ public partial class {model.Name}: ISelection<{
             sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(AliasName));
         }}
 
-        public GeneratedSubqueryTable AsCte() {{
+        public GeneratedCteTable AsCte() {{
             return new GeneratedCteTable(AliasName, BaseSql);
         }}
 

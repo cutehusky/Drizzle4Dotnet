@@ -250,7 +250,7 @@ public class TableGenerator : IIncrementalGenerator
     }}
 
 
-    public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>, ICteTable<PgSqlSqlDialectImpl>
+    public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>
     {{
         protected readonly IGenericSql BaseSql;
         protected readonly string AliasName;
@@ -261,7 +261,7 @@ public class TableGenerator : IIncrementalGenerator
             sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(AliasName));
         }}
 
-        public GeneratedSubqueryTable AsCte() {{
+        public GeneratedCteTable AsCte() {{
             return new GeneratedCteTable(AliasName, BaseSql);
         }}
 
