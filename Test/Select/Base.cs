@@ -491,7 +491,7 @@ public class SelectQueryPgTests
             {
                 Id = from.Field<int>("Id"),
                 TotalDeptBudget = from.Field<decimal>("TotalDeptBudget")
-            });
+            }).AsCte();
     
         var query = _db
             .Select(ProjectsTable.Name, ProjectsTable.Budget, deptBudgets.Shape.TotalDeptBudget)
@@ -511,7 +511,7 @@ public class SelectQueryPgTests
             .Select(UsersTable.ModelAll)
             .From(users)
             .Where(Eq(UsersTable.IsActive, true))
-            .AsSubQuery("active_users");
+            .AsSubQuery("active_users").AsCte();
 
         var projectMembers = _db
             .Select(
@@ -524,7 +524,7 @@ public class SelectQueryPgTests
             {
                 UserId = from.Field(UserProjectsTable.UserId),
                 ProjectName = from.Field(ProjectsTable.Name)
-            });
+            }).AsCte();
     
         var query = _db
             .Select(activeUsers.Name, projectMembers.Shape.ProjectName)
@@ -536,6 +536,39 @@ public class SelectQueryPgTests
         var (sql, parameters) = query.Build();
         Print("Multiple CTEs Join", sql, parameters);
     }
+    
+    
+    [Test]
+    public void Select_ActiveUsersInActiveProjects_RawSQL()
+    {
+        
+        var activeProjectsRaw = new RawSql<PgSqlSqlDialectImpl>("SELECT up.\"UserId\", p.\"Name\" AS \"ProjectName\" FROM \"Projects\" p INNER JOIN \"UserProjects\" up ON p.\"Id\" = up.\"ProjectId\" WHERE p.\"IsActive\" = TRUE")
+            .AsSubQuery("active_projects_raw").AsCte();
+
+        var projectMembers = _db
+            .Select(
+                UserProjectsTable.UserId,
+                ProjectsTable.Name)
+            .From(projects)
+            .InnerJoin(userProjects, Eq(ProjectsTable.Id, UserProjectsTable.ProjectId))
+            .Where(Eq(ProjectsTable.IsActive, true))
+            .AsSubQuery("active_project_members", (from) => new
+            {
+                UserId = from.Field(UserProjectsTable.UserId),
+                ProjectName = from.Field(ProjectsTable.Name)
+            }).AsCte();
+    
+        var query = _db
+            .Select(activeProjectsRaw.Field<string>("Name"), projectMembers.Shape.ProjectName)
+            .With(activeProjectsRaw)
+            .With(projectMembers)
+            .From(activeProjectsRaw)
+            .InnerJoin(projectMembers, Eq(activeProjectsRaw.Field<int>("UserId"), projectMembers.Shape.UserId));
+    
+        var (sql, parameters) = query.Build();
+        Print("Multiple CTEs Join with RAW SQL CTE", sql, parameters);
+    }
+    
     //
     // [Test]
     // public void Select_DepartmentHierarchy_Recursive()
@@ -566,7 +599,7 @@ public class SelectQueryPgTests
         var managerSalaries = _db
             .Select(UsersTable.Id, UsersTable.Salary)
             .From(users)
-            .AsSubQuery("m_salary");
+            .AsSubQuery("m_salary").AsCte();
     
         var query = _db
             .Select(
@@ -591,7 +624,7 @@ public class SelectQueryPgTests
             .Select(RolesTable.Id)
             .From(roles)
             .Where(Gt(RolesTable.Level, 5))
-            .AsSubQuery("high_roles");
+            .AsSubQuery("high_roles").AsCte();
     
         var query = _db
             .Select(UsersTable.Name, UsersTable.Email)

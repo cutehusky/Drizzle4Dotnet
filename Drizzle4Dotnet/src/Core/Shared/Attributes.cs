@@ -15,8 +15,8 @@ public class MapWithAttribute(
 [AttributeUsage(AttributeTargets.Property)]
 public class MapWithAliasAttribute(
     Type table,
-    string alias,
-    string col
+    string col,
+    string alias
 ) : Attribute
 {
     public Type Table { get; } = table;

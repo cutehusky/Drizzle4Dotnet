@@ -15,9 +15,9 @@ public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         _table = table;
     }
     
-    public DeleteQuery<TTable, TDialect> With(IVirtualTable<TDialect> cteTable)
+    public DeleteQuery<TTable, TDialect> With(ICteTable<TDialect> cteTable)
     {
-        _cteTables.Add(cteTable.AsCte());
+        _cteTables.Add(cteTable);
         return this;
     }
 

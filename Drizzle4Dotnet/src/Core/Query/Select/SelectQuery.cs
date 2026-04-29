@@ -33,9 +33,9 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     {
     }
     
-    public SelectQuery<TReturn, TDialect> With(IVirtualTable<TDialect> cteTable)
+    public SelectQuery<TReturn, TDialect> With(ICteTable<TDialect> cteTable)
     {
-        _cteTables.Add(cteTable.AsCte());
+        _cteTables.Add(cteTable);
         return this;
     }
     
@@ -242,9 +242,9 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
     {
     }
     
-    public SelectQuery<TReturn, TDialect, TVirtualTable> With(IVirtualTable<TDialect> cteTable)
+    public SelectQuery<TReturn, TDialect, TVirtualTable> With(ICteTable<TDialect> cteTable)
     {
-        _cteTables.Add(cteTable.AsCte());
+        _cteTables.Add(cteTable);
         return this;
     }
     

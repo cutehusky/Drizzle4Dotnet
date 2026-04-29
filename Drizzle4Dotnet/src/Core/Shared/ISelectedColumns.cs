@@ -53,7 +53,7 @@ public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>:
     private readonly IGenericSql _baseSql;
     private readonly string _aliasName;
     private readonly bool _isCte = false;
-    protected readonly ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> SelectedColumns;
+    private readonly ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> _selectedColumns;
     public void BuildSql(ISqlBuilder sqlBuilder) {
         if (_isCte) {
             sqlBuilder.Append(TDialect.BuildIdentifier(_aliasName));
@@ -71,16 +71,20 @@ public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>:
 
     public void BuildRefSql(ISqlBuilder sqlBuilder)
     {
-        sqlBuilder.Append(TDialect.BuildIdentifier(_aliasName));
+        if (_isCte) {
+            sqlBuilder.Append(TDialect.BuildIdentifier(_aliasName));
+            return;
+        }
+        BuildSql(sqlBuilder);
     }
 
-    public ICteTable<TDialect> AsCte() {
-        return new TypedTupleGeneratedSubqueryTable<TReturn, TDialect>(_aliasName, _baseSql, SelectedColumns, true);
+    public TypedTupleGeneratedSubqueryTable<TReturn, TDialect> AsCte() {
+        return new TypedTupleGeneratedSubqueryTable<TReturn, TDialect>(_aliasName, _baseSql, _selectedColumns, true);
     }
 
     public IAliasedSql<T> Field<T>(string columnName)
     {
-        var col = SelectedColumns.Field<T>(columnName);
+        var col = _selectedColumns.Field<T>(columnName);
         if (col == null) 
             throw new ArgumentException($"Invalid data type requested for column {columnName} in subquery {_aliasName}");
         return new VirtualColumn<T,TDialect>(_aliasName, col.Identifier);
@@ -88,7 +92,7 @@ public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>:
     
     public IAliasedSql<T> Field<T>(IAliasedSql<T> column)
     {
-        var col = SelectedColumns.Field(column);
+        var col = _selectedColumns.Field(column);
         if (col == null) 
             throw new ArgumentException($"Invalid data type requested for column {column} in subquery {_aliasName}");
         return new VirtualColumn<T,TDialect>(_aliasName, col.Identifier);
@@ -103,8 +107,15 @@ public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>:
     ) {
         _baseSql = baseSql;
         _aliasName = aliasName;
-        SelectedColumns = selectedColumns;
+        _selectedColumns = selectedColumns;
         _isCte = isCte;
+    }
+    
+    public TypedTupleGeneratedSubqueryTable(
+        TypedTupleGeneratedSubqueryTable<TReturn, TDialect> baseTable,
+        bool isCte = false
+    ) : this(baseTable._aliasName, baseTable._baseSql, baseTable._selectedColumns, isCte)
+    {
     }
 
     public static IVirtualTable<TDialect> Create(
@@ -133,6 +144,23 @@ public class TypedTupleAnonymousGeneratedSubqueryTable<TShape, TReturn, TDialect
     ) : base(aliasName, baseSql, selectedColumns, isCte)
     {
         Shape = shapeFunc(this);
+    }
+    
+    public TypedTupleAnonymousGeneratedSubqueryTable(
+        TypedTupleGeneratedSubqueryTable<TReturn, TDialect> baseTable,
+        TShape shape,
+        bool isCte = false
+    ) : base(baseTable, isCte)
+    {
+        Shape = shape;
+    }
+    
+    public new TypedTupleAnonymousGeneratedSubqueryTable<TShape, TReturn, TDialect> AsCte() {
+        return new TypedTupleAnonymousGeneratedSubqueryTable<TShape, TReturn, TDialect>(
+            new TypedTupleGeneratedSubqueryTable<TReturn, TDialect>(this, true),
+            Shape,
+            true
+        );
     }
 }
 

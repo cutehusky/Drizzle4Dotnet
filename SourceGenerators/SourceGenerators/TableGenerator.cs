@@ -274,7 +274,7 @@ public class TableGenerator : IIncrementalGenerator
             sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(_aliasName));
         }}
 
-        public ICteTable<PgSqlSqlDialectImpl> AsCte() {{
+        public GeneratedSubqueryTable AsCte() {{
             return new GeneratedSubqueryTable(_aliasName, _baseSql, true);
         }}
 

@@ -25,9 +25,9 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         return this;
     }
     
-    public UpdateQuery<TTable, TDialect> With(IVirtualTable<TDialect> cteTable)
+    public UpdateQuery<TTable, TDialect> With(ICteTable<TDialect> cteTable)
     {
-        _cteTables.Add(cteTable.AsCte());
+        _cteTables.Add(cteTable);
         return this;
     }
     
