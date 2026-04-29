@@ -90,7 +90,7 @@ public class DbSelectGenerator : IIncrementalGenerator
                 range.Select(n => $"_col{n}.BuildSql(sqlBuilder);"));
 
             sb.AppendLine($@"
-public class TypedTupleSelectedColumns<{tParams}, TDialect> : ISelectedColumns<{interfaceType}, TDialect, TypedTupleGeneratedSubqueryTable<{interfaceType}, TDialect>> 
+public class TypedTupleSelectedColumns<{tParams}, TDialect> : ITypedTupleSelectedColumns<{interfaceType}, TDialect, TypedTupleGeneratedSubqueryTable<{interfaceType}, TDialect>> 
     where TDialect : ISqlDialect
 {{
     {fields}
@@ -237,10 +237,6 @@ public partial class {model.Name}: ISelection<{
 
         private static readonly string _sql;
 
-        public IAliasedSql<T> Field<T>(string columnName) {{
-        throw new NotImplementedException(""Field selection not implemented for struct result."");
-    }}
-
         static GeneratedStructSelection() {{
             _sql = $""{sqlFragments}"";
         }}
@@ -261,11 +257,6 @@ public partial class {model.Name}: ISelection<{
 
         static GeneratedModelSelection() {{
             _sql = $""{sqlFragments}"";
-        }}
-
-
-        public IAliasedSql<T> Field<T>(string columnName) {{
-            throw new NotImplementedException(""Field selection not implemented for struct result."");
         }}
 
         public {model.Name} Mapper(DbDataReader r)

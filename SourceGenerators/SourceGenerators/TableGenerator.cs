@@ -290,11 +290,6 @@ public class TableGenerator : IIncrementalGenerator
     private sealed class GeneratedResultSelection : ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, GeneratedSubqueryTable>
     {{
 
-   
-    public IAliasedSql<T> Field<T>(string columnName) {{
-        throw new NotImplementedException(""Field selection not implemented for struct result."");
-    }}
-
         public static string _sql;
 
         public void BuildSql(ISqlBuilder sqlBuilder)
@@ -318,11 +313,6 @@ public class TableGenerator : IIncrementalGenerator
         {{
             sqlBuilder.Append(_sql);
         }}
-
-
-    public IAliasedSql<T> Field<T>(string columnName) {{
-        throw new NotImplementedException(""Field selection not implemented for struct result."");
-    }}
 
         public SelectModel Mapper(DbDataReader r)
         {{

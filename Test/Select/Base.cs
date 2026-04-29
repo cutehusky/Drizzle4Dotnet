@@ -487,14 +487,18 @@ public class SelectQueryPgTests
             .Select(DepartmentsTable.Id, Sum(ProjectsTable.Budget).As("TotalDeptBudget"))
             .From(projects)
             .GroupBy(ProjectsTable.DepartmentId)
-            .AsSubQuery("dept_budgets");
+            .AsSubQuery("dept_budgets", (from) => new
+            {
+                Id = DepartmentsTable.Id,
+                TotalDeptBudget = from.Field<decimal>("TotalDeptBudget")
+            });
     
         var query = _db
-            .Select(ProjectsTable.Name, ProjectsTable.Budget, deptBudgets.Field<decimal>("TotalDeptBudget"))
+            .Select(ProjectsTable.Name, ProjectsTable.Budget, deptBudgets.Shape.TotalDeptBudget)
             .With(deptBudgets)
             .From(projects)
-            .InnerJoin(deptBudgets, Eq(ProjectsTable.DepartmentId, deptBudgets.Field<int>("Id")))
-            .Where(Gt(ProjectsTable.Budget, Mul(deptBudgets.Field<decimal>("TotalDeptBudget"), 0.1m)));
+            .InnerJoin(deptBudgets, Eq(ProjectsTable.DepartmentId, deptBudgets.Shape.Id))
+            .Where(Gt(ProjectsTable.Budget, Mul(deptBudgets.Shape.TotalDeptBudget, 0.1m)));
     
         var (sql, parameters) = query.Build();
         Print("CTE with Aggregation", sql, parameters);
@@ -508,23 +512,26 @@ public class SelectQueryPgTests
             .From(users)
             .Where(Eq(UsersTable.IsActive, true))
             .AsSubQuery("active_users");
-    
+
         var projectMembers = _db
             .Select(
-                UserProjectsTable.UserId, 
-                ProjectsTable.Name.As("ProjectName")
-                )
+                UserProjectsTable.UserId,
+                ProjectsTable.Name)
             .From(projects)
             .InnerJoin(userProjects, Eq(ProjectsTable.Id, UserProjectsTable.ProjectId))
             .Where(Eq(ProjectsTable.IsActive, true))
-            .AsSubQuery("active_project_members");
+            .AsSubQuery("active_project_members", (from) => new
+            {
+                UserId = UserProjectsTable.UserId,
+                ProjectName = ProjectsTable.Name
+            });
     
         var query = _db
-            .Select(activeUsers.Name, projectMembers.Field<string>("ProjectName"))
+            .Select(activeUsers.Name, projectMembers.Shape.ProjectName)
             .With(activeUsers)
             .With(projectMembers)
             .From(activeUsers)
-            .InnerJoin(projectMembers, Eq(activeUsers.Id, projectMembers.Field<int>("UserId")));
+            .InnerJoin(projectMembers, Eq(activeUsers.Id, projectMembers.Shape.UserId));
     
         var (sql, parameters) = query.Build();
         Print("Multiple CTEs Join", sql, parameters);
