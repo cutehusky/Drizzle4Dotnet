@@ -1,7 +1,14 @@
 using System.Data.Common;
+using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 
 namespace Drizzle4Dotnet.Core.Shared;
+
+
+public interface ISelectedColumns<TReturn, TDialect>: ISql where TDialect : ISqlDialect
+{
+    TReturn Mapper(DbDataReader r);
+}
 
 public interface ISelectedColumns<TReturn, TDialect, TVirtualTable>: ISql where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
 {
@@ -24,23 +31,16 @@ public interface ITypedTupleSelectedColumns<
 }
 
 
-public interface ISelection<TReturnModel, TReturnRecord, TDialect, TVirtualTable> where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
-{
-    public static abstract ISelectedColumns<TReturnRecord, TDialect, TVirtualTable> Record { get; }
-    public static abstract ISelectedColumns<TReturnModel, TDialect, TVirtualTable> Mapping { get; }
-}
-
-
-public interface ISelectedColumns<TReturn, TDialect>: ISql where TDialect : ISqlDialect
-{
-    TReturn Mapper(DbDataReader r);
-}
-
-
 public interface ISelection<TReturnModel, TReturnRecord, TDialect> where TDialect : ISqlDialect 
 {
     public static abstract ISelectedColumns<TReturnRecord, TDialect> Record { get; }
     public static abstract ISelectedColumns<TReturnModel, TDialect> Mapping { get; }
+}
+
+public interface ISelection<TReturnModel, TReturnRecord, TDialect, TVirtualTable> where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
+{
+    public static abstract ISelectedColumns<TReturnRecord, TDialect, TVirtualTable> Record { get; }
+    public static abstract ISelectedColumns<TReturnModel, TDialect, TVirtualTable> Mapping { get; }
 }
 
 
@@ -68,13 +68,21 @@ public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>:
         sqlBuilder.Append(TDialect.BuildIdentifier(_aliasName));
     }
 
+    public void BuildRefSql(ISqlBuilder sqlBuilder)
+    {
+        sqlBuilder.Append(TDialect.BuildIdentifier(_aliasName));
+    }
+
     public ICteTable<TDialect> AsCte() {
         return new TypedTupleGeneratedSubqueryTable<TReturn, TDialect>(_aliasName, _baseSql, SelectedColumns, true);
     }
 
     public IAliasedSql<T> Field<T>(string columnName)
     {
-        return SelectedColumns.Field<T>(columnName);
+        var col = SelectedColumns.Field<T>(columnName);
+        if (col == null) 
+            throw new Exception($"Invalid data type requested for column {columnName} in subquery {_aliasName}");
+        return new VirtualColumn<T,TDialect>(_aliasName, col.Identifier);
     }
 
     public TypedTupleGeneratedSubqueryTable(

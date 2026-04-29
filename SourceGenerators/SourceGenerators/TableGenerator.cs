@@ -187,7 +187,9 @@ public class TableGenerator : IIncrementalGenerator
 
         private static readonly string _sql;
 
-        public void BuildSql(ISqlBuilder sqlBuilder) => sqlBuilder.Append(_sql);
+        public void BuildSql(ISqlBuilder sqlBuilder) => throw new NotImplementedException(""This method should not be called directly. Use BuildRefSql instead."");
+
+        public void BuildRefSql(ISqlBuilder sqlBuilder) =>  sqlBuilder.Append(_sql);
 ");
             var tableSql = table.TableType == ETableType.DbTable
                 ? $"_sql = PgSqlSqlDialectImpl.BuildTableName(\"{table.DbSchemaName}\", \"{table.DbTableName}\");"
@@ -264,6 +266,11 @@ public class TableGenerator : IIncrementalGenerator
             sqlBuilder.Append('(');
             _baseSql.BuildSql(sqlBuilder);
             sqlBuilder.Append("") AS "");
+            sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(_aliasName));
+        }}
+
+        public void BuildRefSql(ISqlBuilder sqlBuilder)
+        {{
             sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(_aliasName));
         }}
 

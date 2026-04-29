@@ -577,7 +577,7 @@ public class SelectQueryPgTests
             )
             .With(managerSalaries)
             .From(users)
-            .InnerJoin(managerSalaries, Eq(UsersTable.ManagerId, managerSalaries.Field<decimal>("Id")));
+            .InnerJoin(managerSalaries, Eq(UsersTable.ManagerId, managerSalaries.Field<int>("Id")));
     
         var (sql, parameters) = query.Build();
         Print("CTE Salary Gap Analysis", sql, parameters);

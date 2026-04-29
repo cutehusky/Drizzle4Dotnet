@@ -61,7 +61,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         if (_from != null)
         {
             sqlBuilder.Append(" FROM ");
-            _from.BuildSql(sqlBuilder);
+            _from.BuildRefSql(sqlBuilder);
         }
 
         if (_joins.Count > 0)
@@ -69,7 +69,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
             foreach (var (table, type, on) in _joins)
             {
                 sqlBuilder.Append(' ').Append(type).Append(" JOIN ");
-                table.BuildSql(sqlBuilder);
+                table.BuildRefSql(sqlBuilder);
                 if (on != null)
                 {
                     sqlBuilder.Append(" ON (");
@@ -257,9 +257,10 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
             for (int i = 0; i < _cteTables.Count; i++)
             {
                 if (i > 0) sqlBuilder.Append(", ");
+                sqlBuilder.Append('\n');
                 _cteTables[i].BuildSql(sqlBuilder);
             }
-            sqlBuilder.Append(' ');
+            sqlBuilder.Append('\n');
         }
         
         sqlBuilder.Append("SELECT ");
@@ -270,7 +271,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
         if (_from != null)
         {
             sqlBuilder.Append(" FROM ");
-            _from.BuildSql(sqlBuilder);
+            _from.BuildRefSql(sqlBuilder);
         }
 
         if (_joins.Count > 0)
@@ -278,7 +279,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
             foreach (var (table, type, on) in _joins)
             {
                 sqlBuilder.Append(' ').Append(type).Append(" JOIN ");
-                table.BuildSql(sqlBuilder);
+                table.BuildRefSql(sqlBuilder);
                 if (on != null)
                 {
                     sqlBuilder.Append(" ON (");

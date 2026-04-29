@@ -215,6 +215,11 @@ public partial class {model.Name}: ISelection<{
             return new GeneratedSubqueryTable(_aliasName, _baseSql, true);
         }}
 
+        public void BuildRefSql(ISqlBuilder sqlBuilder)
+        {{
+            sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(_aliasName));
+        }}
+
         {string.Join("\n        ", model.Properties.Select(p => $"public VirtualColumn<{p.Type}, PgSqlSqlDialectImpl> {p.Name} {{ get; set; }}"))}
 
         public GeneratedSubqueryTable(

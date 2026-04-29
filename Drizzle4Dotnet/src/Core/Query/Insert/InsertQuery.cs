@@ -88,7 +88,7 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         }
 
         sqlBuilder.Append("INSERT INTO ");
-        _table.BuildSql(sqlBuilder);
+        _table.BuildRefSql(sqlBuilder);
         sqlBuilder.Append(" (");
 
         for (int i = 0; i < allColumns.Count; i++)

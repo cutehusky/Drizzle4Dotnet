@@ -47,7 +47,7 @@ public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         }
 
         sqlBuilder.Append("DELETE FROM ");
-        _table.BuildSql(sqlBuilder);
+        _table.BuildRefSql(sqlBuilder);
         AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
     }
 }

@@ -83,7 +83,7 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         }
 
         sqlBuilder.Append("UPDATE ");
-        _table.BuildSql(sqlBuilder);
+        _table.BuildRefSql(sqlBuilder);
         sqlBuilder.Append(" SET ");
 
         bool firstSet = true;

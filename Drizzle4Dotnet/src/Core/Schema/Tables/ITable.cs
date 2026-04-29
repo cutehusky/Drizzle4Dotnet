@@ -5,6 +5,8 @@ namespace Drizzle4Dotnet.Core.Schema.Tables;
 public interface IGenericTable<TDialect> where TDialect : ISqlDialect
 {
     public void BuildSql(ISqlBuilder sqlBuilder);
+    
+    public void BuildRefSql(ISqlBuilder sqlBuilder);
 }
 
 public interface ITable<TDialect>: IGenericTable<TDialect> where TDialect : ISqlDialect
