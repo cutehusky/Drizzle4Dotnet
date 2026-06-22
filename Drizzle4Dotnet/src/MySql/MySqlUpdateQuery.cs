@@ -11,12 +11,15 @@ namespace Drizzle4Dotnet.MySql;
 /// MySQL-specific UPDATE query builder.
 /// Extends UpdateQuery with MySQL-specific features:
 /// - UPDATE with JOIN (MySQL syntax: UPDATE t1 JOIN t2 ON ... SET ... WHERE ...)
+/// - LIMIT and ORDER BY on UPDATE
 /// MySQL does not support RETURNING — use MySqlFunctions.RowCount() instead.
 /// </summary>
 public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
     private readonly List<(IGenericTable<MySqlSqlDialectImpl>, string, IGenericSql?)> _joins = new();
+    private int? _limit;
+    private readonly List<(IGenericSql, bool)> _orderBys = new();
 
     public MySqlUpdateQuery(TTable table, DbClient<MySqlSqlDialectImpl> dbClient) 
         : base(table, dbClient)
@@ -49,6 +52,20 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl>
         return this;
     }
 
+    // ====== MySQL LIMIT and ORDER BY on UPDATE ======
+
+    public MySqlUpdateQuery<TTable> Limit(int limit)
+    {
+        _limit = limit;
+        return this;
+    }
+
+    public MySqlUpdateQuery<TTable> OrderBy(IGenericSql col, bool asc = true)
+    {
+        _orderBys.Add((col, asc));
+        return this;
+    }
+
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
         if (_setValues.Count == 0)
@@ -59,7 +76,7 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl>
         sqlBuilder.Append("UPDATE ");
         _table.BuildRefSql(sqlBuilder);
 
-        // MySQL UPDATE JOIN syntax: UPDATE t1 JOIN t2 ON ... SET ...
+        // MySQL UPDATE JOIN syntax
         if (_joins.Count > 0)
         {
             foreach (var (table, type, on) in _joins)
@@ -99,5 +116,22 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl>
         }
 
         AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+
+        // ORDER BY (MySQL-specific on UPDATE)
+        if (_orderBys.Count > 0)
+        {
+            sqlBuilder.Append(" ORDER BY ");
+            for (int i = 0; i < _orderBys.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                var (expr, isAsc) = _orderBys[i];
+                expr.BuildSql(sqlBuilder);
+                sqlBuilder.Append(isAsc ? " ASC" : " DESC");
+            }
+        }
+
+        // LIMIT (MySQL-specific on UPDATE)
+        if (_limit.HasValue)
+            sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
     }
 }

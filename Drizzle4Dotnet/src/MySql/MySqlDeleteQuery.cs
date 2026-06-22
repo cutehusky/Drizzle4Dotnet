@@ -10,12 +10,15 @@ namespace Drizzle4Dotnet.MySql;
 /// MySQL-specific DELETE query builder.
 /// Extends DeleteQuery with MySQL-specific features:
 /// - DELETE with JOIN (MySQL syntax: DELETE t1 FROM t1 JOIN t2 ON ... WHERE ...)
+/// - LIMIT and ORDER BY on DELETE
 /// MySQL does not support RETURNING — use MySqlFunctions.RowCount() instead.
 /// </summary>
 public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
     private readonly List<(IGenericTable<MySqlSqlDialectImpl>, string, IGenericSql?)> _joins = new();
+    private int? _limit;
+    private readonly List<(IGenericSql, bool)> _orderBys = new();
 
     public MySqlDeleteQuery(TTable table, DbClient<MySqlSqlDialectImpl> dbClient) 
         : base(table, dbClient)
@@ -48,6 +51,20 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl>
         return this;
     }
 
+    // ====== MySQL LIMIT and ORDER BY on DELETE ======
+
+    public MySqlDeleteQuery<TTable> Limit(int limit)
+    {
+        _limit = limit;
+        return this;
+    }
+
+    public MySqlDeleteQuery<TTable> OrderBy(IGenericSql col, bool asc = true)
+    {
+        _orderBys.Add((col, asc));
+        return this;
+    }
+
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
         // MySQL DELETE with JOIN syntax: DELETE t1 FROM t1 JOIN t2 ON ... WHERE ...
@@ -72,5 +89,22 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl>
         }
 
         AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+
+        // ORDER BY (MySQL-specific on DELETE)
+        if (_orderBys.Count > 0)
+        {
+            sqlBuilder.Append(" ORDER BY ");
+            for (int i = 0; i < _orderBys.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                var (expr, isAsc) = _orderBys[i];
+                expr.BuildSql(sqlBuilder);
+                sqlBuilder.Append(isAsc ? " ASC" : " DESC");
+            }
+        }
+
+        // LIMIT (MySQL-specific on DELETE)
+        if (_limit.HasValue)
+            sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
     }
 }

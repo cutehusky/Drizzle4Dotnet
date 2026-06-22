@@ -11,7 +11,8 @@ namespace Drizzle4Dotnet.MySql;
 /// MySQL-specific INSERT query builder.
 /// Extends InsertQuery with MySQL-specific features:
 /// - ON DUPLICATE KEY UPDATE (upsert)
-/// - INSERT ... () VALUES () (for empty value sets, unlike PostgreSQL's DEFAULT VALUES)
+/// - INSERT IGNORE
+/// - INSERT ... SET col=value syntax
 /// MySQL does not support RETURNING — use MySqlFunctions.LastInsertId() instead.
 /// </summary>
 public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl>
@@ -19,6 +20,8 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl>
 {
     private List<string>? _onDuplicateKeyUpdateColumns;
     private bool _onDuplicateKeyUpdateAll;
+    private bool _ignore;
+    private readonly Dictionary<string, object?> _setValues = new();
 
     public MySqlInsertQuery(TTable table, DbClient<MySqlSqlDialectImpl> dbClient) 
         : base(table, dbClient)
@@ -27,8 +30,6 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl>
 
     /// <summary>
     /// Adds ON DUPLICATE KEY UPDATE for the specified columns.
-    /// When a duplicate key conflict occurs, these columns will be updated 
-    /// with the VALUES() function (i.e., the values from the INSERT clause).
     /// </summary>
     public MySqlInsertQuery<TTable> OnDuplicateKeyUpdate(params string[] columns)
     {
@@ -39,7 +40,6 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl>
 
     /// <summary>
     /// Adds ON DUPLICATE KEY UPDATE for all inserted columns.
-    /// At build time, all columns from the INSERT values will be used.
     /// </summary>
     public MySqlInsertQuery<TTable> OnDuplicateKeyUpdateAll()
     {
@@ -48,23 +48,114 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl>
         return this;
     }
 
+    /// <summary>
+    /// Adds INSERT IGNORE — silently skip rows that cause duplicate key errors.
+    /// </summary>
+    public MySqlInsertQuery<TTable> Ignore()
+    {
+        _ignore = true;
+        return this;
+    }
+
+    /// <summary>
+    /// MySQL INSERT ... SET col = value syntax.
+    /// Alternative to the standard VALUES syntax.
+    /// </summary>
+    public MySqlInsertQuery<TTable> Set<T>(DbColumn<T, TTable, MySqlSqlDialectImpl> column, T value)
+    {
+        _setValues[column.Identifier] = value;
+        return this;
+    }
+
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        // Build standard INSERT
-        base.BuildSql(sqlBuilder);
-
-        // Resolve columns for ON DUPLICATE KEY UPDATE
-        List<string>? updateColumns = _onDuplicateKeyUpdateColumns;
-        
-        if (_onDuplicateKeyUpdateAll && updateColumns == null)
+        // INSERT IGNORE or INSERT ... SET syntax
+        if (_setValues.Count > 0)
         {
-            // Get all column names from the internal state.
-            // This is a best-effort approach since we can't easily access
-            // the private _values field from the base class.
-            // Users should call OnDuplicateKeyUpdate() with explicit columns.
+            // INSERT ... SET col=value syntax
+            sqlBuilder.Append("INSERT");
+            if (_ignore) sqlBuilder.Append(" IGNORE");
+            sqlBuilder.Append(" INTO ");
+            _table.BuildRefSql(sqlBuilder);
+            sqlBuilder.Append(" SET ");
+
+            bool first = true;
+            foreach (var kv in _setValues)
+            {
+                if (!first) sqlBuilder.Append(", ");
+                first = false;
+                sqlBuilder.Append(MySqlSqlDialectImpl.BuildIdentifier(kv.Key));
+                sqlBuilder.Append(" = ");
+                sqlBuilder.Append(sqlBuilder.AddParameter(kv.Value));
+            }
+            return;
         }
 
+        // Standard INSERT with optional IGNORE
+        if (_ignore)
+        {
+            // Need to rebuild with INSERT IGNORE
+            BuildInsertIgnore(sqlBuilder);
+            return;
+        }
+
+        // Standard INSERT
+        base.BuildSql(sqlBuilder);
+
         // Append ON DUPLICATE KEY UPDATE if configured
+        AppendOnDuplicateKeyUpdate(sqlBuilder);
+    }
+
+    private void BuildInsertIgnore(ISqlBuilder sqlBuilder)
+    {
+        if (_values.Count == 0)
+            throw new InvalidOperationException("No values provided for insert.");
+
+        var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
+
+        sqlBuilder.Append("INSERT IGNORE INTO ");
+        _table.BuildRefSql(sqlBuilder);
+        sqlBuilder.Append(" (");
+
+        for (int i = 0; i < allColumns.Count; i++)
+        {
+            if (i > 0) sqlBuilder.Append(", ");
+            sqlBuilder.Append(MySqlSqlDialectImpl.BuildIdentifier(allColumns[i]));
+        }
+        sqlBuilder.Append(") VALUES ");
+
+        for (int rowIndex = 0; rowIndex < _values.Count; rowIndex++)
+        {
+            if (rowIndex > 0) sqlBuilder.Append(", ");
+            sqlBuilder.Append('(');
+            var row = _values[rowIndex];
+
+            for (int colIndex = 0; colIndex < allColumns.Count; colIndex++)
+            {
+                if (colIndex > 0) sqlBuilder.Append(", ");
+                if (row.TryGetValue(allColumns[colIndex], out var val))
+                {
+                    sqlBuilder.Append(sqlBuilder.AddParameter(val));
+                }
+                else
+                {
+                    sqlBuilder.Append("NULL");
+                }
+            }
+            sqlBuilder.Append(')');
+        }
+    }
+
+    private void AppendOnDuplicateKeyUpdate(ISqlBuilder sqlBuilder)
+    {
+        List<string>? updateColumns = _onDuplicateKeyUpdateColumns;
+
+        if (_onDuplicateKeyUpdateAll)
+        {
+            // Resolve all columns from current values
+            updateColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
+        }
+
         if (updateColumns != null && updateColumns.Count > 0)
         {
             sqlBuilder.Append(MySqlSqlDialectImpl.BuildOnDuplicateKeyUpdate(updateColumns));

@@ -6,8 +6,8 @@ namespace Drizzle4Dotnet.Core.Query.Insert;
 
 public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITable<TDialect> where TDialect : ISqlDialect
 {
-    private readonly TTable _table;
-    private readonly List<Dictionary<string, object?>> _values = new();
+    protected readonly TTable _table;
+    protected readonly List<Dictionary<string, object?>> _values = new();
     private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
 
     public InsertQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
