@@ -29,6 +29,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     private bool _skipLocked;
     private bool _nowait;
     private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    private bool _recursive;
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect> selectedColumns,
@@ -43,12 +44,21 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         return this;
     }
     
+    public SelectQuery<TReturn, TDialect> WithRecursive(params ICteTable<TDialect>[] cteTables)
+    {
+        _recursive = true;
+        foreach (var t in cteTables) _cteTables.Add(t);
+        return this;
+    }
+    
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        // WITH
+        // WITH / WITH RECURSIVE
         if (_cteTables.Count > 0)
         {
-            sqlBuilder.Append("WITH ");
+            sqlBuilder.Append("WITH");
+            if (_recursive) sqlBuilder.Append(" RECURSIVE");
+            sqlBuilder.Append(' ');
             for (int i = 0; i < _cteTables.Count; i++)
             {
                 if (i > 0) sqlBuilder.Append(", ");
@@ -291,6 +301,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
     private IGenericColumn[]? _lockColumns;
     private bool _skipLocked;
     private bool _nowait;
+    private bool _recursive;
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns,
@@ -305,12 +316,21 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
         return this;
     }
     
+    public SelectQuery<TReturn, TDialect, TVirtualTable> WithRecursive(params ICteTable<TDialect>[] cteTables)
+    {
+        _recursive = true;
+        foreach (var t in cteTables) _cteTables.Add(t);
+        return this;
+    }
+    
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        // WITH
+        // WITH / WITH RECURSIVE
         if (_cteTables.Count > 0)
         {
-            sqlBuilder.Append("WITH ");
+            sqlBuilder.Append("WITH");
+            if (_recursive) sqlBuilder.Append(" RECURSIVE");
+            sqlBuilder.Append('\n');
             for (int i = 0; i < _cteTables.Count; i++)
             {
                 if (i > 0) sqlBuilder.Append(", ");
