@@ -53,7 +53,7 @@ public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>:
 {
     protected readonly IGenericSql BaseSql;
     protected readonly string AliasName;
-    protected ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> SelectedColumns;
+    protected readonly ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> SelectedColumns;
     
     public ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> 
         Selected => SelectedColumns.As(AliasName);
