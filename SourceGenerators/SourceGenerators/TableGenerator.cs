@@ -155,7 +155,7 @@ public class TableGenerator : IIncrementalGenerator
                 sb.AppendLine();
             }
             
-            
+            sb.AppendLine("using Drizzle4Dotnet.PgSql;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Query.Select;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Query.Insert;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Query.Update;");
@@ -163,6 +163,7 @@ public class TableGenerator : IIncrementalGenerator
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Columns;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Tables;");
             sb.AppendLine("using Drizzle4Dotnet.Dialect;");
+            sb.AppendLine("using Drizzle4Dotnet.PgSql;");
             sb.AppendLine("using System.Text;");
             
             sb.AppendLine("using System;");
@@ -170,8 +171,8 @@ public class TableGenerator : IIncrementalGenerator
             
             var refName = table.TableType == ETableType.DbTable ? table.DbTableName! : table.AliasName!;
             var baseInterface = table.TableType == ETableType.DbTable
-                ? "IDbTable<PgSqlSqlDialectImpl>"
-                : "ITableAlias<PgSqlSqlDialectImpl>";
+                ? "IPgDbTable"
+                : "IPgTableAlias";
             var tableProperties = table.TableType == ETableType.DbTable
                 ? $@"   public static string TableName {{ get => ""{table.DbTableName!}""; }}
     public static string SchemaName {{ get => ""{table.DbSchemaName!}""; }}" 
@@ -197,13 +198,13 @@ public class TableGenerator : IIncrementalGenerator
 
             sb.AppendLine($@"
         static {table.ClassName}() {{
-                {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new DbColumn<{c.Type}, {table.ClassName}, PgSqlSqlDialectImpl>(\"{c.DbColumnName}\");"))}
+                {string.Join("\n        ", table.Columns!.Select(c =>  $"{c.PropName} = new PgColumn<{c.Type}, {table.ClassName}>(\"{c.DbColumnName}\");"))}
                 {tableSql}
                 GeneratedModelSelection._sql = $""{selectSqlFragments}"";
                 GeneratedResultSelection._sql = $""{selectSqlFragments}"";
         }}");
 
-            sb.AppendLine(string.Join("\n        ", table.Columns!.Select(c => $"public static DbColumn<{c.Type}, {table.ClassName}, PgSqlSqlDialectImpl> {c.PropName} {{ get; set; }}")));
+            sb.AppendLine(string.Join("\n        ", table.Columns!.Select(c => $"public static PgColumn<{c.Type}, {table.ClassName}> {c.PropName} {{ get; set; }}")));
             
             sb.AppendLine(@"
         public static class ColumnNames
@@ -250,7 +251,7 @@ public class TableGenerator : IIncrementalGenerator
     }}
 
 
-    public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>
+    public class GeneratedSubqueryTable: IPgVirtualTable
     {{
         protected readonly IGenericSql BaseSql;
         protected readonly string AliasName;
@@ -288,7 +289,7 @@ public class TableGenerator : IIncrementalGenerator
     }}
 
 
-    public class GeneratedCteTable: GeneratedSubqueryTable, ICteTable<PgSqlSqlDialectImpl>
+    public class GeneratedCteTable: GeneratedSubqueryTable, IPgCteTable
     {{
         public override void BuildSql(ISqlBuilder sqlBuilder) {{
             sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(AliasName));

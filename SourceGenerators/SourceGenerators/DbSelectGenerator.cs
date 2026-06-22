@@ -158,6 +158,7 @@ public class TypedTupleSelectedColumns<{tParams}, TDialect> : ITypedTupleSelecte
             sb.AppendLine("using Drizzle4Dotnet.Dialect;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Tables;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Columns;");
+            sb.AppendLine("using Drizzle4Dotnet.PgSql;");
 
             if (!string.IsNullOrEmpty(model.Namespace))
             {
@@ -205,7 +206,7 @@ public partial class {model.Name}: ISelection<{
     public static ISelectedColumns<SelectResult, PgSqlSqlDialectImpl, {model.Name}.GeneratedSubqueryTable> Record {{ get; }} = new GeneratedStructSelection();
     public static ISelectedColumns<{model.Name}, PgSqlSqlDialectImpl, {model.Name}.GeneratedSubqueryTable> Mapping {{ get; }} = new GeneratedModelSelection();
 
-    public class GeneratedSubqueryTable: IVirtualTable<PgSqlSqlDialectImpl>
+    public class GeneratedSubqueryTable: IPgVirtualTable
     {{
         protected readonly IGenericSql BaseSql;
         protected readonly string AliasName;
@@ -243,7 +244,7 @@ public partial class {model.Name}: ISelection<{
     }}
 
 
-    public class GeneratedCteTable: GeneratedSubqueryTable, ICteTable<PgSqlSqlDialectImpl>
+    public class GeneratedCteTable: GeneratedSubqueryTable, IPgCteTable
     {{
         public override void BuildSql(ISqlBuilder sqlBuilder) {{
             sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(AliasName));

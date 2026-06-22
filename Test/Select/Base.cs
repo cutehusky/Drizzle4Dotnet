@@ -1,5 +1,6 @@
 using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 using Drizzle4Dotnet.Dialect;
 using SharedDemo;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
@@ -285,23 +286,22 @@ public class SelectQueryPgTests
         Print("COMPLEX JOIN + WHERE + ORDER + LIMIT", sql, parameters);
     }
 
-    // [Test]
-    // public void Select_WithCaseExpression()
-    // {
-    //     var query = _db
-    //         .Select(
-    //             UsersTable.Id,
-    //             Case()
-    //                 .When(Eq(UsersTable.IsActive, true), "Active")
-    //                 .Else("Inactive")
-    //                 .As("Status")
-    //         )
-    //         .From(users);
-    //
-    //     var (sql, parameters) = query.Build();
-    //
-    //     Print("SELECT with CASE expression", sql, parameters);
-    // }
+    [Test]
+    public void Select_WithCaseExpression()
+    {
+        var query = _db
+            .Select(
+                UsersTable.Id,
+                Case
+                    .When(Eq(UsersTable.IsActive, true), Sql.Value("Active"))
+                    .Else(Sql.Value("Inactive")).Build().As("Status")
+            )
+            .From(users);
+
+        var (sql, parameters) = query.Build();
+
+        Print("SELECT with CASE expression", sql, parameters);
+    }
     
     [Test]
     public void Select_WithAggregateFunctions()
