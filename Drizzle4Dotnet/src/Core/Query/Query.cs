@@ -44,6 +44,20 @@ public abstract class Query<TReturn, TDialect>: QueryBase<TDialect>, IReturning<
     {
         return DbClient.ExecuteGetListAsync(this).GetAwaiter();
     }
+    
+    public RawSubqueryTableSql<TDialect> AsSubQuery(string alias)
+    {
+        var (sql, parameters) = Build();
+        return new RawSubqueryTableSql<TDialect>(new RawSql<TDialect>(sql, parameters), alias);
+    }
+    
+    public RawSubqueryTableSql<TDialect> AsSubQuery<T>(string alias,
+        Func<IGetFieldByName, T> columnSelector)
+    {
+        var (sql, parameters) = Build();
+        var raw = new RawSubqueryTableSql<TDialect>(new RawSql<TDialect>(sql, parameters), alias);
+        return raw;
+    }
 }
 
 public abstract class Query<TReturn, TDialect, TVirtualTable>: QueryBase<TDialect>, IReturning<TReturn, TDialect, TVirtualTable> where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>

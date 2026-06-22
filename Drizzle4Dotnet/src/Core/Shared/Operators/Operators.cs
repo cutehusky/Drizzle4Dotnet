@@ -71,9 +71,9 @@ public static class Operators
     public static BinaryNode<bool> And(ISql<bool> c1, ISql<bool> c2) => new(c1, c2, _operatorAnd);
     public static BinaryNode<bool> Or(ISql<bool> c1, ISql<bool> c2) => new(c1, c2, _operatorOr);
     public static BinaryNode<bool> Xor(ISql<bool> c1, ISql<bool> c2) => new(c1, c2, _operatorXor);
-    public static NnaryNode<bool, bool> And<T>(params ISql<bool>[] conditions) => new(conditions,  _operatorAnd);
-    public static NnaryNode<bool, bool> Or<T>(params ISql<bool>[] conditions) => new(conditions, _operatorOr);
-    public static NnaryNode<bool, bool> Xor<T>(params ISql<bool>[] conditions) => new(conditions, _operatorXor);
+    public static NnaryNode<bool, bool> And(params ISql<bool>[] conditions) => new(conditions,  _operatorAnd);
+    public static NnaryNode<bool, bool> Or(params ISql<bool>[] conditions) => new(conditions, _operatorOr);
+    public static NnaryNode<bool, bool> Xor(params ISql<bool>[] conditions) => new(conditions, _operatorXor);
     
     
     
@@ -114,8 +114,8 @@ public static class Operators
     public static BinarySqlListValueNode<T, bool> NotIn<T>(ISql<T> c1, IEnumerable<T> values) => new(c1, values, _operatorNotIn);
     public static BinaryNode<T, T, bool> In<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, _operatorIn, true);
     public static BinaryNode<T, T, bool> NotIn<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, _operatorNotIn, true);
-    // public static NnaryAnyNode<T, bool, TDialect> In<T, TDialect>(ISql<T> c1, params SqlValue<T, TDialect>[] node) where TDialect : ISqlDialect => new(c1, node, _operatorIn);
-    // public static NnaryAnyNode<T, bool, TDialect> NotIn<T, TDialect>(ISql<T> c1, params SqlValue<T, TDialect>[] node) where TDialect : ISqlDialect => new(c1, node, _operatorNotIn);
+    public static NnaryAnyNode<T, bool, TDialect> In<T, TDialect>(ISql<T> c1, params SqlValue<T, TDialect>[] node) where TDialect : ISqlDialect => new(c1, node, _operatorIn);
+    public static NnaryAnyNode<T, bool, TDialect> NotIn<T, TDialect>(ISql<T> c1, params SqlValue<T, TDialect>[] node) where TDialect : ISqlDialect => new(c1, node, _operatorNotIn);
     
     
     
@@ -135,14 +135,14 @@ public static class Operators
         this IColumnOfDialect<T, TDialect> c1, ISql<T> c2)
          where TDialect : ISqlDialect
         => new(c1, c2, _operatorNotIn, true);
-    // public static NnaryAnyNode<T, bool, TDialect> In<T, TDialect>(
-    //     this IColumnOfDialect<T, TDialect> c1, params SqlValue<T, TDialect>[] node)
-    //      where TDialect : ISqlDialect
-    //     => new(c1, node, _operatorIn);
-    // public static NnaryAnyNode<T, bool, TDialect> NotIn<T, TDialect>(
-    //     this IColumnOfDialect<T, TDialect> c1, params SqlValue<T, TDialect>[] node)
-    //      where TDialect : ISqlDialect
-    //     => new(c1, node, _operatorNotIn);
+    public static NnaryAnyNode<T, bool, TDialect> In<T, TDialect>(
+        this IColumnOfDialect<T, TDialect> c1, params SqlValue<T, TDialect>[] node)
+         where TDialect : ISqlDialect
+        => new(c1, node, _operatorIn);
+    public static NnaryAnyNode<T, bool, TDialect> NotIn<T, TDialect>(
+        this IColumnOfDialect<T, TDialect> c1, params SqlValue<T, TDialect>[] node)
+         where TDialect : ISqlDialect
+        => new(c1, node, _operatorNotIn);
     
     
     
@@ -275,4 +275,61 @@ public static class Operators
         this IColumnOfDialect<T, TDialect> c1, T lower, T upper)
          where TDialect : ISqlDialect
         => new(c1, lower, upper, _operatorNotBetween, _operatorAnd);
+    
+    
+    // ====== IS DISTINCT FROM / IS NOT DISTINCT FROM (Null-safe equality) ======
+    const string _operatorIsDistinctFrom = " IS DISTINCT FROM ";
+    const string _operatorIsNotDistinctFrom = " IS NOT DISTINCT FROM ";
+    
+    public static BinaryNode<T1, T2, bool> IsDistinctFrom<T1, T2>(ISql<T1> c1, ISql<T2> c2)
+        => new(c1, c2, _operatorIsDistinctFrom);
+    public static BinaryNode<T1, T2, bool> IsNotDistinctFrom<T1, T2>(ISql<T1> c1, ISql<T2> c2)
+        => new(c1, c2, _operatorIsNotDistinctFrom);
+    public static BinarySqlValueNode<T, bool> IsDistinctFrom<T>(ISql<T> c1, T value)
+        => new(c1, value, _operatorIsDistinctFrom);
+    public static BinarySqlValueNode<T, bool> IsNotDistinctFrom<T>(ISql<T> c1, T value)
+        => new(c1, value, _operatorIsNotDistinctFrom);
+    
+    public static BinaryNode<T1, T2, bool> IsDistinctFrom<T1, T2, TDialect>(
+        this IColumnOfDialect<T1, TDialect> c1, IColumnOfDialect<T2, TDialect> c2)
+        where TDialect : ISqlDialect
+        => new(c1, c2, _operatorIsDistinctFrom);
+    public static BinaryNode<T1, T2, bool> IsNotDistinctFrom<T1, T2, TDialect>(
+        this IColumnOfDialect<T1, TDialect> c1, IColumnOfDialect<T2, TDialect> c2)
+        where TDialect : ISqlDialect
+        => new(c1, c2, _operatorIsNotDistinctFrom);
+    public static BinarySqlValueNode<T, bool> IsDistinctFrom<T, TDialect>(
+        this IColumnOfDialect<T, TDialect> c1, T value)
+        where TDialect : ISqlDialect
+        => new(c1, value, _operatorIsDistinctFrom);
+    public static BinarySqlValueNode<T, bool> IsNotDistinctFrom<T, TDialect>(
+        this IColumnOfDialect<T, TDialect> c1, T value)
+        where TDialect : ISqlDialect
+        => new(c1, value, _operatorIsNotDistinctFrom);
+    
+    
+    // ====== ALL / ANY / SOME (Subquery Quantifiers) ======
+    const string _operatorAll = " = ALL ";
+    const string _operatorAny = " = ANY ";
+    const string _operatorSome = " = SOME ";
+    
+    public static BinaryNode<T, T, bool> All<T>(ISql<T> c1, ISql<T> subquery)
+        => new(c1, subquery, _operatorAll, wrapInParentheses: true);
+    public static BinaryNode<T, T, bool> Any<T>(ISql<T> c1, ISql<T> subquery)
+        => new(c1, subquery, _operatorAny, wrapInParentheses: true);
+    public static BinaryNode<T, T, bool> Some<T>(ISql<T> c1, ISql<T> subquery)
+        => new(c1, subquery, _operatorSome, wrapInParentheses: true);
+    
+    public static BinaryNode<T, T, bool> All<T, TDialect>(
+        this IColumnOfDialect<T, TDialect> c1, ISql<T> subquery)
+        where TDialect : ISqlDialect
+        => new(c1, subquery, _operatorAll, wrapInParentheses: true);
+    public static BinaryNode<T, T, bool> Any<T, TDialect>(
+        this IColumnOfDialect<T, TDialect> c1, ISql<T> subquery)
+        where TDialect : ISqlDialect
+        => new(c1, subquery, _operatorAny, wrapInParentheses: true);
+    public static BinaryNode<T, T, bool> Some<T, TDialect>(
+        this IColumnOfDialect<T, TDialect> c1, ISql<T> subquery)
+        where TDialect : ISqlDialect
+        => new(c1, subquery, _operatorSome, wrapInParentheses: true);
 }
