@@ -104,4 +104,35 @@ public class PgSqlDeleteTests
         var (sql, parameters) = query.Build();
         Print("PgSQL DELETE with complex WHERE", sql, parameters);
     }
+
+    [Test]
+    public void Delete_WithReturning()
+    {
+        var query = _db.Delete(users)
+            .Where(Eq(UsersTable.Id, 1))
+            .Returning(UsersTable.ModelAll);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL DELETE RETURNING", sql, parameters);
+    }
+
+    [Test]
+    public void Delete_WithCte()
+    {
+        var cte = _db
+            .Select(UsersTable.Id)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, false))
+            .AsSubQuery("inactive_users", (from) => new
+            {
+                Id = from.Field<long>("Id")
+            }).AsCte();
+
+        var query = _db.Delete(users)
+            .With(cte)
+            .Where(In(UsersTable.Id, Sql.Raw<long>("SELECT Id FROM inactive_users")));
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL DELETE with CTE", sql, parameters);
+    }
 }

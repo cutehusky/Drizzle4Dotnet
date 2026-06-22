@@ -1,3 +1,5 @@
+using Drizzle4Dotnet.Core;
+using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.PgSql;
 using SharedDemo.PgSql;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
@@ -107,5 +109,38 @@ public class PgSqlUpdateTests
 
         var (sql, parameters) = query.Build();
         Print("PgSQL UPDATE with record Set", sql, parameters);
+    }
+
+    [Test]
+    public void Update_WithReturning()
+    {
+        var query = _db.Update(users)
+            .Set(UsersTable.Name, "Updated Name")
+            .Where(Eq(UsersTable.Id, 1))
+            .Returning(UsersTable.ModelAll);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL UPDATE RETURNING", sql, parameters);
+    }
+
+    [Test]
+    public void Update_WithCte()
+    {
+        var cte = _db
+            .Select(UsersTable.Id)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, false))
+            .AsSubQuery("inactive_users", (from) => new
+            {
+                Id = from.Field<long>("Id")
+            }).AsCte();
+
+        var query = _db.Update(users)
+            .With(cte)
+            .Set(UsersTable.IsActive, true)
+            .Where(In(UsersTable.Id, Sql.Raw<long>("SELECT Id FROM inactive_users")));
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL UPDATE with CTE", sql, parameters);
     }
 }

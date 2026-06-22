@@ -47,6 +47,9 @@ namespace SharedDemo.MySql
 
             [Column("UpdatedAt")]
             public static DateTime? UpdatedAt { get; set; }
+            
+            [Column("DeletedAt")]
+            public static DateTime? DeletedAt { get; set; }
         }
     }
     

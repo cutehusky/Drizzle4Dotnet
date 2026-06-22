@@ -1379,4 +1379,91 @@ public class MySqlSelectTests
         var (sql, parameters) = query.Build();
         Print("MySQL CTE with Aggregation", sql, parameters);
     }
+
+    // =========================================================================
+    // MySQL: Missing SELECT query features
+    // =========================================================================
+
+
+    [Test]
+    public void Select_WithSubqueryInFrom()
+    {
+        var subquery = _db
+            .Select(UsersTable.Id, UsersTable.Name)
+            .From(users)
+            .Where(Gt(UsersTable.Age, 18))
+            .AsSubQuery("active_users", (from) => new
+            {
+                Id = from.Field<long>("Id"),
+                Name = from.Field<string>("Name")
+            });
+
+        var query = _db
+            .Select(subquery.Shape.Id, subquery.Shape.Name)
+            .From(subquery);
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL SELECT from subquery (derived table)", sql, parameters);
+    }
+
+    [Test]
+    public void Select_IsNull_IsNotNull()
+    {
+        var query = _db
+            .Select(MySqlUserSelect.Record)
+            .From(users)
+            .Where(And(
+                IsNull(UsersTable.DeletedAt),
+                IsNotNull(UsersTable.Email)
+            ));
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL IS NULL / IS NOT NULL", sql, parameters);
+    }
+
+    [Test]
+    public void Select_NotOperator()
+    {
+        var query = _db
+            .Select(MySqlUserSelect.Record)
+            .From(users)
+            .Where(Not(Eq(UsersTable.IsActive, true)));
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL NOT operator", sql, parameters);
+    }
+
+    // =========================================================================
+    // MySQL: Standard functions (IIf, stats aggregate)
+    // =========================================================================
+
+    [Test]
+    public void Select_IiFunction()
+    {
+        var query = _db
+            .Select(
+                UsersTable.Name,
+                IIf<string>(Gt(UsersTable.Age, 18), Sql.Value("Adult"), Sql.Value("Minor")).As("Status")
+            )
+            .From(users);
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL IIF function", sql, parameters);
+    }
+
+    [Test]
+    public void Select_WithStdDevAndVariance()
+    {
+        var query = _db
+            .Select(
+                StdDev(UsersTable.Salary).As("StdSalary"),
+                Variance(UsersTable.Salary).As("VarSalary"),
+                VarPop(UsersTable.Salary).As("VarPopSalary"),
+                StdDevPop(UsersTable.Salary).As("StdPopSalary")
+            )
+            .From(users);
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL STDDEV and VARIANCE", sql, parameters);
+    }
 }

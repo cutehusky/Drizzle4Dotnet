@@ -134,4 +134,36 @@ public class PgSqlInsertTests
         var (sql, parameters) = query.Build();
         Print("PgSQL INSERT SELECT", sql, parameters);
     }
+
+    [Test]
+    public void Insert_WithReturning()
+    {
+        var query = _db.Insert(users)
+            .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
+            .Returning(UsersTable.ModelAll);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL INSERT RETURNING", sql, parameters);
+    }
+
+    [Test]
+    public void Insert_WithCte()
+    {
+        var cte = _db
+            .Select(UsersTable.Name, UsersTable.Email)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true))
+            .AsSubQuery("active_users", (from) => new
+            {
+                Name = from.Field<string>("Name"),
+                Email = from.Field<string>("Email")
+            }).AsCte();
+
+        var query = _db.Insert(users)
+            .With(cte)
+            .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 });
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL INSERT with CTE", sql, parameters);
+    }
 }

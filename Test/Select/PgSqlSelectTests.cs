@@ -1785,4 +1785,78 @@ public class PgSqlSelectTests
         var (sql, parameters) = compound.Build();
         Print("PgSQL EXCEPT compound query", sql, parameters);
     }
+
+    // =========================================================================
+    // PgSQL: Extended Lock Types
+    // =========================================================================
+
+    [Test]
+    public void Select_ForNoKeyUpdateSkipLocked()
+    {
+        var query = _db.Select(PgUserSelect.Record)
+            .From(users)
+            .ForNoKeyUpdate(skipLocked: true, nowait: false, UsersTable.Id, UsersTable.Name);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL FOR NO KEY UPDATE SKIP LOCKED OF", sql, parameters);
+    }
+
+
+    // =========================================================================
+    // PgSQL: Array Operators (ArrayAny, ArrayAll)
+    // =========================================================================
+
+    [Test]
+    public void Select_PgArrayAny()
+    {
+        var query = _db
+            .Select(PgUserSelect.Record)
+            .From(users)
+            .Where(PgOperators.Any(UsersTable.Id, Sql.Raw<long>("(SELECT user_id FROM user_projects)")));
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL ANY array operator", sql, parameters);
+    }
+
+    [Test]
+    public void Select_PgArrayAll()
+    {
+        var query = _db
+            .Select(PgUserSelect.Record)
+            .From(users)
+            .Where(PgOperators.All(UsersTable.Id, Sql.Raw<long>("(SELECT user_id FROM user_projects)")));
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL ALL array operator", sql, parameters);
+    }
+
+    // =========================================================================
+    // PgSQL: Not() and IIf()
+    // =========================================================================
+
+    [Test]
+    public void Select_NotOperator()
+    {
+        var query = _db
+            .Select(PgUserSelect.Record)
+            .From(users)
+            .Where(Not(Eq(UsersTable.IsActive, true)));
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL NOT operator", sql, parameters);
+    }
+
+    [Test]
+    public void Select_IiFunction()
+    {
+        var query = _db
+            .Select(
+                UsersTable.Name,
+                IIf<string>(Gt(UsersTable.Age, 18), Sql.Value("Adult"), Sql.Value("Minor")).As("Status")
+            )
+            .From(users);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL IIF function", sql, parameters);
+    }
 }
