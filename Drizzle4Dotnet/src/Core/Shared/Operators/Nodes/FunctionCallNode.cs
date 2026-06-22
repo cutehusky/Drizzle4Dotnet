@@ -10,10 +10,20 @@ public readonly struct FunctionCallNode<TReturn> : IOperator<TReturn>
     private readonly string _functionName;
     private readonly IGenericSql[] _arguments;
 
+    /// <summary>
+    /// The function/operator name (e.g., "ROW_NUMBER", "LEAD", "CONCAT_WS").
+    /// </summary>
+    public string FunctionName => _functionName;
+
+    /// <summary>
+    /// The argument expressions passed to this function call.
+    /// </summary>
+    public IGenericSql[] Arguments => _arguments;
+
     public FunctionCallNode(string functionName, params IGenericSql[] arguments)
     {
         _functionName = functionName;
-        _arguments = arguments;
+        _arguments = (IGenericSql[])arguments.Clone();
     }
 
     public void BuildSql(ISqlBuilder sqlBuilder)

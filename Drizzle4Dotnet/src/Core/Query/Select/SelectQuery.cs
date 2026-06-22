@@ -33,6 +33,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     protected bool _nowait;
     protected readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
     protected bool _recursive;
+    protected string? _intoTable;
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect> selectedColumns,
@@ -61,6 +62,13 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         sqlBuilder.Append("SELECT ");
         if (_distinct) sqlBuilder.Append("DISTINCT ");
         SelectedColumns.BuildSql(sqlBuilder);
+
+        // INTO (SELECT ... INTO table_name)
+        if (_intoTable != null)
+        {
+            sqlBuilder.Append(" INTO ");
+            sqlBuilder.Append(TDialect.BuildIdentifier(_intoTable));
+        }
 
         // FROM
         if (_from != null)
@@ -298,6 +306,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         _nowait = nowait;
         return this;
     }
+
 }
 
 public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDialect, TVirtualTable> where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
@@ -317,6 +326,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
     protected bool _skipLocked;
     protected bool _nowait;
     protected bool _recursive;
+    protected string? _intoTable;
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns,
@@ -345,6 +355,13 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
         sqlBuilder.Append("SELECT ");
         if (_distinct) sqlBuilder.Append("DISTINCT ");
         SelectedColumns.BuildSql(sqlBuilder);
+
+        // INTO (SELECT ... INTO table_name)
+        if (_intoTable != null)
+        {
+            sqlBuilder.Append(" INTO ");
+            sqlBuilder.Append(TDialect.BuildIdentifier(_intoTable));
+        }
 
         // FROM
         if (_from != null)
@@ -570,4 +587,5 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
         _nowait = nowait;
         return this;
     }
+
 }

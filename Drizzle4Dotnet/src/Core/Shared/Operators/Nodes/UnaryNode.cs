@@ -6,6 +6,16 @@ public readonly struct UnaryNode<T> : IOperator<T>
     private readonly string _op;
     private readonly bool _prefix;
 
+    /// <summary>
+    /// The function/operator name (e.g., "COUNT", "UPPER", "ABS").
+    /// </summary>
+    public string FunctionName => _op;
+
+    /// <summary>
+    /// The argument expression passed to this unary operator.
+    /// </summary>
+    public ISql<T> Argument => _expression;
+
     public UnaryNode(ISql<T> expression, string op, bool prefix = false)
     {
         _expression = expression;
@@ -36,6 +46,16 @@ public readonly struct UnaryNode<T, TReturn> : IOperator<TReturn>
     private readonly ISql<T> _expression;
     private readonly string _op;
     private readonly bool _prefix;
+
+    /// <summary>
+    /// The function/operator name (e.g., "COUNT", "SUM", "AVG").
+    /// </summary>
+    public string FunctionName => _op;
+
+    /// <summary>
+    /// The argument expression passed to this unary operator.
+    /// </summary>
+    public ISql<T> Argument => _expression;
 
     public UnaryNode(ISql<T> expression, string op, bool prefix = false)
     {

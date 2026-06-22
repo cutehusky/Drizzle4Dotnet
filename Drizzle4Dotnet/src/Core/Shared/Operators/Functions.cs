@@ -204,6 +204,13 @@ public static class Functions
         where TDialect : ISqlDialect 
         => new(c1, "SQRT", true);
     
+    // Sign(col) -> SIGN(col) — returns -1, 0, or 1
+    public static UnaryNode<T, int> Sign<T>(ISql<T> c1) 
+        => new(c1, "SIGN", true);
+    public static UnaryNode<T, int> Sign<T, TDialect>(this IColumnOfDialect<T, TDialect> c1) 
+        where TDialect : ISqlDialect 
+        => new(c1, "SIGN", true);
+    
     // ======================================================================
     // 2.4: Date/Time Functions (Standard SQL)
     // ======================================================================
@@ -270,6 +277,7 @@ public static class Functions
         => new CastNode<double>(expression, "DOUBLE PRECISION", usePostgresSyntax: false);
     public static CastNode<DateTime> CastToDateTime(IGenericSql expression) 
         => new CastNode<DateTime>(expression, "TIMESTAMP", usePostgresSyntax: false);
+
     
 
     // For PostgreSQL-specific functions (JSON, Array, Random, Position, etc.),

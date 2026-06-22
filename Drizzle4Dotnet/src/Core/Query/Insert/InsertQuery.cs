@@ -9,6 +9,8 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
     protected readonly TTable _table;
     protected readonly List<Dictionary<string, object?>> _values = new();
     private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    private bool _useDefaultValues;
+    private IGenericSql? _fromQuery;
 
     public InsertQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
     {
@@ -68,11 +70,30 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         }
         return this;
     }
+
+    /// <summary>
+    /// INSERT ... SELECT — inserts rows from a subquery.
+    /// Usage: _db.Insert(table).From(_db.Select(...).From(otherTable).Where(...))
+    /// </summary>
+    public InsertQuery<TTable, TDialect> From(IGenericSql selectQuery)
+    {
+        _fromQuery = selectQuery;
+        return this;
+    }
+
+    /// <summary>
+    /// INSERT DEFAULT VALUES — inserts a row with all default values.
+    /// </summary>
+    public InsertQuery<TTable, TDialect> DefaultValues()
+    {
+        _useDefaultValues = true;
+        return this;
+    }
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (_values.Count == 0)
-            throw new InvalidOperationException("No values provided for insert.");
+        if (_values.Count == 0 && !_useDefaultValues && _fromQuery == null)
+            throw new InvalidOperationException("No values provided for insert. Use Value(s), DefaultValues(), or From().");
 
         var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
         
@@ -89,36 +110,53 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
 
         sqlBuilder.Append("INSERT INTO ");
         _table.BuildRefSql(sqlBuilder);
-        sqlBuilder.Append(" (");
 
-        for (int i = 0; i < allColumns.Count; i++)
+        // Column list
+        if (allColumns.Count > 0)
         {
-            if (i > 0) sqlBuilder.Append(", ");
-            sqlBuilder.Append(TDialect.BuildIdentifier(allColumns[i]));
-        }
-        sqlBuilder.Append(") VALUES ");
-
-        for (int rowIndex = 0; rowIndex < _values.Count; rowIndex++)
-        {
-            if (rowIndex > 0) sqlBuilder.Append(", ");
-        
-            sqlBuilder.Append('(');
-            var row = _values[rowIndex];
-        
-            for (int colIndex = 0; colIndex < allColumns.Count; colIndex++)
+            sqlBuilder.Append(" (");
+            for (int i = 0; i < allColumns.Count; i++)
             {
-                if (colIndex > 0) sqlBuilder.Append(", ");
-            
-                if (row.TryGetValue(allColumns[colIndex], out var val))
-                {
-                    sqlBuilder.Append(sqlBuilder.AddParameter(val));
-                }
-                else
-                {
-                    sqlBuilder.Append("NULL");
-                }
+                if (i > 0) sqlBuilder.Append(", ");
+                sqlBuilder.Append(TDialect.BuildIdentifier(allColumns[i]));
             }
             sqlBuilder.Append(')');
+        }
+
+        if (_useDefaultValues)
+        {
+            sqlBuilder.Append(" DEFAULT VALUES");
+        }
+        else if (_fromQuery != null)
+        {
+            sqlBuilder.Append(' ');
+            _fromQuery.BuildSql(sqlBuilder);
+        }
+        else
+        {
+            sqlBuilder.Append(" VALUES ");
+            for (int rowIndex = 0; rowIndex < _values.Count; rowIndex++)
+            {
+                if (rowIndex > 0) sqlBuilder.Append(", ");
+            
+                sqlBuilder.Append('(');
+                var row = _values[rowIndex];
+            
+                for (int colIndex = 0; colIndex < allColumns.Count; colIndex++)
+                {
+                    if (colIndex > 0) sqlBuilder.Append(", ");
+                
+                    if (row.TryGetValue(allColumns[colIndex], out var val))
+                    {
+                        sqlBuilder.Append(sqlBuilder.AddParameter(val));
+                    }
+                    else
+                    {
+                        sqlBuilder.Append("NULL");
+                    }
+                }
+                sqlBuilder.Append(')');
+            }
         }
     }
 }

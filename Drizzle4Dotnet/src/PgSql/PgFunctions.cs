@@ -158,4 +158,72 @@ public static class PgFunctions
         args.AddRange(columns);
         return new FunctionCallNode<string>("CONCAT_WS", args.ToArray());
     }
+
+
+    // ======================================================================
+    // Window Functions (PostgreSQL)
+    // ======================================================================
+
+    /// <summary>
+    /// ROW_NUMBER() — assigns a unique sequential integer to each row within a partition.
+    /// Use .Over(over) to add the OVER clause.
+    /// </summary>
+    public static FunctionCallNode<long> RowNumber()
+        => new FunctionCallNode<long>("ROW_NUMBER");
+
+    /// <summary>
+    /// RANK() — ranks rows with gaps (e.g., 1, 1, 3).
+    /// </summary>
+    public static FunctionCallNode<long> Rank()
+        => new FunctionCallNode<long>("RANK");
+
+    /// <summary>
+    /// DENSE_RANK() — ranks rows without gaps (e.g., 1, 1, 2).
+    /// </summary>
+    public static FunctionCallNode<long> DenseRank()
+        => new FunctionCallNode<long>("DENSE_RANK");
+
+    /// <summary>
+    /// NTILE(n) — divides rows into n roughly equal buckets.
+    /// </summary>
+    public static FunctionCallNode<long> Ntile(int n)
+        => new FunctionCallNode<long>("NTILE", new SqlValueNode<int>(n));
+
+    /// <summary>
+    /// LEAD(col, offset, default) — access a row at a given physical offset after the current row.
+    /// </summary>
+    public static FunctionCallNode<T> Lead<T>(ISql<T> c1, int offset, IGenericSql defaultValue)
+        => new FunctionCallNode<T>("LEAD", c1, new SqlValueNode<int>(offset), defaultValue);
+    public static FunctionCallNode<T> Lead<T>(ISql<T> c1, int offset)
+        => new FunctionCallNode<T>("LEAD", c1, new SqlValueNode<int>(offset));
+    public static FunctionCallNode<T> Lead<T>(ISql<T> c1)
+        => new FunctionCallNode<T>("LEAD", c1);
+
+    /// <summary>
+    /// LAG(col, offset, default) — access a row at a given physical offset before the current row.
+    /// </summary>
+    public static FunctionCallNode<T> Lag<T>(ISql<T> c1, int offset, IGenericSql defaultValue)
+        => new FunctionCallNode<T>("LAG", c1, new SqlValueNode<int>(offset), defaultValue);
+    public static FunctionCallNode<T> Lag<T>(ISql<T> c1, int offset)
+        => new FunctionCallNode<T>("LAG", c1, new SqlValueNode<int>(offset));
+    public static FunctionCallNode<T> Lag<T>(ISql<T> c1)
+        => new FunctionCallNode<T>("LAG", c1);
+
+    /// <summary>
+    /// FIRST_VALUE(col) — returns the first value in the window frame.
+    /// </summary>
+    public static UnaryNode<T, T> FirstValue<T>(ISql<T> c1)
+        => new(c1, "FIRST_VALUE", true);
+
+    /// <summary>
+    /// LAST_VALUE(col) — returns the last value in the window frame.
+    /// </summary>
+    public static UnaryNode<T, T> LastValue<T>(ISql<T> c1)
+        => new(c1, "LAST_VALUE", true);
+
+    /// <summary>
+    /// NTH_VALUE(col, n) — returns the nth value in the window frame.
+    /// </summary>
+    public static FunctionCallNode<T> NthValue<T>(ISql<T> c1, int n)
+        => new FunctionCallNode<T>("NTH_VALUE", c1, new SqlValueNode<int>(n));
 }
