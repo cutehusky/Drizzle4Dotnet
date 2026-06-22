@@ -1,15 +1,16 @@
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
+using Drizzle4Dotnet.Dialect;
 
-namespace SharedDemo
+namespace SharedDemo.MySql
 {
-    [Table("Users")]
+    [Table("Users", Dialect = typeof(MySqlSqlDialectImpl))]
     public partial class UsersTable
     {
         public static class Columns
         {
             [Column("Id")]
-            public static int Id { get; set; }
+            public static long Id { get; set; }
 
             [Column("Guid")]
             public static Guid Guid { get; set; }
@@ -21,7 +22,7 @@ namespace SharedDemo
             public static string Email { get; set; }
 
             [Column("Age")]
-            public static int Age { get; set; }
+            public static long Age { get; set; }
 
             [Column("Salary")]
             public static decimal Salary { get; set; }
@@ -33,13 +34,13 @@ namespace SharedDemo
             public static bool IsActive { get; set; }
 
             [Column("DepartmentId")]
-            public static int DepartmentId { get; set; }
+            public static long DepartmentId { get; set; }
 
             [Column("ManagerId")]
-            public static int? ManagerId { get; set; }
+            public static long? ManagerId { get; set; }
 
             [Column("RoleId")]
-            public static int RoleId { get; set; }
+            public static long RoleId { get; set; }
 
             [Column("CreatedAt")]
             public static DateTime CreatedAt { get; set; }
@@ -49,18 +50,18 @@ namespace SharedDemo
         }
     }
     
-    [Alias(typeof(UsersTable), "Manager")]
+    [Alias(typeof(UsersTable), "Manager", Dialect = typeof(MySqlSqlDialectImpl))]
     public partial class ManagersTable
     {
     }
     
-    [Table("Departments")]
+    [Table("Departments", Dialect = typeof(MySqlSqlDialectImpl))]
     public partial class DepartmentsTable
     {
         public static class Columns
         {
             [Column("Id")]
-            public static int Id { get; set; }
+            public static long Id { get; set; }
 
             [Column("Guid")]
             public static Guid Guid { get; set; }
@@ -78,7 +79,7 @@ namespace SharedDemo
             public static decimal Budget { get; set; }
 
             [Column("HeadCount")]
-            public static int HeadCount { get; set; }
+            public static long HeadCount { get; set; }
 
             [Column("IsActive")]
             public static bool IsActive { get; set; }
@@ -93,20 +94,20 @@ namespace SharedDemo
             public static string Description { get; set; }
             
             [Column("ParentDepartmentId")]
-            public static int? ParentDepartmentId { get; set; }
+            public static long? ParentDepartmentId { get; set; }
             
             [Column("ManagerId")]
-            public static int ManagerId { get; set; }
+            public static long ManagerId { get; set; }
         }
     }
     
-    [Table("Roles")]
+    [Table("Roles", Dialect = typeof(MySqlSqlDialectImpl))]
     public partial class RolesTable
     {
         public static class Columns
         {
             [Column("Id")]
-            public static int Id { get; set; }
+            public static long Id { get; set; }
 
             [Column("Guid")]
             public static Guid Guid { get; set; }
@@ -115,7 +116,7 @@ namespace SharedDemo
             public static string Name { get; set; }
 
             [Column("Level")]
-            public static int Level { get; set; }
+            public static long Level { get; set; }
 
             [Column("BaseSalary")]
             public static decimal BaseSalary { get; set; }
@@ -140,13 +141,13 @@ namespace SharedDemo
         }
     }
     
-    [Table("Projects")]
+    [Table("Projects", Dialect = typeof(MySqlSqlDialectImpl))]
     public partial class ProjectsTable
     {
         public static class Columns
         {
             [Column("Id")]
-            public static int Id { get; set; }
+            public static long Id { get; set; }
 
             [Column("Guid")]
             public static Guid Guid { get; set; }
@@ -158,10 +159,10 @@ namespace SharedDemo
             public static string Code { get; set; }
 
             [Column("OwnerId")]
-            public static int OwnerId { get; set; }
+            public static long OwnerId { get; set; }
 
             [Column("DepartmentId")]
-            public static int DepartmentId { get; set; }
+            public static long DepartmentId { get; set; }
 
             [Column("Budget")]
             public static decimal Budget { get; set; }
@@ -186,19 +187,19 @@ namespace SharedDemo
         }
     }
     
-    [Table("UserProjects")]
+    [Table("UserProjects", Dialect = typeof(MySqlSqlDialectImpl))]
     public partial class UserProjectsTable
     {
         public static class Columns
         {
             [Column("Id")]
-            public static int Id { get; set; }
+            public static long Id { get; set; }
 
             [Column("UserId")]
-            public static int UserId { get; set; }
+            public static long UserId { get; set; }
 
             [Column("ProjectId")]
-            public static int ProjectId { get; set; }
+            public static long ProjectId { get; set; }
 
             [Column("Role")]
             public static string Role { get; set; }

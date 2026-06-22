@@ -1,13 +1,13 @@
 using Drizzle4Dotnet.Core.Shared;
 
-namespace SharedDemo;
+namespace SharedDemo.PgSql;
 
 
 [DbSelect]
 public partial class UserSelect
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int Id { get;set; }
+    public long Id { get;set; }
 
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
     public string Email { get; set;}
@@ -21,7 +21,7 @@ public partial class UserSelect
 public partial class UserWithRelationsSelect
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int UserId { get; set; }
+    public long UserId { get; set; }
 
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
     public string UserName { get; set; }
@@ -46,7 +46,7 @@ public partial class UserWithRelationsSelect
 public partial class ProjectSelect
 {
     [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.Id)]
-    public int ProjectId { get; set; }
+    public long ProjectId { get; set; }
 
     [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.Name)]
     public string ProjectName { get; set; }
@@ -71,13 +71,13 @@ public partial class ProjectSelect
 public partial class UserProjectSelect
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int UserId { get; set; }
+    public long UserId { get; set; }
 
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
     public string UserName { get; set; }
 
     [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.Id)]
-    public int ProjectId { get; set; }
+    public long ProjectId { get; set; }
 
     [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.Name)]
     public string ProjectName { get; set; }
@@ -96,7 +96,7 @@ public partial class UserProjectSelect
 public partial class UserFullSelect
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int Id { get; set; }
+    public long Id { get; set; }
 
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Guid)]
     public Guid Guid { get; set; }
@@ -108,7 +108,7 @@ public partial class UserFullSelect
     public string Email { get; set; }
 
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Age)]
-    public int Age { get; set; }
+    public long Age { get; set; }
 
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Salary)]
     public decimal Salary { get; set; }

@@ -81,7 +81,7 @@ public static class Operators
     public static BinaryNode<string, string, bool> NotLike(ISql<string> c1, string value) => new(c1, new SqlValueNode<string>(value), _operatorNotLike);
     public static BinaryNode<string, string, bool> Like(ISql<string> c1, ISql<string> value) => new(c1, value, _operatorLike);
     public static BinaryNode<string, string, bool> NotLike(ISql<string> c1, ISql<string> value) => new(c1, value, _operatorNotLike);
-    public static BinaryNode<string, string, string> Contains(ISql<string> c1, string value) 
+    public static BinaryNode<string, string, bool> Contains(ISql<string> c1, string value) 
         => new(c1, new SqlValueNode<string>($"%{value}%"), _operatorLike);
     public static BinaryNode<string, string, bool> StartsWith(ISql<string> c1, string value) 
         => new(c1, new SqlValueNode<string>($"{value}%"), _operatorLike);

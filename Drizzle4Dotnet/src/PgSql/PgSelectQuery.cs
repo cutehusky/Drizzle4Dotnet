@@ -24,19 +24,19 @@ public class PgSelectQuery<TReturn> : SelectQuery<TReturn, PgSqlSqlDialectImpl>
 
     // ====== PostgreSQL-specific LATERAL Joins ======
     
-    public new PgSelectQuery<TReturn> InnerLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
+    public PgSelectQuery<TReturn> InnerLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
     {
         _joins.Add((table, "INNER LATERAL", on));
         return this;
     }
 
-    public new PgSelectQuery<TReturn> LeftLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
+    public PgSelectQuery<TReturn> LeftLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
     {
         _joins.Add((table, "LEFT LATERAL", on));
         return this;
     }
 
-    public new PgSelectQuery<TReturn> CrossLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table)
+    public PgSelectQuery<TReturn> CrossLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table)
     {
         _joins.Add((table, "CROSS LATERAL", null));
         return this;
@@ -89,19 +89,19 @@ public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlS
 
     // ====== PostgreSQL-specific LATERAL Joins ======
     
-    public new PgSelectQuery<TReturn, TVirtualTable> InnerLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
+    public PgSelectQuery<TReturn, TVirtualTable> InnerLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
     {
         _joins.Add((table, "INNER LATERAL", on));
         return this;
     }
 
-    public new PgSelectQuery<TReturn, TVirtualTable> LeftLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
+    public PgSelectQuery<TReturn, TVirtualTable> LeftLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
     {
         _joins.Add((table, "LEFT LATERAL", on));
         return this;
     }
 
-    public new PgSelectQuery<TReturn, TVirtualTable> CrossLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table)
+    public PgSelectQuery<TReturn, TVirtualTable> CrossLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table)
     {
         _joins.Add((table, "CROSS LATERAL", null));
         return this;

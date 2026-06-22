@@ -2,17 +2,17 @@
 -- USERS
 -- =========================
 CREATE TABLE "Users" (
-                         "Id" INTEGER PRIMARY KEY,
+                         "Id" BIGINT PRIMARY KEY,
                          "Guid" UUID NOT NULL,
                          "Name" TEXT NOT NULL,
                          "Email" TEXT NOT NULL,
-                         "Age" INTEGER NOT NULL,
+                         "Age" BIGINT NOT NULL,
                          "Salary" NUMERIC(18,2) NOT NULL,
                          "Rating" DOUBLE PRECISION NOT NULL,
                          "IsActive" BOOLEAN NOT NULL,
-                         "DepartmentId" INTEGER NOT NULL,
-                         "ManagerId" INTEGER NULL,
-                         "RoleId" INTEGER NOT NULL,
+                         "DepartmentId" BIGINT NOT NULL,
+                         "ManagerId" BIGINT NULL,
+                         "RoleId" BIGINT NOT NULL,
                          "CreatedAt" TIMESTAMP NOT NULL,
                          "UpdatedAt" TIMESTAMP NULL
 );
@@ -21,29 +21,29 @@ CREATE TABLE "Users" (
 -- DEPARTMENTS
 -- =========================
 CREATE TABLE "Departments" (
-                               "Id" INTEGER PRIMARY KEY,
+                               "Id" BIGINT PRIMARY KEY,
                                "Guid" UUID NOT NULL,
                                "Name" TEXT NOT NULL,
                                "Code" TEXT NOT NULL,
                                "Location" TEXT NOT NULL,
                                "Budget" NUMERIC(18,2) NOT NULL,
-                               "HeadCount" INTEGER NOT NULL,
+                               "HeadCount" BIGINT NOT NULL,
                                "IsActive" BOOLEAN NOT NULL,
                                "CreatedAt" TIMESTAMP NOT NULL,
                                "UpdatedAt" TIMESTAMP NULL,
                                "Description" TEXT NOT NULL,
-                               "ParentDepartmentId" INTEGER NULL,
-                               "ManagerId" INTEGER
+                               "ParentDepartmentId" BIGINT NULL,
+                               "ManagerId" BIGINT
 );
 
 -- =========================
 -- ROLES
 -- =========================
 CREATE TABLE "Roles" (
-                         "Id" INTEGER PRIMARY KEY,
+                         "Id" BIGINT PRIMARY KEY,
                          "Guid" UUID NOT NULL,
                          "Name" TEXT NOT NULL,
-                         "Level" INTEGER NOT NULL,
+                         "Level" BIGINT NOT NULL,
                          "BaseSalary" NUMERIC(18,2) NOT NULL,
                          "BonusRate" DOUBLE PRECISION NOT NULL,
                          "IsActive" BOOLEAN NOT NULL,
@@ -57,12 +57,12 @@ CREATE TABLE "Roles" (
 -- PROJECTS
 -- =========================
 CREATE TABLE "Projects" (
-                            "Id" INTEGER PRIMARY KEY,
+                            "Id" BIGINT PRIMARY KEY,
                             "Guid" UUID NOT NULL,
                             "Name" TEXT NOT NULL,
                             "Code" TEXT NOT NULL,
-                            "OwnerId" INTEGER NOT NULL,
-                            "DepartmentId" INTEGER NOT NULL,
+                            "OwnerId" BIGINT NOT NULL,
+                            "DepartmentId" BIGINT NOT NULL,
                             "Budget" NUMERIC(18,2) NOT NULL,
                             "Progress" DOUBLE PRECISION NOT NULL,
                             "IsActive" BOOLEAN NOT NULL,
@@ -76,9 +76,9 @@ CREATE TABLE "Projects" (
 -- USER PROJECTS
 -- =========================
 CREATE TABLE "UserProjects" (
-                                "Id" INTEGER PRIMARY KEY,
-                                "UserId" INTEGER NOT NULL,
-                                "ProjectId" INTEGER NOT NULL,
+                                "Id" BIGINT PRIMARY KEY,
+                                "UserId" BIGINT NOT NULL,
+                                "ProjectId" BIGINT NOT NULL,
                                 "Role" TEXT NOT NULL,
                                 "Allocation" DOUBLE PRECISION NOT NULL,
                                 "HourlyRate" NUMERIC(18,2) NOT NULL,

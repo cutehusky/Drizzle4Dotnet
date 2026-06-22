@@ -2,19 +2,20 @@ using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 using Drizzle4Dotnet.Dialect;
-using SharedDemo;
+using Drizzle4Dotnet.PgSql;
+using SharedDemo.PgSql;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
 using static Drizzle4Dotnet.Core.Shared.Operators.Functions;
-using ProjectSelect = SharedDemo.ProjectSelect;
-using UserSelect = SharedDemo.UserSelect;
-using UserWithRelationsSelect = SharedDemo.UserWithRelationsSelect;
+using ProjectSelect = SharedDemo.PgSql.ProjectSelect;
+using UserSelect = SharedDemo.PgSql.UserSelect;
+using UserWithRelationsSelect = SharedDemo.PgSql.UserWithRelationsSelect;
 
 namespace Test.Select;
 
 [TestFixture]
 public class SelectQueryPgTests
 {
-    private QueryBuilder<PgSqlSqlDialectImpl> _db;
+    private PgSqlQueryBuilder _db;
 
     private UsersTable users;
     private DepartmentsTable departments;
@@ -26,7 +27,7 @@ public class SelectQueryPgTests
     [SetUp]
     public void Setup()
     {
-        _db = new QueryBuilder<PgSqlSqlDialectImpl>();
+        _db = new PgSqlQueryBuilder();
 
         users = new UsersTable();
         departments = new DepartmentsTable();
@@ -630,7 +631,7 @@ public class SelectQueryPgTests
             .Select(UsersTable.Name, UsersTable.Email)
             .With(highRoles)
             .From(users)
-            .Where(In(UsersTable.RoleId, highRoles.Field<int>("Id")));
+            .Where(In(UsersTable.RoleId, highRoles.Field<long>("Id")));
     
         var (sql, parameters) = query.Build();
         Print("CTE as Filter Scope", sql, parameters);
