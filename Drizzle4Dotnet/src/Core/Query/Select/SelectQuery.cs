@@ -8,28 +8,31 @@ public enum ELockType
 {
     None,
     ForUpdate,
-    ForShare,
-    ForNoKeyUpdate,
-    ForKeyShare
+    ForShare
 }
 
+/// <summary>
+/// Core SELECT query builder — produces standard SQL only.
+/// Dialect-specific features (LATERAL joins, PG lock types, RETURNING) 
+/// are available in dialect-specific subclasses (PgSelectQuery, MySqlSelectQuery, etc.).
+/// </summary>
 public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDialect : ISqlDialect
 {
-    private IGenericTable<TDialect>? _from;
-    private readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> _joins = new();
-    private readonly List<IGenericSql> _wheres = new();
-    private readonly List<(IGenericSql, bool)> _orderBys = new();
-    private int? _limit;
-    private int? _offset;
-    private bool _distinct;
-    private readonly List<IGenericSql> _groupBys = new();
-    private readonly List<IGenericSql> _havings = new();
-    private string? _lockClause;
-    private IGenericColumn[]? _lockColumns;
-    private bool _skipLocked;
-    private bool _nowait;
-    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
-    private bool _recursive;
+    protected IGenericTable<TDialect>? _from;
+    protected readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> _joins = new();
+    protected readonly List<IGenericSql> _wheres = new();
+    protected readonly List<(IGenericSql, bool)> _orderBys = new();
+    protected int? _limit;
+    protected int? _offset;
+    protected bool _distinct;
+    protected readonly List<IGenericSql> _groupBys = new();
+    protected readonly List<IGenericSql> _havings = new();
+    protected string? _lockClause;
+    protected IGenericColumn[]? _lockColumns;
+    protected bool _skipLocked;
+    protected bool _nowait;
+    protected readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    protected bool _recursive;
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect> selectedColumns,
@@ -53,6 +56,45 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        BuildSqlPrefix(sqlBuilder);
+        
+        sqlBuilder.Append("SELECT ");
+        if (_distinct) sqlBuilder.Append("DISTINCT ");
+        SelectedColumns.BuildSql(sqlBuilder);
+
+        // FROM
+        if (_from != null)
+        {
+            sqlBuilder.Append(" FROM ");
+            _from.BuildRefSql(sqlBuilder);
+        }
+
+        BuildSqlJoins(sqlBuilder);
+
+        // WHERE
+        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+
+        // GROUP BY
+        AppendClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
+
+        // HAVING
+        AppendClause(sqlBuilder, " HAVING ", " AND ", _havings, wrapInParentheses: true);
+
+        // ORDER BY
+        BuildSqlOrderBy(sqlBuilder);
+
+        // LIMIT & OFFSET
+        if (_limit.HasValue || _offset.HasValue)
+            sqlBuilder.Append(TDialect.BuildLimitOffset(_limit, _offset));
+        
+        BuildSqlLock(sqlBuilder);
+    }
+    
+    /// <summary>
+    /// Hook for dialect-specific prefix (e.g., WITH clause). Override in subclasses if needed.
+    /// </summary>
+    protected virtual void BuildSqlPrefix(ISqlBuilder sqlBuilder)
+    {
         // WITH / WITH RECURSIVE
         if (_cteTables.Count > 0)
         {
@@ -66,18 +108,13 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
             }
             sqlBuilder.Append(' ');
         }
-        
-        sqlBuilder.Append("SELECT ");
-        if (_distinct) sqlBuilder.Append("DISTINCT ");
-        SelectedColumns.BuildSql(sqlBuilder);
-
-        // FROM
-        if (_from != null)
-        {
-            sqlBuilder.Append(" FROM ");
-            _from.BuildRefSql(sqlBuilder);
-        }
-
+    }
+    
+    /// <summary>
+    /// Hook for dialect-specific JOIN rendering. Override in subclasses if needed.
+    /// </summary>
+    protected virtual void BuildSqlJoins(ISqlBuilder sqlBuilder)
+    {
         if (_joins.Count > 0)
         {
             foreach (var (table, type, on) in _joins)
@@ -92,17 +129,13 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
                 }
             }
         }
-
-        // WHERE
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
-
-        // GROUP BY
-        AppendClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
-
-        // HAVING
-        AppendClause(sqlBuilder, " HAVING ", " AND ", _havings, wrapInParentheses: true);
-
-        // ORDER BY
+    }
+    
+    /// <summary>
+    /// Hook for dialect-specific ORDER BY rendering. Override in subclasses if needed.
+    /// </summary>
+    protected virtual void BuildSqlOrderBy(ISqlBuilder sqlBuilder)
+    {
         if (_orderBys.Count > 0)
         {
             sqlBuilder.Append(" ORDER BY ");
@@ -114,11 +147,13 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
                 sqlBuilder.Append(isAsc ? " ASC" : " DESC");
             }
         }
-
-        // LIMIT & OFFSET
-        if (_limit.HasValue) sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
-        if (_offset.HasValue) sqlBuilder.Append(" OFFSET ").Append(sqlBuilder.AddParameter(_offset.Value));
-        
+    }
+    
+    /// <summary>
+    /// Hook for dialect-specific locking clause. Override in subclasses if needed.
+    /// </summary>
+    protected virtual void BuildSqlLock(ISqlBuilder sqlBuilder)
+    {
         if (_lockClause != null)
         {
             sqlBuilder.Append(' ').Append(_lockClause);
@@ -198,7 +233,7 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     }
 
     // ====== JOINS ======
-    private SelectQuery<TReturn, TDialect> JoinInternal(
+    protected SelectQuery<TReturn, TDialect> JoinInternal(
         IGenericTable<TDialect> table,
         IGenericSql on,
         string type)
@@ -225,18 +260,6 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         return this;
     }
     
-    public  SelectQuery<TReturn, TDialect> InnerLateralJoin(IGenericTable<TDialect> table, IGenericSql on)
-        => JoinInternal(table, on, "INNER LATERAL");
-
-    public  SelectQuery<TReturn, TDialect> LeftLateralJoin(IGenericTable<TDialect> table, IGenericSql on)
-        => JoinInternal(table, on, "LEFT LATERAL");
-
-    public  SelectQuery<TReturn, TDialect> CrossLateralJoin(IGenericTable<TDialect> table)
-    {
-        _joins.Add((table, "CROSS LATERAL", null));
-        return this;
-    }
-    
     public SelectQuery<TReturn, TDialect> Distinct()
     {
         _distinct = true;
@@ -245,16 +268,12 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     
     public SelectQuery<TReturn, TDialect> ForUpdate() { _lockClause = "FOR UPDATE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
     public SelectQuery<TReturn, TDialect> ForShare() { _lockClause = "FOR SHARE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
-    public SelectQuery<TReturn, TDialect> ForNoKeyUpdate() { _lockClause = "FOR NO KEY UPDATE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
-    public SelectQuery<TReturn, TDialect> ForKeyShare() { _lockClause = "FOR KEY SHARE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
     public SelectQuery<TReturn, TDialect> For(ELockType lockType)
     {
         _lockClause = lockType switch
         {
             ELockType.ForUpdate => "FOR UPDATE",
             ELockType.ForShare => "FOR SHARE",
-            ELockType.ForNoKeyUpdate => "FOR NO KEY UPDATE",
-            ELockType.ForKeyShare => "FOR KEY SHARE",
             _ => null
         };
         _lockColumns = null;
@@ -266,16 +285,12 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     // Enhanced overloads with skipLocked/nowait/OF columns
     public SelectQuery<TReturn, TDialect> ForUpdate(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR UPDATE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
     public SelectQuery<TReturn, TDialect> ForShare(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR SHARE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
-    public SelectQuery<TReturn, TDialect> ForNoKeyUpdate(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR NO KEY UPDATE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
-    public SelectQuery<TReturn, TDialect> ForKeyShare(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR KEY SHARE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
     public SelectQuery<TReturn, TDialect> For(ELockType lockType, bool skipLocked, bool nowait, params IGenericColumn[] ofColumns)
     {
         _lockClause = lockType switch
         {
             ELockType.ForUpdate => "FOR UPDATE",
             ELockType.ForShare => "FOR SHARE",
-            ELockType.ForNoKeyUpdate => "FOR NO KEY UPDATE",
-            ELockType.ForKeyShare => "FOR KEY SHARE",
             _ => null
         };
         _lockColumns = ofColumns;
@@ -287,21 +302,21 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
 
 public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDialect, TVirtualTable> where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
 {
-    private IGenericTable<TDialect>? _from;
-    private readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> _joins = new();
-    private readonly List<IGenericSql> _wheres = new();
-    private readonly List<(IGenericSql, bool)> _orderBys = new();
-    private int? _limit;
-    private int? _offset;
-    private bool _distinct;
-    private readonly List<IGenericSql> _groupBys = new();
-    private readonly List<IGenericSql> _havings = new();
-    private string? _lockClause;
-    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
-    private IGenericColumn[]? _lockColumns;
-    private bool _skipLocked;
-    private bool _nowait;
-    private bool _recursive;
+    protected IGenericTable<TDialect>? _from;
+    protected readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> _joins = new();
+    protected readonly List<IGenericSql> _wheres = new();
+    protected readonly List<(IGenericSql, bool)> _orderBys = new();
+    protected int? _limit;
+    protected int? _offset;
+    protected bool _distinct;
+    protected readonly List<IGenericSql> _groupBys = new();
+    protected readonly List<IGenericSql> _havings = new();
+    protected string? _lockClause;
+    protected readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    protected IGenericColumn[]? _lockColumns;
+    protected bool _skipLocked;
+    protected bool _nowait;
+    protected bool _recursive;
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns,
@@ -325,6 +340,42 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        BuildSqlPrefix(sqlBuilder);
+        
+        sqlBuilder.Append("SELECT ");
+        if (_distinct) sqlBuilder.Append("DISTINCT ");
+        SelectedColumns.BuildSql(sqlBuilder);
+
+        // FROM
+        if (_from != null)
+        {
+            sqlBuilder.Append(" FROM ");
+            _from.BuildRefSql(sqlBuilder);
+        }
+
+        BuildSqlJoins(sqlBuilder);
+
+        // WHERE
+        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+
+        // GROUP BY
+        AppendClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
+
+        // HAVING
+        AppendClause(sqlBuilder, " HAVING ", " AND ", _havings, wrapInParentheses: true);
+
+        // ORDER BY
+        BuildSqlOrderBy(sqlBuilder);
+
+        // LIMIT & OFFSET
+        if (_limit.HasValue || _offset.HasValue)
+            sqlBuilder.Append(TDialect.BuildLimitOffset(_limit, _offset));
+        
+        BuildSqlLock(sqlBuilder);
+    }
+    
+    protected virtual void BuildSqlPrefix(ISqlBuilder sqlBuilder)
+    {
         // WITH / WITH RECURSIVE
         if (_cteTables.Count > 0)
         {
@@ -339,18 +390,10 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
             }
             sqlBuilder.Append('\n');
         }
-        
-        sqlBuilder.Append("SELECT ");
-        if (_distinct) sqlBuilder.Append("DISTINCT ");
-        SelectedColumns.BuildSql(sqlBuilder);
-
-        // FROM
-        if (_from != null)
-        {
-            sqlBuilder.Append(" FROM ");
-            _from.BuildRefSql(sqlBuilder);
-        }
-
+    }
+    
+    protected virtual void BuildSqlJoins(ISqlBuilder sqlBuilder)
+    {
         if (_joins.Count > 0)
         {
             foreach (var (table, type, on) in _joins)
@@ -365,17 +408,10 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
                 }
             }
         }
-
-        // WHERE
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
-
-        // GROUP BY
-        AppendClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
-
-        // HAVING
-        AppendClause(sqlBuilder, " HAVING ", " AND ", _havings, wrapInParentheses: true);
-
-        // ORDER BY
+    }
+    
+    protected virtual void BuildSqlOrderBy(ISqlBuilder sqlBuilder)
+    {
         if (_orderBys.Count > 0)
         {
             sqlBuilder.Append(" ORDER BY ");
@@ -387,11 +423,10 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
                 sqlBuilder.Append(isAsc ? " ASC" : " DESC");
             }
         }
-
-        // LIMIT & OFFSET
-        if (_limit.HasValue) sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
-        if (_offset.HasValue) sqlBuilder.Append(" OFFSET ").Append(sqlBuilder.AddParameter(_offset.Value));
-        
+    }
+    
+    protected virtual void BuildSqlLock(ISqlBuilder sqlBuilder)
+    {
         if (_lockClause != null)
         {
             sqlBuilder.Append(' ').Append(_lockClause);
@@ -471,7 +506,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
     }
 
     // ====== JOINS ======
-    private  SelectQuery<TReturn, TDialect, TVirtualTable> JoinInternal(
+    protected  SelectQuery<TReturn, TDialect, TVirtualTable> JoinInternal(
         IGenericTable<TDialect> table,
         IGenericSql on,
         string type)
@@ -498,19 +533,6 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
         return this;
     }
     
-    
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> InnerLateralJoin(IGenericTable<TDialect> table, IGenericSql on)
-        => JoinInternal(table, on, "INNER LATERAL");
-
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> LeftLateralJoin(IGenericTable<TDialect> table, IGenericSql on)
-        => JoinInternal(table, on, "LEFT LATERAL");
-
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> CrossLateralJoin(IGenericTable<TDialect> table)
-    {
-        _joins.Add((table, "CROSS LATERAL", null));
-        return this;
-    }
-    
     public  SelectQuery<TReturn, TDialect, TVirtualTable> Distinct()
     {
         _distinct = true;
@@ -519,16 +541,12 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
 
     public SelectQuery<TReturn, TDialect, TVirtualTable> ForUpdate() { _lockClause = "FOR UPDATE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
     public SelectQuery<TReturn, TDialect, TVirtualTable> ForShare() { _lockClause = "FOR SHARE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
-    public SelectQuery<TReturn, TDialect, TVirtualTable> ForNoKeyUpdate() { _lockClause = "FOR NO KEY UPDATE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
-    public SelectQuery<TReturn, TDialect, TVirtualTable> ForKeyShare() { _lockClause = "FOR KEY SHARE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
     public SelectQuery<TReturn, TDialect, TVirtualTable> For(ELockType lockType)
     {
         _lockClause = lockType switch
         {
             ELockType.ForUpdate => "FOR UPDATE",
             ELockType.ForShare => "FOR SHARE",
-            ELockType.ForNoKeyUpdate => "FOR NO KEY UPDATE",
-            ELockType.ForKeyShare => "FOR KEY SHARE",
             _ => null
         };
         _lockColumns = null;
@@ -539,16 +557,12 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
     
     public SelectQuery<TReturn, TDialect, TVirtualTable> ForUpdate(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR UPDATE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
     public SelectQuery<TReturn, TDialect, TVirtualTable> ForShare(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR SHARE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
-    public SelectQuery<TReturn, TDialect, TVirtualTable> ForNoKeyUpdate(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR NO KEY UPDATE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
-    public SelectQuery<TReturn, TDialect, TVirtualTable> ForKeyShare(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR KEY SHARE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
     public SelectQuery<TReturn, TDialect, TVirtualTable> For(ELockType lockType, bool skipLocked, bool nowait, params IGenericColumn[] ofColumns)
     {
         _lockClause = lockType switch
         {
             ELockType.ForUpdate => "FOR UPDATE",
             ELockType.ForShare => "FOR SHARE",
-            ELockType.ForNoKeyUpdate => "FOR NO KEY UPDATE",
-            ELockType.ForKeyShare => "FOR KEY SHARE",
             _ => null
         };
         _lockColumns = ofColumns;
