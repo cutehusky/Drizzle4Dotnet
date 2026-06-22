@@ -145,14 +145,14 @@ public static class Functions
         => new FunctionCallNode<string>("REPLACE", c1, new SqlValueNode<string>(from), new SqlValueNode<string>(to));
     
     // Position(substring IN col) -> POSITION(sub IN col)
-    public static FunctionCallNode<long> Position(IGenericSql substring, ISql<string> c1)
-        => new FunctionCallNode<long>("POSITION", substring, new SqlRawNode<string>("IN "), c1);
-    // Simpler: POSITION(substring, col) - uses comma syntax instead of IN
-    public static FunctionCallNode<long> Position(ISql<string> c1, string substring)
-        => new FunctionCallNode<long>("POSITION", new SqlValueNode<string>(substring), new SqlRawNode<string>("IN "), c1);
-    public static FunctionCallNode<long> Position<TDialect>(this IColumnOfDialect<string, TDialect> c1, string substring) 
+    // Uses custom PositionNode to avoid comma separators (IN keyword, not comma)
+    public static PositionNode Position(IGenericSql substring, ISql<string> c1)
+        => new PositionNode(substring, c1);
+    public static PositionNode Position(ISql<string> c1, string substring)
+        => new PositionNode(new SqlValueNode<string>(substring), c1);
+    public static PositionNode Position<TDialect>(this IColumnOfDialect<string, TDialect> c1, string substring) 
         where TDialect : ISqlDialect
-        => new FunctionCallNode<long>("POSITION", new SqlValueNode<string>(substring), new SqlRawNode<string>("IN "), c1);
+        => new PositionNode(new SqlValueNode<string>(substring), c1);
     
     // ConcatWs(separator, col1, col2, ...) -> CONCAT_WS(',', col1, col2)
     public static FunctionCallNode<string> ConcatWs(IGenericSql separator, params IGenericSql[] columns)
@@ -358,6 +358,13 @@ public static class Functions
     // JsonBuildObject(key1, val1, key2, val2, ...)
     public static FunctionCallNode<string> JsonBuildObject(params IGenericSql[] keyValuePairs)
         => new FunctionCallNode<string>("JSON_BUILD_OBJECT", keyValuePairs);
+    
+    // JsonArrayLength(col) -> JSON_ARRAY_LENGTH(col)
+    public static UnaryNode<T, int> JsonArrayLength<T>(ISql<T> c1) 
+        => new(c1, "JSON_ARRAY_LENGTH", true);
+    public static UnaryNode<T, int> JsonArrayLength<T, TDialect>(this IColumnOfDialect<T, TDialect> c1) 
+        where TDialect : ISqlDialect 
+        => new(c1, "JSON_ARRAY_LENGTH", true);
     
     // ToJson(col) -> TO_JSON(col)
     public static UnaryNode<T> ToJson<T>(ISql<T> c1) 
