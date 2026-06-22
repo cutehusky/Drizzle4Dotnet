@@ -11,7 +11,7 @@ namespace Drizzle4Dotnet.MySql;
 /// Extends the standard SelectQuery with MySQL-specific behavior.
 /// MySQL does not support LATERAL joins, FOR NO KEY UPDATE, or FOR KEY SHARE.
 /// </summary>
-public class MySqlSelectQuery<TReturn> : SelectQuery<TReturn, MySqlSqlDialectImpl>
+public class MySqlSelectQuery<TReturn> : SelectQuery<TReturn, MySqlSqlDialectImpl, MySqlSelectQuery<TReturn>>
 {
     public MySqlSelectQuery(
         ISelectedColumns<TReturn, MySqlSqlDialectImpl> selectedColumns,
@@ -25,7 +25,7 @@ public class MySqlSelectQuery<TReturn> : SelectQuery<TReturn, MySqlSqlDialectImp
 /// <summary>
 /// MySQL-specific SELECT query builder with virtual table support.
 /// </summary>
-public class MySqlSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, MySqlSqlDialectImpl, TVirtualTable>
+public class MySqlSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, MySqlSqlDialectImpl, TVirtualTable, MySqlSelectQuery<TReturn, TVirtualTable>>
     where TVirtualTable : IVirtualTable<MySqlSqlDialectImpl>
 {
     public MySqlSelectQuery(

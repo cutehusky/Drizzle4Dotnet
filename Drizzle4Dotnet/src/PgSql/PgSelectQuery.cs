@@ -13,7 +13,7 @@ namespace Drizzle4Dotnet.PgSql;
 /// - LATERAL joins
 /// - FOR NO KEY UPDATE / FOR KEY SHARE lock types
 /// </summary>
-public class PgSelectQuery<TReturn> : SelectQuery<TReturn, PgSqlSqlDialectImpl>
+public class PgSelectQuery<TReturn> : SelectQuery<TReturn, PgSqlSqlDialectImpl, PgSelectQuery<TReturn>>
 {
     public PgSelectQuery(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl> selectedColumns,
@@ -77,7 +77,7 @@ public class PgSelectQuery<TReturn> : SelectQuery<TReturn, PgSqlSqlDialectImpl>
 /// <summary>
 /// PostgreSQL-specific SELECT query builder with virtual table support.
 /// </summary>
-public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlSqlDialectImpl, TVirtualTable>
+public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlSqlDialectImpl, TVirtualTable, PgSelectQuery<TReturn, TVirtualTable>>
     where TVirtualTable : IVirtualTable<PgSqlSqlDialectImpl>
 {
     public PgSelectQuery(

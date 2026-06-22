@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
@@ -16,7 +17,9 @@ public enum ELockType
 /// Dialect-specific features (LATERAL joins, PG lock types, RETURNING) 
 /// are available in dialect-specific subclasses (PgSelectQuery, MySqlSelectQuery, etc.).
 /// </summary>
-public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDialect : ISqlDialect
+public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
+    where TSelf : SelectQuery<TReturn, TDialect, TSelf>
+    where TDialect : ISqlDialect
 {
     protected IGenericTable<TDialect>? _from;
     protected readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> _joins = new();
@@ -42,17 +45,17 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
     {
     }
     
-    public SelectQuery<TReturn, TDialect> With(ICteTable<TDialect> cteTable)
+    public TSelf With(ICteTable<TDialect> cteTable)
     {
         _cteTables.Add(cteTable);
-        return this;
+        return (TSelf)this;
     }
     
-    public SelectQuery<TReturn, TDialect> WithRecursive(params ICteTable<TDialect>[] cteTables)
+    public TSelf WithRecursive(params ICteTable<TDialect>[] cteTables)
     {
         _recursive = true;
         foreach (var t in cteTables) _cteTables.Add(t);
-        return this;
+        return (TSelf)this;
     }
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
@@ -179,104 +182,104 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         }
     }
 
-    public SelectQuery<TReturn, TDialect> From(IGenericTable<TDialect> table)
+    public TSelf From(IGenericTable<TDialect> table)
     {
         _from = table;
-        return this;
+        return (TSelf)this;
     }
 
     
-    public SelectQuery<TReturn, TDialect> Where(params IGenericSql[] conditions)
+    public TSelf Where(params IGenericSql[] conditions)
     {
         _wheres.AddRange(conditions);
-        return this;
+        return (TSelf)this;
     }
     
-    public SelectQuery<TReturn, TDialect> Where(IGenericSql conditions)
+    public TSelf Where(IGenericSql conditions)
     {
         _wheres.AddRange(conditions);
-        return this;
+        return (TSelf)this;
     }
     
-    public SelectQuery<TReturn, TDialect> GroupBy(IGenericSql columns)
+    public TSelf GroupBy(IGenericSql columns)
     {
         _groupBys.Add(columns);
-        return this;
+        return (TSelf)this;
     }
     
-    public SelectQuery<TReturn, TDialect> GroupBy(params IGenericSql[] columns)
+    public TSelf GroupBy(params IGenericSql[] columns)
     {
         _groupBys.AddRange(columns);
-        return this;
+        return (TSelf)this;
     }
 
-    public SelectQuery<TReturn, TDialect> Having(IGenericSql condition)
+    public TSelf Having(IGenericSql condition)
     {
         _havings.Add(condition);
-        return this;
+        return (TSelf)this;
     }
     
-    public SelectQuery<TReturn, TDialect> Having(params IGenericSql[] conditions)
+    public TSelf Having(params IGenericSql[] conditions)
     {
         _havings.AddRange(conditions);
-        return this;
+        return (TSelf)this;
     }
 
-    public SelectQuery<TReturn, TDialect> OrderBy(IGenericSql col, bool asc = true)
+    public TSelf OrderBy(IGenericSql col, bool asc = true)
     {
         _orderBys.Add((col, asc));
-        return this;
+        return (TSelf)this;
     }
 
-    public SelectQuery<TReturn, TDialect> Limit(int limit)
+    public TSelf Limit(int limit)
     {
         _limit = limit;
-        return this;
+        return (TSelf)this;
     }
 
-    public SelectQuery<TReturn, TDialect> Offset(int offset)
+    public TSelf Offset(int offset)
     {
         _offset = offset;
-        return this;
+        return (TSelf)this;
     }
 
     // ====== JOINS ======
-    protected SelectQuery<TReturn, TDialect> JoinInternal(
+    protected TSelf JoinInternal(
         IGenericTable<TDialect> table,
         IGenericSql on,
         string type)
     {
         _joins.Add((table, type, on));
-        return this;
+        return (TSelf)this;
     }
 
-    public SelectQuery<TReturn, TDialect> InnerJoin(IGenericTable<TDialect> table, IGenericSql on)
+    public TSelf InnerJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "INNER");
 
-    public SelectQuery<TReturn, TDialect> LeftJoin(IGenericTable<TDialect> table, IGenericSql on)
+    public TSelf LeftJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "LEFT");
 
-    public SelectQuery<TReturn, TDialect> RightJoin(IGenericTable<TDialect> table, IGenericSql on)
+    public TSelf RightJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "RIGHT");
 
-    public SelectQuery<TReturn, TDialect> FullJoin(IGenericTable<TDialect> table, IGenericSql on)
+    public TSelf FullJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "FULL");
 
-    public SelectQuery<TReturn, TDialect> CrossJoin(IGenericTable<TDialect> table)
+    public TSelf CrossJoin(IGenericTable<TDialect> table)
     {
         _joins.Add((table, "CROSS", null));
-        return this;
+        return (TSelf)this;
     }
     
-    public SelectQuery<TReturn, TDialect> Distinct()
+    public TSelf Distinct()
     {
         _distinct = true;
-        return this;
+        return (TSelf)this;
     }
     
-    public SelectQuery<TReturn, TDialect> ForUpdate() { _lockClause = "FOR UPDATE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
-    public SelectQuery<TReturn, TDialect> ForShare() { _lockClause = "FOR SHARE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
-    public SelectQuery<TReturn, TDialect> For(ELockType lockType)
+    public TSelf ForUpdate() { _lockClause = "FOR UPDATE"; _lockColumns = null; _skipLocked = false; _nowait = false; return (TSelf)this; }
+    public TSelf ForShare() { _lockClause = "FOR SHARE"; _lockColumns = null; _skipLocked = false; _nowait = false; return (TSelf)this; }
+    public TSelf For(ELockType lockType)
     {
         _lockClause = lockType switch
         {
@@ -287,13 +290,13 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         _lockColumns = null;
         _skipLocked = false;
         _nowait = false;
-        return this;
+        return (TSelf)this;
     }
     
     // Enhanced overloads with skipLocked/nowait/OF columns
-    public SelectQuery<TReturn, TDialect> ForUpdate(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR UPDATE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
-    public SelectQuery<TReturn, TDialect> ForShare(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR SHARE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
-    public SelectQuery<TReturn, TDialect> For(ELockType lockType, bool skipLocked, bool nowait, params IGenericColumn[] ofColumns)
+    public TSelf ForUpdate(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR UPDATE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return (TSelf)this; }
+    public TSelf ForShare(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR SHARE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return (TSelf)this; }
+    public TSelf For(ELockType lockType, bool skipLocked, bool nowait, params IGenericColumn[] ofColumns)
     {
         _lockClause = lockType switch
         {
@@ -304,12 +307,14 @@ public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDia
         _lockColumns = ofColumns;
         _skipLocked = skipLocked;
         _nowait = nowait;
-        return this;
+        return (TSelf)this;
     }
-
 }
 
-public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDialect, TVirtualTable> where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
+public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn, TDialect, TVirtualTable>
+    where TSelf : SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>
+    where TDialect : ISqlDialect
+    where TVirtualTable : IVirtualTable<TDialect>
 {
     protected IGenericTable<TDialect>? _from;
     protected readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> _joins = new();
@@ -335,17 +340,17 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
     {
     }
     
-    public SelectQuery<TReturn, TDialect, TVirtualTable> With(ICteTable<TDialect> cteTable)
+    public TSelf With(ICteTable<TDialect> cteTable)
     {
         _cteTables.Add(cteTable);
-        return this;
+        return (TSelf)this;
     }
     
-    public SelectQuery<TReturn, TDialect, TVirtualTable> WithRecursive(params ICteTable<TDialect>[] cteTables)
+    public TSelf WithRecursive(params ICteTable<TDialect>[] cteTables)
     {
         _recursive = true;
         foreach (var t in cteTables) _cteTables.Add(t);
-        return this;
+        return (TSelf)this;
     }
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
@@ -461,104 +466,110 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
         }
     }
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> From(IGenericTable<TDialect> table)
+    public TSelf From(IGenericTable<TDialect> table)
     {
         _from = table;
-        return this;
+        return (TSelf)this;
     }
 
             
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Where(params IGenericSql[] conditions)
+    public TSelf Where(params IGenericSql[] conditions)
     {
         _wheres.AddRange(conditions);
-        return this;
+        return (TSelf)this;
     }
     
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Where(IGenericSql conditions)
+    public TSelf Where(IGenericSql conditions)
     {
         _wheres.Add(conditions);
-        return this;
+        return (TSelf)this;
     }
     
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> GroupBy(IGenericSql columns)
+    public TSelf GroupBy(IGenericSql columns)
     {
         _groupBys.Add(columns);
-        return this;
+        return (TSelf)this;
     }
     
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> GroupBy(params IGenericSql[] columns)
+    public TSelf GroupBy(params IGenericSql[] columns)
     {
         _groupBys.AddRange(columns);
-        return this;
+        return (TSelf)this;
     }
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Having(IGenericSql condition)
+    public TSelf Having(IGenericSql condition)
     {
         _havings.Add(condition);
-        return this;
+        return (TSelf)this;
     }
     
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Having(params IGenericSql[] conditions)
+    public TSelf Having(params IGenericSql[] conditions)
     {
         _havings.AddRange(conditions);
-        return this;
+        return (TSelf)this;
     }
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> OrderBy(IGenericSql col, bool asc = true)
+    public TSelf OrderBy(IGenericSql col, bool asc = true)
     {
         _orderBys.Add((col, asc));
-        return this;
+        return (TSelf)this;
+    }
+    
+    public TSelf OrderBy(params (IGenericSql col, bool asc)[] columns)
+    {
+        foreach (var c in columns) _orderBys.Add(c);
+        return (TSelf)this;
     }
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Limit(int limit)
+    public TSelf Limit(int limit)
     {
         _limit = limit;
-        return this;
+        return (TSelf)this;
     }
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Offset(int offset)
+    public TSelf Offset(int offset)
     {
         _offset = offset;
-        return this;
+        return (TSelf)this;
     }
 
     // ====== JOINS ======
-    protected  SelectQuery<TReturn, TDialect, TVirtualTable> JoinInternal(
+    protected TSelf JoinInternal(
         IGenericTable<TDialect> table,
         IGenericSql on,
         string type)
     {
         _joins.Add((table, type, on));
-        return this;
+        return (TSelf)this;
     }
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> InnerJoin(IGenericTable<TDialect> table, IGenericSql on)
+    public TSelf InnerJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "INNER");
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> LeftJoin(IGenericTable<TDialect> table, IGenericSql on)
+    public TSelf LeftJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "LEFT");
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> RightJoin(IGenericTable<TDialect> table, IGenericSql on)
+    public TSelf RightJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "RIGHT");
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> FullJoin(IGenericTable<TDialect> table, IGenericSql on)
+    public TSelf FullJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "FULL");
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> CrossJoin(IGenericTable<TDialect> table)
+    public TSelf CrossJoin(IGenericTable<TDialect> table)
     {
         _joins.Add((table, "CROSS", null));
-        return this;
+        return (TSelf)this;
     }
     
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Distinct()
+    public TSelf Distinct()
     {
         _distinct = true;
-        return this;
+        return (TSelf)this;
     }
-
-    public SelectQuery<TReturn, TDialect, TVirtualTable> ForUpdate() { _lockClause = "FOR UPDATE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
-    public SelectQuery<TReturn, TDialect, TVirtualTable> ForShare() { _lockClause = "FOR SHARE"; _lockColumns = null; _skipLocked = false; _nowait = false; return this; }
-    public SelectQuery<TReturn, TDialect, TVirtualTable> For(ELockType lockType)
+    
+    public TSelf ForUpdate() { _lockClause = "FOR UPDATE"; _lockColumns = null; _skipLocked = false; _nowait = false; return (TSelf)this; }
+    public TSelf ForShare() { _lockClause = "FOR SHARE"; _lockColumns = null; _skipLocked = false; _nowait = false; return (TSelf)this; }
+    public TSelf For(ELockType lockType)
     {
         _lockClause = lockType switch
         {
@@ -569,12 +580,12 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
         _lockColumns = null;
         _skipLocked = false;
         _nowait = false;
-        return this;
+        return (TSelf)this;
     }
     
-    public SelectQuery<TReturn, TDialect, TVirtualTable> ForUpdate(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR UPDATE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
-    public SelectQuery<TReturn, TDialect, TVirtualTable> ForShare(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR SHARE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return this; }
-    public SelectQuery<TReturn, TDialect, TVirtualTable> For(ELockType lockType, bool skipLocked, bool nowait, params IGenericColumn[] ofColumns)
+    public TSelf ForUpdate(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR UPDATE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return (TSelf)this; }
+    public TSelf ForShare(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR SHARE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return (TSelf)this; }
+    public TSelf For(ELockType lockType, bool skipLocked, bool nowait, params IGenericColumn[] ofColumns)
     {
         _lockClause = lockType switch
         {
@@ -585,7 +596,6 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDial
         _lockColumns = ofColumns;
         _skipLocked = skipLocked;
         _nowait = nowait;
-        return this;
+        return (TSelf)this;
     }
-
 }

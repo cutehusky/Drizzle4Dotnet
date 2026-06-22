@@ -1,7 +1,5 @@
 using Drizzle4Dotnet.Core;
-using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Query.Update;
-using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
@@ -14,7 +12,7 @@ namespace Drizzle4Dotnet.PgSql;
 /// - RETURNING clause
 /// - UPDATE ... FROM (JOIN support via FROM clause)
 /// </summary>
-public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl>
+public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, PgUpdateQuery<TTable>>
     where TTable : ITable<PgSqlSqlDialectImpl>
 {
     private readonly List<(IGenericTable<PgSqlSqlDialectImpl>, IGenericSql?)> _fromTables = new();
@@ -22,15 +20,6 @@ public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl>
     public PgUpdateQuery(TTable table, DbClient<PgSqlSqlDialectImpl> dbClient) 
         : base(table, dbClient)
     {
-    }
-
-    /// <summary>
-    /// Adds a RETURNING clause to capture updated rows.
-    /// </summary>
-    public new ReturningQuery<TReturn, PgSqlSqlDialectImpl> Returning<TReturn>(
-        ISelectedColumns<TReturn, PgSqlSqlDialectImpl> selectedColumns)
-    {
-        return new ReturningQuery<TReturn, PgSqlSqlDialectImpl>(this, selectedColumns);
     }
 
     /// <summary>

@@ -1226,7 +1226,7 @@ public class PgSqlSelectTests
                 PgFunctions.RowNumber()
                     .Over(PgOver.Create()
                         .PartitionBy(UsersTable.DepartmentId)
-                        .OrderBy(UsersTable.Salary.Desc()))
+                        .OrderBy(UsersTable.Salary, false))
                     .As("RowNum")
             )
             .From(users);
@@ -1245,7 +1245,7 @@ public class PgSqlSelectTests
                 UsersTable.Salary,
                 PgFunctions.Rank()
                     .Over(PgOver.Create()
-                        .OrderBy(UsersTable.Salary.Desc()))
+                        .OrderBy(UsersTable.Salary, false))
                     .As("Rank")
             )
             .From(users);
@@ -1265,7 +1265,7 @@ public class PgSqlSelectTests
                 PgFunctions.DenseRank()
                     .Over(PgOver.Create()
                         .PartitionBy(UsersTable.DepartmentId)
-                        .OrderBy(UsersTable.Salary.Desc()))
+                        .OrderBy(UsersTable.Salary, false))
                     .As("DenseRank")
             )
             .From(users);
@@ -1284,7 +1284,7 @@ public class PgSqlSelectTests
                 UsersTable.Salary,
                 PgFunctions.Ntile(4)
                     .Over(PgOver.Create()
-                        .OrderBy(UsersTable.Salary.Desc()))
+                        .OrderBy(UsersTable.Salary, false))
                     .As("Quartile")
             )
             .From(users);
@@ -1358,7 +1358,7 @@ public class PgSqlSelectTests
                 PgFunctions.FirstValue(UsersTable.Name)
                     .Over(PgOver.Create()
                         .PartitionBy(UsersTable.DepartmentId)
-                        .OrderBy(UsersTable.Salary.Desc()))
+                        .OrderBy(UsersTable.Salary, false))
                     .As("HighestPaid")
             )
             .From(users);
@@ -1378,7 +1378,7 @@ public class PgSqlSelectTests
                 PgFunctions.LastValue(UsersTable.Name)
                     .Over(PgOver.Create()
                         .PartitionBy(UsersTable.DepartmentId)
-                        .OrderBy(UsersTable.Salary.Desc()))
+                        .OrderBy(UsersTable.Salary, false))
                     .As("LowestPaid")
             )
             .From(users);
@@ -1396,7 +1396,7 @@ public class PgSqlSelectTests
                 UsersTable.Salary,
                 PgFunctions.NthValue(UsersTable.Salary, 3)
                     .Over(PgOver.Create()
-                        .OrderBy(UsersTable.Salary.Desc()))
+                        .OrderBy(UsersTable.Salary, false))
                     .As("ThirdHighest")
             )
             .From(users);

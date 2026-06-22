@@ -13,7 +13,7 @@ namespace Drizzle4Dotnet.MySql;
 /// - LIMIT and ORDER BY on DELETE
 /// MySQL does not support RETURNING — use MySqlFunctions.RowCount() instead.
 /// </summary>
-public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl>
+public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl, MySqlDeleteQuery<TTable>>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
     private readonly List<(IGenericTable<MySqlSqlDialectImpl>, string, IGenericSql?)> _joins = new();

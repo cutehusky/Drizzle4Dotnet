@@ -73,7 +73,7 @@ public class MySqlUpdateTests
     public void Update_WithJoin()
     {
         var query = _db.Update(users)
-            .Set(UsersTable.Name, Sql.Raw("CONCAT(`Users`.`Name`, ' - Updated')"))
+            .Set(UsersTable.Name, Sql.Raw<string>("CONCAT(`Users`.`Name`, ' - Updated')"))
             .InnerJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
             .Where(Eq(DepartmentsTable.Name, "Engineering"));
 
@@ -85,7 +85,7 @@ public class MySqlUpdateTests
     public void Update_WithLeftJoin()
     {
         var query = _db.Update(users)
-            .Set(UsersTable.Name, Sql.Raw("'Archived'"))
+            .Set(UsersTable.Name, Sql.Raw<string>("'Archived'"))
             .LeftJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
             .Where(IsNull(DepartmentsTable.Id));
 
@@ -97,7 +97,7 @@ public class MySqlUpdateTests
     public void Update_WithCrossJoin()
     {
         var query = _db.Update(users)
-            .Set(UsersTable.Name, Sql.Raw("'Default'"))
+            .Set(UsersTable.Name, Sql.Raw<string>("'Default'"))
             .CrossJoin(departments);
 
         var (sql, parameters) = query.Build();

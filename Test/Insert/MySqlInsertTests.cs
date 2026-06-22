@@ -155,7 +155,7 @@ public class MySqlInsertTests
     [Test]
     public void Replace_Basic()
     {
-        var query = new MySqlReplaceQuery<UsersTable>(users, _db.Client)
+        var query = _db.Replace(users)
             .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 });
 
         var (sql, parameters) = query.Build();
@@ -165,7 +165,7 @@ public class MySqlInsertTests
     [Test]
     public void Replace_MultipleRows()
     {
-        var query = new MySqlReplaceQuery<UsersTable>(users, _db.Client)
+        var query = _db.Replace(users)
             .Values(
                 new UsersTable.InsertRecord { Name = "Alice", Email = "alice@e.com", Age = 25, IsActive = true, DepartmentId = 1, RoleId = 1 },
                 new UsersTable.InsertRecord { Name = "Bob", Email = "bob@e.com", Age = 30, IsActive = true, DepartmentId = 2, RoleId = 2 }

@@ -4,7 +4,10 @@ using Drizzle4Dotnet.Core.Shared;
 namespace Drizzle4Dotnet.Core.Query.Delete;
 
 
-public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITable<TDialect> where TDialect : ISqlDialect
+public class DeleteQuery<TTable, TDialect, TSelf> : Query<TDialect>
+    where TSelf : DeleteQuery<TTable, TDialect, TSelf>
+    where TTable : ITable<TDialect>
+    where TDialect : ISqlDialect
 {
     protected readonly TTable _table;
     protected readonly List<IGenericSql> _wheres = new();
@@ -15,22 +18,22 @@ public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         _table = table;
     }
     
-    public DeleteQuery<TTable, TDialect> With(ICteTable<TDialect> cteTable)
+    public TSelf With(ICteTable<TDialect> cteTable)
     {
         _cteTables.Add(cteTable);
-        return this;
+        return (TSelf)this;
     }
 
-    public DeleteQuery<TTable, TDialect> Where(IGenericSql condition)
+    public TSelf Where(IGenericSql condition)
     {
         _wheres.Add(condition);
-        return this;
+        return (TSelf)this;
     }
     
-    public DeleteQuery<TTable, TDialect> Where(params IGenericSql[] conditions)
+    public TSelf Where(params IGenericSql[] conditions)
     {
         _wheres.AddRange(conditions);
-        return this;
+        return (TSelf)this;
     }
     
     public override void BuildSql(ISqlBuilder sqlBuilder)

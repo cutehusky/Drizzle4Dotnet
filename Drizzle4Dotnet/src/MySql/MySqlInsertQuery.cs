@@ -15,7 +15,7 @@ namespace Drizzle4Dotnet.MySql;
 /// - INSERT ... SET col=value syntax
 /// MySQL does not support RETURNING — use MySqlFunctions.LastInsertId() instead.
 /// </summary>
-public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl>
+public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl, MySqlInsertQuery<TTable>>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
     private List<string>? _onDuplicateKeyUpdateColumns;

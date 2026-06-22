@@ -66,9 +66,15 @@ public class PgOverBuilder
     /// <summary>
     /// Adds ORDER BY columns with direction.
     /// </summary>
-    public PgOverBuilder OrderBy(params IGenericSql[] columns)
+    public PgOverBuilder OrderBy(params (IGenericSql column, bool asc)[] columns)
     {
         _orderBy = new PgOrderByOverNode(columns);
+        return this;
+    }
+    
+    public PgOverBuilder OrderBy(IGenericSql column, bool asc = true)
+    {
+        _orderBy = new PgOrderByOverNode([(column, asc)]);
         return this;
     }
 
@@ -141,14 +147,16 @@ internal readonly struct PgPartitionByNode : IGenericSql
 /// </summary>
 internal readonly struct PgOrderByOverNode : IGenericSql
 {
-    private readonly IGenericSql[] _columns;
-    public PgOrderByOverNode(IGenericSql[] columns) => _columns = columns;
+    private readonly (IGenericSql column, bool asc)[] _columns;
+    public PgOrderByOverNode((IGenericSql column, bool asc)[] columns) => _columns = columns;
     public void BuildSql(ISqlBuilder sqlBuilder)
     {
         for (int i = 0; i < _columns.Length; i++)
         {
             if (i > 0) sqlBuilder.Append(", ");
-            _columns[i].BuildSql(sqlBuilder);
+            var (col, asc) = _columns[i];
+            col.BuildSql(sqlBuilder);
+            sqlBuilder.Append(asc ? " ASC" : " DESC");
         }
     }
 }

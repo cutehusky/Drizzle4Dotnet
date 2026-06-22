@@ -13,7 +13,7 @@ namespace Drizzle4Dotnet.MySql;
 /// MySQL-specific — not supported in other dialects.
 /// Generates: REPLACE INTO `table` (`col1`, `col2`) VALUES (@p0, @p1)
 /// </summary>
-public class MySqlReplaceQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl>
+public class MySqlReplaceQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl, MySqlReplaceQuery<TTable>>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
     public MySqlReplaceQuery(TTable table, DbClient<MySqlSqlDialectImpl> dbClient) 

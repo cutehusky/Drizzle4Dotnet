@@ -1,5 +1,4 @@
 using Drizzle4Dotnet.Core;
-using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
@@ -13,7 +12,7 @@ namespace Drizzle4Dotnet.PgSql;
 /// - RETURNING clause
 /// - DELETE ... USING (JOIN support via USING clause)
 /// </summary>
-public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl>
+public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl, PgDeleteQuery<TTable>>
     where TTable : ITable<PgSqlSqlDialectImpl>
 {
     private readonly List<(IGenericTable<PgSqlSqlDialectImpl>, IGenericSql?)> _usingTables = new();
@@ -21,15 +20,6 @@ public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl>
     public PgDeleteQuery(TTable table, DbClient<PgSqlSqlDialectImpl> dbClient) 
         : base(table, dbClient)
     {
-    }
-
-    /// <summary>
-    /// Adds a RETURNING clause to capture deleted rows.
-    /// </summary>
-    public new ReturningQuery<TReturn, PgSqlSqlDialectImpl> Returning<TReturn>(
-        ISelectedColumns<TReturn, PgSqlSqlDialectImpl> selectedColumns)
-    {
-        return new ReturningQuery<TReturn, PgSqlSqlDialectImpl>(this, selectedColumns);
     }
 
     /// <summary>

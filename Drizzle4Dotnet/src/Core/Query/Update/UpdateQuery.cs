@@ -1,10 +1,14 @@
+using System.Runtime.CompilerServices;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query.Update;
 
-public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITable<TDialect> where TDialect : ISqlDialect
+public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>
+    where TSelf : UpdateQuery<TTable, TDialect, TSelf>
+    where TTable : ITable<TDialect>
+    where TDialect : ISqlDialect
 {
     protected readonly TTable _table;
     protected readonly Dictionary<string, object?> _setValues = new();
@@ -19,49 +23,49 @@ public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITa
         _table = table;
     }
 
-    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, T value)
+    public TSelf Set<T>(DbColumn<T, TTable, TDialect> column, T value)
     {
         _setValues[column.Identifier] = value;
-        return this;
+        return (TSelf)this;
     }
     
-    public UpdateQuery<TTable, TDialect> With(ICteTable<TDialect> cteTable)
+    public TSelf With(ICteTable<TDialect> cteTable)
     {
         _cteTables.Add(cteTable);
-        return this;
+        return (TSelf)this;
     }
     
-    public UpdateQuery<TTable,TDialect> Set(IUpdateRecord<TTable, TDialect> record)
+    public TSelf Set(IUpdateRecord<TTable, TDialect> record)
     {
         record.Writer(_setValues);
-        return this;
+        return (TSelf)this;
     }
     
-    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, ISql<T> value)
+    public TSelf Set<T>(DbColumn<T, TTable, TDialect> column, ISql<T> value)
     {
         _setValues[column.Identifier] = value;
-        return this;
+        return (TSelf)this;
     }
     
-    public UpdateQuery<TTable, TDialect> Set(Dictionary<IColumnOfTable<TTable>, object> columnValuePairs)
+    public TSelf Set(Dictionary<IColumnOfTable<TTable>, object> columnValuePairs)
     {
         foreach (var kv in columnValuePairs)
         {
             _setValues[kv.Key.Identifier] = kv.Value;
         }
-        return this;
+        return (TSelf)this;
     }
 
-    public UpdateQuery<TTable, TDialect> Where(IGenericSql condition)
+    public TSelf Where(IGenericSql condition)
     {
         _wheres.Add(condition);
-        return this;
+        return (TSelf)this;
     }
     
-    public UpdateQuery<TTable, TDialect> Where(params IGenericSql[] conditions)
+    public TSelf Where(params IGenericSql[] conditions)
     {
         _wheres.AddRange(conditions);
-        return this;
+        return (TSelf)this;
     }
     
     public override void BuildSql(ISqlBuilder sqlBuilder)

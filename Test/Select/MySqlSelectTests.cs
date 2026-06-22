@@ -3,7 +3,6 @@ using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 using Drizzle4Dotnet.Dialect;
 using Drizzle4Dotnet.MySql;
-using Drizzle4Dotnet.MySql.Nodes;
 using SharedDemo.MySql;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
 using static Drizzle4Dotnet.Core.Shared.Operators.Functions;

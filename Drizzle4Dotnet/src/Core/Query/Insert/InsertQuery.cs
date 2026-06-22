@@ -4,7 +4,10 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query.Insert;
 
-public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITable<TDialect> where TDialect : ISqlDialect
+public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>
+    where TSelf : InsertQuery<TTable, TDialect, TSelf>
+    where TTable : ITable<TDialect>
+    where TDialect : ISqlDialect
 {
     protected readonly TTable _table;
     protected readonly List<Dictionary<string, object?>> _values = new();
@@ -17,21 +20,21 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
         _table = table;
     }
     
-    public InsertQuery<TTable, TDialect> With(ICteTable<TDialect> cteTable)
+    public TSelf With(ICteTable<TDialect> cteTable)
     {
         _cteTables.Add(cteTable);
-        return this;
+        return (TSelf)this;
     }
     
-    public InsertQuery<TTable, TDialect> Value(IInsertRecord<TTable, TDialect> record)
+    public TSelf Value(IInsertRecord<TTable, TDialect> record)
     {
         Dictionary<string, object?> value = new();
         record.Writer(value);
         _values.Add(value);
-        return this;
+        return (TSelf)this;
     }
     
-    public InsertQuery<TTable, TDialect> Values(params IInsertRecord<TTable, TDialect>[] records)
+    public TSelf Values(params IInsertRecord<TTable, TDialect>[] records)
     {
         foreach (var record in records)
         {
@@ -39,10 +42,10 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
             record.Writer(value);
             _values.Add(value);
         }
-        return this;
+        return (TSelf)this;
     }
     
-    public InsertQuery<TTable, TDialect> Value(Dictionary<IColumnOfTable<TTable>, object?> columnValuePairs)
+    public TSelf Value(Dictionary<IColumnOfTable<TTable>, object?> columnValuePairs)
     {        
         var value = new Dictionary<string, object?>();
         foreach (var columnValuePair in columnValuePairs)
@@ -52,10 +55,10 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
             value[col.Identifier] = val;
         }
         _values.Add(value);
-        return this;
+        return (TSelf)this;
     }
     
-    public InsertQuery<TTable, TDialect> Values(params Dictionary<IColumnOfTable<TTable>, object?>[] columnValuePairsArray)
+    public TSelf Values(params Dictionary<IColumnOfTable<TTable>, object?>[] columnValuePairsArray)
     {
         foreach (var columnValuePairs in columnValuePairsArray)
         {
@@ -68,26 +71,26 @@ public class InsertQuery<TTable, TDialect> : Query<TDialect> where TTable : ITab
             }
             _values.Add(value);
         }
-        return this;
+        return (TSelf)this;
     }
 
     /// <summary>
     /// INSERT ... SELECT — inserts rows from a subquery.
     /// Usage: _db.Insert(table).From(_db.Select(...).From(otherTable).Where(...))
     /// </summary>
-    public InsertQuery<TTable, TDialect> From(IGenericSql selectQuery)
+    public TSelf From(IGenericSql selectQuery)
     {
         _fromQuery = selectQuery;
-        return this;
+        return (TSelf)this;
     }
 
     /// <summary>
     /// INSERT DEFAULT VALUES — inserts a row with all default values.
     /// </summary>
-    public InsertQuery<TTable, TDialect> DefaultValues()
+    public TSelf DefaultValues()
     {
         _useDefaultValues = true;
-        return this;
+        return (TSelf)this;
     }
     
     public override void BuildSql(ISqlBuilder sqlBuilder)

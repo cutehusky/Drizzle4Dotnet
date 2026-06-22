@@ -14,7 +14,7 @@ namespace Drizzle4Dotnet.MySql;
 /// - LIMIT and ORDER BY on UPDATE
 /// MySQL does not support RETURNING — use MySqlFunctions.RowCount() instead.
 /// </summary>
-public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl>
+public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl, MySqlUpdateQuery<TTable>>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
     private readonly List<(IGenericTable<MySqlSqlDialectImpl>, string, IGenericSql?)> _joins = new();

@@ -1,5 +1,4 @@
 using Drizzle4Dotnet.Core;
-using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
@@ -14,7 +13,7 @@ namespace Drizzle4Dotnet.PgSql;
 /// - RETURNING clause
 /// - ON CONFLICT (upsert)
 /// </summary>
-public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl>
+public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl, PgInsertQuery<TTable>>
     where TTable : ITable<PgSqlSqlDialectImpl>
 {
     private string? _conflictTarget;
@@ -25,15 +24,6 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl>
     public PgInsertQuery(TTable table, DbClient<PgSqlSqlDialectImpl> dbClient) 
         : base(table, dbClient)
     {
-    }
-
-    /// <summary>
-    /// Adds a RETURNING clause to capture inserted rows.
-    /// </summary>
-    public new ReturningQuery<TReturn, PgSqlSqlDialectImpl> Returning<TReturn>(
-        ISelectedColumns<TReturn, PgSqlSqlDialectImpl> selectedColumns)
-    {
-        return new ReturningQuery<TReturn, PgSqlSqlDialectImpl>(this, selectedColumns);
     }
 
     /// <summary>
@@ -84,24 +74,6 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl>
         return this;
     }
 
-    /// <summary>
-    /// INSERT ... SELECT — inserts rows from a subquery.
-    /// </summary>
-    public new PgInsertQuery<TTable> From(IGenericSql selectQuery)
-    {
-        base.From(selectQuery);
-        return this;
-    }
-
-    /// <summary>
-    /// INSERT DEFAULT VALUES — inserts a row with all default values.
-    /// </summary>
-    public new PgInsertQuery<TTable> DefaultValues()
-    {
-        base.DefaultValues();
-        return this;
-    }
-
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
         base.BuildSql(sqlBuilder);
@@ -114,7 +86,7 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl>
 /// PostgreSQL-specific INSERT query builder with virtual table support.
 /// Extends InsertQuery with RETURNING and ON CONFLICT support.
 /// </summary>
-public class PgInsertQuery<TTable, TVirtualTable> : InsertQuery<TTable, PgSqlSqlDialectImpl>
+public class PgInsertQuery<TTable, TVirtualTable> : InsertQuery<TTable, PgSqlSqlDialectImpl, PgInsertQuery<TTable, TVirtualTable>>
     where TTable : ITable<PgSqlSqlDialectImpl>
     where TVirtualTable : IVirtualTable<PgSqlSqlDialectImpl>
 {
@@ -126,15 +98,6 @@ public class PgInsertQuery<TTable, TVirtualTable> : InsertQuery<TTable, PgSqlSql
     public PgInsertQuery(TTable table, DbClient<PgSqlSqlDialectImpl> dbClient) 
         : base(table, dbClient)
     {
-    }
-
-    /// <summary>
-    /// Adds a RETURNING clause to capture inserted rows.
-    /// </summary>
-    public ReturningQuery<TReturn, PgSqlSqlDialectImpl, TVirtualTable> Returning<TReturn>(
-        ISelectedColumns<TReturn, PgSqlSqlDialectImpl, TVirtualTable> selectedColumns)
-    {
-        return new ReturningQuery<TReturn, PgSqlSqlDialectImpl, TVirtualTable>(this, selectedColumns);
     }
 
     /// <summary>
@@ -184,24 +147,6 @@ public class PgInsertQuery<TTable, TVirtualTable> : InsertQuery<TTable, PgSqlSql
         return this;
     }
 
-    /// <summary>
-    /// INSERT ... SELECT — inserts rows from a subquery.
-    /// </summary>
-    public new PgInsertQuery<TTable, TVirtualTable> From(IGenericSql selectQuery)
-    {
-        base.From(selectQuery);
-        return this;
-    }
-
-    /// <summary>
-    /// INSERT DEFAULT VALUES — inserts a row with all default values.
-    /// </summary>
-    public new PgInsertQuery<TTable, TVirtualTable> DefaultValues()
-    {
-        base.DefaultValues();
-        return this;
-    }
-
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
         base.BuildSql(sqlBuilder);
@@ -211,7 +156,7 @@ public class PgInsertQuery<TTable, TVirtualTable> : InsertQuery<TTable, PgSqlSql
 
 /// <summary>
 /// Shared helper for building the ON CONFLICT clause to avoid code duplication
-/// between PgInsertQuery&lt;TTable&gt; and PgInsertQuery&lt;TTable, TVirtualTable&gt;.
+/// between PgInsertQuery<TTable> and PgInsertQuery<TTable, TVirtualTable>.
 /// </summary>
 internal static class PgConflictHelper
 {

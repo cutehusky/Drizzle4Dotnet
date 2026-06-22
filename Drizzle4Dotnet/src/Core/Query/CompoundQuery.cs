@@ -1,4 +1,3 @@
-using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
@@ -11,17 +10,18 @@ namespace Drizzle4Dotnet.Core.Query;
 public class CompoundQuery<TReturn, TDialect> : QueryBase<TDialect>, IReturning<TReturn, TDialect>
     where TDialect : ISqlDialect
 {
-    private readonly Query<TReturn, TDialect> _left;
-    private readonly Query<TReturn, TDialect> _right;
+    private readonly IReturning<TReturn, TDialect> _left;
+    private readonly IReturning<TReturn, TDialect> _right;
     private readonly string _operation;
 
     public ISelectedColumns<TReturn, TDialect> SelectedColumns { get; }
 
     public CompoundQuery(
-        Query<TReturn, TDialect> left,
-        Query<TReturn, TDialect> right,
-        string operation)
-        : base(left.DbClient)
+        IReturning<TReturn, TDialect> left,
+        IReturning<TReturn, TDialect> right,
+        string operation,
+        DbClient<TDialect> dbClient
+    ) : base(dbClient)
     {
         _left = left;
         _right = right;
@@ -49,17 +49,18 @@ public class CompoundQuery<TReturn, TDialect, TVirtualTable> : QueryBase<TDialec
     where TDialect : ISqlDialect
     where TVirtualTable : IVirtualTable<TDialect>
 {
-    private readonly Query<TReturn, TDialect, TVirtualTable> _left;
-    private readonly Query<TReturn, TDialect, TVirtualTable> _right;
+    private readonly IReturning<TReturn, TDialect, TVirtualTable> _left;
+    private readonly IReturning<TReturn, TDialect, TVirtualTable> _right;
     private readonly string _operation;
 
     public ISelectedColumns<TReturn, TDialect, TVirtualTable> SelectedColumns { get; }
 
     public CompoundQuery(
-        Query<TReturn, TDialect, TVirtualTable> left,
-        Query<TReturn, TDialect, TVirtualTable> right,
-        string operation)
-        : base(left.DbClient)
+        IReturning<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right,
+        string operation,
+        DbClient<TDialect> dbClient
+    ) : base(dbClient)
     {
         _left = left;
         _right = right;
@@ -90,56 +91,110 @@ public class CompoundQuery<TReturn, TDialect, TVirtualTable> : QueryBase<TDialec
 public static class CompoundQueryExtensions
 {
     public static CompoundQuery<TReturn, TDialect> Union<TReturn, TDialect>(
-        this SelectQuery<TReturn, TDialect> left,
-        SelectQuery<TReturn, TDialect> right)
+        this ReturningQuery<TReturn, TDialect> left,
+        IReturning<TReturn, TDialect> right)
         where TDialect : ISqlDialect
-        => new(left, right, "UNION");
+        => new(left, right, "UNION", left.DbClient);
 
     public static CompoundQuery<TReturn, TDialect> UnionAll<TReturn, TDialect>(
-        this SelectQuery<TReturn, TDialect> left,
-        SelectQuery<TReturn, TDialect> right)
+        this ReturningQuery<TReturn, TDialect> left,
+        IReturning<TReturn, TDialect> right)
         where TDialect : ISqlDialect
-        => new(left, right, "UNION ALL");
+        => new(left, right, "UNION ALL", left.DbClient);
 
     public static CompoundQuery<TReturn, TDialect> Intersect<TReturn, TDialect>(
-        this SelectQuery<TReturn, TDialect> left,
-        SelectQuery<TReturn, TDialect> right)
+        this ReturningQuery<TReturn, TDialect> left,
+        IReturning<TReturn, TDialect> right)
         where TDialect : ISqlDialect
-        => new(left, right, "INTERSECT");
+        => new(left, right, "INTERSECT", left.DbClient);
 
     public static CompoundQuery<TReturn, TDialect> Except<TReturn, TDialect>(
-        this SelectQuery<TReturn, TDialect> left,
-        SelectQuery<TReturn, TDialect> right)
+        this ReturningQuery<TReturn, TDialect> left,
+        IReturning<TReturn, TDialect> right)
         where TDialect : ISqlDialect
-        => new(left, right, "EXCEPT");
+        => new(left, right, "EXCEPT", left.DbClient);
 
     // ====== TVirtualTable variants ======
 
     public static CompoundQuery<TReturn, TDialect, TVirtualTable> Union<TReturn, TDialect, TVirtualTable>(
-        this SelectQuery<TReturn, TDialect, TVirtualTable> left,
-        SelectQuery<TReturn, TDialect, TVirtualTable> right)
+        this ReturningQuery<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
         where TDialect : ISqlDialect
         where TVirtualTable : IVirtualTable<TDialect>
-        => new(left, right, "UNION");
+        => new(left, right, "UNION", left.DbClient);
 
     public static CompoundQuery<TReturn, TDialect, TVirtualTable> UnionAll<TReturn, TDialect, TVirtualTable>(
-        this SelectQuery<TReturn, TDialect, TVirtualTable> left,
-        SelectQuery<TReturn, TDialect, TVirtualTable> right)
+        this ReturningQuery<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
         where TDialect : ISqlDialect
         where TVirtualTable : IVirtualTable<TDialect>
-        => new(left, right, "UNION ALL");
+        => new(left, right, "UNION ALL", left.DbClient);
 
     public static CompoundQuery<TReturn, TDialect, TVirtualTable> Intersect<TReturn, TDialect, TVirtualTable>(
-        this SelectQuery<TReturn, TDialect, TVirtualTable> left,
-        SelectQuery<TReturn, TDialect, TVirtualTable> right)
+        this ReturningQuery<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
         where TDialect : ISqlDialect
         where TVirtualTable : IVirtualTable<TDialect>
-        => new(left, right, "INTERSECT");
+        => new(left, right, "INTERSECT", left.DbClient);
 
     public static CompoundQuery<TReturn, TDialect, TVirtualTable> Except<TReturn, TDialect, TVirtualTable>(
-        this SelectQuery<TReturn, TDialect, TVirtualTable> left,
-        SelectQuery<TReturn, TDialect, TVirtualTable> right)
+        this ReturningQuery<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
         where TDialect : ISqlDialect
         where TVirtualTable : IVirtualTable<TDialect>
-        => new(left, right, "EXCEPT");
+        => new(left, right, "EXCEPT", left.DbClient);
+    
+     public static CompoundQuery<TReturn, TDialect> Union<TReturn, TDialect>(
+        this Query<TReturn, TDialect> left,
+        IReturning<TReturn, TDialect> right)
+        where TDialect : ISqlDialect
+        => new(left, right, "UNION", left.DbClient);
+
+    public static CompoundQuery<TReturn, TDialect> UnionAll<TReturn, TDialect>(
+        this Query<TReturn, TDialect> left,
+        IReturning<TReturn, TDialect> right)
+        where TDialect : ISqlDialect
+        => new(left, right, "UNION ALL", left.DbClient);
+
+    public static CompoundQuery<TReturn, TDialect> Intersect<TReturn, TDialect>(
+        this Query<TReturn, TDialect> left,
+        IReturning<TReturn, TDialect> right)
+        where TDialect : ISqlDialect
+        => new(left, right, "INTERSECT", left.DbClient);
+
+    public static CompoundQuery<TReturn, TDialect> Except<TReturn, TDialect>(
+        this Query<TReturn, TDialect> left,
+        IReturning<TReturn, TDialect> right)
+        where TDialect : ISqlDialect
+        => new(left, right, "EXCEPT", left.DbClient);
+
+    // ====== TVirtualTable variants ======
+
+    public static CompoundQuery<TReturn, TDialect, TVirtualTable> Union<TReturn, TDialect, TVirtualTable>(
+        this Query<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
+        where TDialect : ISqlDialect
+        where TVirtualTable : IVirtualTable<TDialect>
+        => new(left, right, "UNION", left.DbClient);
+
+    public static CompoundQuery<TReturn, TDialect, TVirtualTable> UnionAll<TReturn, TDialect, TVirtualTable>(
+        this Query<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
+        where TDialect : ISqlDialect
+        where TVirtualTable : IVirtualTable<TDialect>
+        => new(left, right, "UNION ALL", left.DbClient);
+
+    public static CompoundQuery<TReturn, TDialect, TVirtualTable> Intersect<TReturn, TDialect, TVirtualTable>(
+        this Query<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
+        where TDialect : ISqlDialect
+        where TVirtualTable : IVirtualTable<TDialect>
+        => new(left, right, "INTERSECT", left.DbClient);
+
+    public static CompoundQuery<TReturn, TDialect, TVirtualTable> Except<TReturn, TDialect, TVirtualTable>(
+        this Query<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
+        where TDialect : ISqlDialect
+        where TVirtualTable : IVirtualTable<TDialect>
+        => new(left, right, "EXCEPT", left.DbClient);
 }
