@@ -224,8 +224,8 @@ public static class Functions
         where TDialect : ISqlDialect 
         => new(c1, "SQRT", true);
     
-    public static NullaryNode<T> Random<T>() 
-        => new NullaryNode<T>("RANDOM");
+    public static FunctionCallNode<T> Random<T>() 
+        => new FunctionCallNode<T>("RANDOM");
     
     public static UnaryNode<T, T> Sign<T>(ISql<T> c1) 
         => new(c1, "SIGN", true);
@@ -264,12 +264,12 @@ public static class Functions
     public static BinaryNode<DateTime> DateDiff(ISql<DateTime> c1, double amount, string unit)
         => new(c1, Sql.Interval(amount, unit), " - ");
     
-    public static NullaryNode<DateTime> Now() 
-        => new NullaryNode<DateTime>("NOW");
-    public static NullaryNode<DateTime> CurrentTimestamp() 
-        => new NullaryNode<DateTime>("CURRENT_TIMESTAMP");
-    public static NullaryNode<DateTime> CurrentDate() 
-        => new NullaryNode<DateTime>("CURRENT_DATE");
+    public static FunctionCallNode<DateTime> Now()
+        => new FunctionCallNode<DateTime>("NOW");
+    public static FunctionCallNode<DateTime> CurrentTimestamp()
+        => new FunctionCallNode<DateTime>("CURRENT_TIMESTAMP");
+    public static FunctionCallNode<DateTime> CurrentDate()
+        => new FunctionCallNode<DateTime>("CURRENT_DATE");
     
     // AtTimeZone(col, zone) -> col AT TIME ZONE 'zone'
     public static BinaryNode<DateTime, string, DateTime> AtTimeZone(ISql<DateTime> c1, ISql<string> timezone)

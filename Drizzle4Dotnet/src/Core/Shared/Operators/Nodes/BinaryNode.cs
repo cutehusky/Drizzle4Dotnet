@@ -1,27 +1,6 @@
 namespace Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
 
-public readonly struct BinarySqlValueNode<T, TReturn> : IOperator<TReturn>
-{
-    private readonly ISql<T> _col;
-    private readonly T _value;
-    private readonly string _operator;
-
-    public BinarySqlValueNode(ISql<T> col, T value,  string @operator)
-    {
-        _col = col;
-        _value = value;
-        _operator = @operator;
-    }
-
-    public void BuildSql(ISqlBuilder sqlBuilder)
-    {
-        _col.BuildSql(sqlBuilder);
-        string paramName = sqlBuilder.AddParameter(_value);
-        sqlBuilder.Append(' ').Append(_operator).Append(' ').Append(paramName);
-    }
-}
-
 public readonly struct BinarySqlListValueNode<T, TReturn> : IOperator<TReturn>
 {
     private readonly ISql<T> _col;
