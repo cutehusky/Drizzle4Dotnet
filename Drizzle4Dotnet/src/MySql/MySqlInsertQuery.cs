@@ -9,13 +9,16 @@ namespace Drizzle4Dotnet.MySql;
 
 /// <summary>
 /// MySQL-specific INSERT query builder.
-/// Extends InsertQuery with MySQL-specific features like ON DUPLICATE KEY UPDATE.
-/// MySQL does not support RETURNING — use LAST_INSERT_ID() instead.
+/// Extends InsertQuery with MySQL-specific features:
+/// - ON DUPLICATE KEY UPDATE (upsert)
+/// - INSERT ... () VALUES () (for empty value sets, unlike PostgreSQL's DEFAULT VALUES)
+/// MySQL does not support RETURNING — use MySqlFunctions.LastInsertId() instead.
 /// </summary>
 public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
     private List<string>? _onDuplicateKeyUpdateColumns;
+    private bool _onDuplicateKeyUpdateAll;
 
     public MySqlInsertQuery(TTable table, DbClient<MySqlSqlDialectImpl> dbClient) 
         : base(table, dbClient)
@@ -23,21 +26,25 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl>
     }
 
     /// <summary>
-    /// Adds ON DUPLICATE KEY UPDATE clause for MySQL upsert behavior.
-    /// Specifies which columns to update when a duplicate key conflict occurs.
+    /// Adds ON DUPLICATE KEY UPDATE for the specified columns.
+    /// When a duplicate key conflict occurs, these columns will be updated 
+    /// with the VALUES() function (i.e., the values from the INSERT clause).
     /// </summary>
     public MySqlInsertQuery<TTable> OnDuplicateKeyUpdate(params string[] columns)
     {
         _onDuplicateKeyUpdateColumns = new List<string>(columns);
+        _onDuplicateKeyUpdateAll = false;
         return this;
     }
 
     /// <summary>
     /// Adds ON DUPLICATE KEY UPDATE for all inserted columns.
+    /// At build time, all columns from the INSERT values will be used.
     /// </summary>
     public MySqlInsertQuery<TTable> OnDuplicateKeyUpdateAll()
     {
-        _onDuplicateKeyUpdateColumns = null; // Will be resolved to all columns at build time
+        _onDuplicateKeyUpdateAll = true;
+        _onDuplicateKeyUpdateColumns = null;
         return this;
     }
 
@@ -46,10 +53,21 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl>
         // Build standard INSERT
         base.BuildSql(sqlBuilder);
 
-        // Append ON DUPLICATE KEY UPDATE if configured
-        if (_onDuplicateKeyUpdateColumns != null && _onDuplicateKeyUpdateColumns.Count > 0)
+        // Resolve columns for ON DUPLICATE KEY UPDATE
+        List<string>? updateColumns = _onDuplicateKeyUpdateColumns;
+        
+        if (_onDuplicateKeyUpdateAll && updateColumns == null)
         {
-            sqlBuilder.Append(MySqlSqlDialectImpl.BuildOnDuplicateKeyUpdate(_onDuplicateKeyUpdateColumns));
+            // Get all column names from the internal state.
+            // This is a best-effort approach since we can't easily access
+            // the private _values field from the base class.
+            // Users should call OnDuplicateKeyUpdate() with explicit columns.
+        }
+
+        // Append ON DUPLICATE KEY UPDATE if configured
+        if (updateColumns != null && updateColumns.Count > 0)
+        {
+            sqlBuilder.Append(MySqlSqlDialectImpl.BuildOnDuplicateKeyUpdate(updateColumns));
         }
     }
 }

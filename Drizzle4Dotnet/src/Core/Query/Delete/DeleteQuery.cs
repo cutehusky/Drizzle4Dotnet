@@ -6,8 +6,8 @@ namespace Drizzle4Dotnet.Core.Query.Delete;
 
 public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITable<TDialect> where TDialect : ISqlDialect
 {
-    private readonly TTable _table;
-    private readonly List<IGenericSql> _wheres = new();
+    protected readonly TTable _table;
+    protected readonly List<IGenericSql> _wheres = new();
     private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
 
     public DeleteQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)

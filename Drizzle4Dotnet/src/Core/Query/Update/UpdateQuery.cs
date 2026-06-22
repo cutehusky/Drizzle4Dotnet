@@ -6,9 +6,9 @@ namespace Drizzle4Dotnet.Core.Query.Update;
 
 public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITable<TDialect> where TDialect : ISqlDialect
 {
-    private readonly TTable _table;
-    private readonly Dictionary<string, object?> _setValues = new();
-    private readonly List<IGenericSql> _wheres = new();
+    protected readonly TTable _table;
+    protected readonly Dictionary<string, object?> _setValues = new();
+    protected readonly List<IGenericSql> _wheres = new();
     private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
 
     public UpdateQuery(
