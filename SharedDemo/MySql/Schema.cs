@@ -140,53 +140,40 @@ namespace SharedDemo.MySql
             public static string Description { get; set; }
         }
     }
-    
+
     [Table("Projects", Dialect = typeof(MySqlSqlDialectImpl))]
     public partial class ProjectsTable
     {
         public static class Columns
         {
-            [Column("Id")]
-            public static long Id { get; set; }
+            [Column("Id")] public static long Id { get; set; }
 
-            [Column("Guid")]
-            public static Guid Guid { get; set; }
+            [Column("Guid")] public static Guid Guid { get; set; }
 
-            [Column("Name")]
-            public static string Name { get; set; }
+            [Column("Name")] public static string Name { get; set; }
 
-            [Column("Code")]
-            public static string Code { get; set; }
+            [Column("Code")] public static string Code { get; set; }
 
-            [Column("OwnerId")]
-            public static long OwnerId { get; set; }
+            [Column("OwnerId")] public static long OwnerId { get; set; }
 
-            [Column("DepartmentId")]
-            public static long DepartmentId { get; set; }
+            [Column("DepartmentId")] public static long DepartmentId { get; set; }
 
-            [Column("Budget")]
-            public static decimal Budget { get; set; }
+            [Column("Budget")] public static decimal Budget { get; set; }
 
-            [Column("Progress")]
-            public static double Progress { get; set; }
+            [Column("Progress")] public static double Progress { get; set; }
 
-            [Column("IsActive")]
-            public static bool IsActive { get; set; }
+            [Column("IsActive")] public static bool IsActive { get; set; }
 
-            [Column("StartDate")]
-            public static DateTime StartDate { get; set; }
+            [Column("StartDate")] public static DateTime StartDate { get; set; }
 
-            [Column("EndDate")]
-            public static DateTime? EndDate { get; set; }
+            [Column("EndDate")] public static DateTime? EndDate { get; set; }
 
-            [Column("CreatedAt")]
-            public static DateTime CreatedAt { get; set; }
+            [Column("CreatedAt")] public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt")]
-            public static DateTime? UpdatedAt { get; set; }
+            [Column("UpdatedAt")] public static DateTime? UpdatedAt { get; set; }
         }
     }
-    
+
     [Table("UserProjects", Dialect = typeof(MySqlSqlDialectImpl))]
     public partial class UserProjectsTable
     {

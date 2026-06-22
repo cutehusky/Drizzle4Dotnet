@@ -490,7 +490,7 @@ public class SelectQueryPgTests
             .GroupBy(ProjectsTable.DepartmentId)
             .AsSubQuery("dept_budgets", (from) => new
             {
-                Id = from.Field<int>("Id"),
+                Id = from.Field<long>("Id"),
                 TotalDeptBudget = from.Field<decimal>("TotalDeptBudget")
             }).AsCte();
     
@@ -611,7 +611,7 @@ public class SelectQueryPgTests
             )
             .With(managerSalaries)
             .From(users)
-            .InnerJoin(managerSalaries, Eq(UsersTable.ManagerId, managerSalaries.Field<int>("Id")));
+            .InnerJoin(managerSalaries, Eq(UsersTable.ManagerId, managerSalaries.Field<long>("Id")));
     
         var (sql, parameters) = query.Build();
         Print("CTE Salary Gap Analysis", sql, parameters);

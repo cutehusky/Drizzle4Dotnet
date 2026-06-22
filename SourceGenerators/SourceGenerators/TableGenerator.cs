@@ -289,7 +289,7 @@ public class TableGenerator : IIncrementalGenerator
         ) {{
             BaseSql = baseSql;
             AliasName = aliasName;
-            {string.Join("\n            ", table.Columns.Select(p => $"this.{p.PropName} = new VirtualColumn<{p.Type}, {dialect.DialectImplType}>(aliasName, {p.DbColumnName}.Identifier);"))}
+            {string.Join("\n            ", table.Columns.Select(p => $"this.{p.PropName} = new VirtualColumn<{p.Type}, {dialect.DialectImplType}>(aliasName, {table.ClassName}.{p.DbColumnName}.Identifier);"))}
         }}
 
         public static IVirtualTable<{dialect.DialectImplType}> Create(IGenericSql baseSql, string aliasName, object _) => new GeneratedSubqueryTable(aliasName, baseSql);

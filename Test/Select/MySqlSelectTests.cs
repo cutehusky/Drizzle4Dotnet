@@ -442,7 +442,7 @@ public class MySqlSelectTests
             )
             .With(managerSalaries)
             .From(users)
-            .InnerJoin(managerSalaries, Eq(UsersTable.ManagerId, managerSalaries.Field<int>("Id")));
+            .InnerJoin(managerSalaries, Eq(UsersTable.ManagerId, managerSalaries.Field<long>("Id")));
 
         var (sql, parameters) = query.Build();
         Print("MySQL CTE Salary Gap", sql, parameters);
@@ -1365,7 +1365,7 @@ public class MySqlSelectTests
             .GroupBy(ProjectsTable.DepartmentId)
             .AsSubQuery("dept_budgets", (from) => new
             {
-                Id = from.Field<int>("Id"),
+                Id = from.Field<long>("Id"),
                 TotalDeptBudget = from.Field<decimal>("TotalDeptBudget")
             }).AsCte();
 
