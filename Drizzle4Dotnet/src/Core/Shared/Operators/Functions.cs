@@ -258,8 +258,7 @@ public static class Functions
     
     public static CastNode<T> Cast<T>(IGenericSql expression, string targetType) 
         => new CastNode<T>(expression, targetType, usePostgresSyntax: false);
-    public static CastNode<T> CastPg<T>(IGenericSql expression, string targetType) 
-        => new CastNode<T>(expression, targetType, usePostgresSyntax: true);
+    // Note: PostgreSQL-specific CastPg has been moved to PgFunctions.CastPg
     
     public static CastNode<string> CastToString(IGenericSql expression) 
         => new CastNode<string>(expression, "TEXT", usePostgresSyntax: false);

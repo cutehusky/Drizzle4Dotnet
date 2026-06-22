@@ -43,24 +43,9 @@ public static class Sql
     /// </summary>
     public static SqlDefaultNode Default() => new SqlDefaultNode();
     
-    /// <summary>
-    /// Creates a PostgreSQL INTERVAL literal: INTERVAL 'amount unit'
-    /// Usage: Sql.Interval(1, "day") → INTERVAL '1 day'
-    /// </summary>
-    public static IntervalNode Interval(int amount, string unit)
-        => new IntervalNode(amount, unit);
-    
-    /// <summary>
-    /// Creates a PostgreSQL INTERVAL literal with decimal amount.
-    /// </summary>
-    public static IntervalNode Interval(double amount, string unit)
-        => new IntervalNode(amount, unit);
-    
-    /// <summary>
-    /// Creates a PostgreSQL timezone name as a SQL string literal: 'UTC', 'Asia/Saigon', etc.
-    /// Use with AtTimeZone: AtTimeZone(col, Sql.TimeZone("UTC"))
-    /// </summary>
-    public static TimeZoneNode TimeZone(string timeZone) => new TimeZoneNode(timeZone);
+    // Note: PostgreSQL-specific INTERVAL and TimeZone factory methods
+    // have been moved to PgSqlStatics in the Drizzle4Dotnet.PgSql namespace.
+    // Use PgSqlStatics.Interval() and PgSqlStatics.TimeZone() instead.
 }
 
 /// <summary>
@@ -85,44 +70,8 @@ public readonly struct SqlDefaultNode : IGenericSql
     }
 }
 
-public readonly struct IntervalNode : IOperator<DateTime>
-{
-    private readonly object _amount;
-    private readonly string _unit;
+// Note: PostgreSQL-specific IntervalNode has been moved to
+// PgSql.Namespace.PgIntervalNode in the Drizzle4Dotnet.PgSql namespace.
 
-    public IntervalNode(int amount, string unit)
-    {
-        _amount = amount;
-        _unit = unit;
-    }
-
-    public IntervalNode(double amount, string unit)
-    {
-        _amount = amount;
-        _unit = unit;
-    }
-
-    public void BuildSql(ISqlBuilder sqlBuilder)
-    {
-        sqlBuilder.Append("INTERVAL '").Append(_amount.ToString()!).Append(' ').Append(_unit).Append('\'');
-    }
-}
-
-/// <summary>
-/// Represents a PostgreSQL timezone name as a SQL string literal: 'UTC', 'Asia/Saigon', etc.
-/// Used with AT TIME ZONE which requires a literal timezone name, not a parameterized value.
-/// </summary>
-public readonly struct TimeZoneNode : IOperator<string>
-{
-    private readonly string _timeZone;
-
-    public TimeZoneNode(string timeZone)
-    {
-        _timeZone = timeZone;
-    }
-
-    public void BuildSql(ISqlBuilder sqlBuilder)
-    {
-        sqlBuilder.Append('\'').Append(_timeZone).Append('\'');
-    }
-}
+// Note: PostgreSQL-specific TimeZoneNode has been moved to
+// PgSql.Namespace.PgTimeZoneNode in the Drizzle4Dotnet.PgSql namespace.

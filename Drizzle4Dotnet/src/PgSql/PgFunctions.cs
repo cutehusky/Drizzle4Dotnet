@@ -4,8 +4,6 @@ using Drizzle4Dotnet.Core.Shared.Operators;
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 using Drizzle4Dotnet.PgSql.Nodes;
 
-using Drizzle4Dotnet.PgSql.Nodes;
-
 namespace Drizzle4Dotnet.PgSql;
 
 /// <summary>
@@ -46,19 +44,19 @@ public static class PgFunctions
     
     // DateAdd(interval, amount, col) -> col + INTERVAL 'amount interval'
     public static BinaryNode<DateTime> DateAdd(ISql<DateTime> c1, int amount, string unit)
-        => new(c1, Sql.Interval(amount, unit), " + ");
+        => new(c1, PgSqlStatics.Interval(amount, unit), " + ");
     public static BinaryNode<DateTime> DateDiff(ISql<DateTime> c1, int amount, string unit)
-        => new(c1, Sql.Interval(amount, unit), " - ");
+        => new(c1, PgSqlStatics.Interval(amount, unit), " - ");
     public static BinaryNode<DateTime> DateAdd(ISql<DateTime> c1, double amount, string unit)
-        => new(c1, Sql.Interval(amount, unit), " + ");
+        => new(c1, PgSqlStatics.Interval(amount, unit), " + ");
     public static BinaryNode<DateTime> DateDiff(ISql<DateTime> c1, double amount, string unit)
-        => new(c1, Sql.Interval(amount, unit), " - ");
+        => new(c1, PgSqlStatics.Interval(amount, unit), " - ");
     
     // AtTimeZone(col, zone) -> col AT TIME ZONE 'zone'
     public static BinaryNode<DateTime, string, DateTime> AtTimeZone(ISql<DateTime> c1, ISql<string> timezone)
         => new(c1, timezone, " AT TIME ZONE ");
     public static BinaryNode<DateTime, string, DateTime> AtTimeZone(ISql<DateTime> c1, string timezone)
-        => new(c1, Sql.TimeZone(timezone), " AT TIME ZONE ");
+        => new(c1, PgSqlStatics.TimeZone(timezone), " AT TIME ZONE ");
     
     // Age(col) / Age(col1, col2) - PostgreSQL specific
     public static UnaryNode<DateTime, TimeSpan> Age(ISql<DateTime> c1) 
@@ -142,6 +140,10 @@ public static class PgFunctions
     // Random() -> RANDOM() (PostgreSQL uses RANDOM, SQL standard uses RAND)
     public static FunctionCallNode<T> Random<T>() 
         => new FunctionCallNode<T>("RANDOM");
+    
+    // CastPg(expr, type) -> expr::type (PostgreSQL-style cast)
+    public static CastNode<T> CastPg<T>(IGenericSql expression, string targetType)
+        => new CastNode<T>(expression, targetType, usePostgresSyntax: true);
     
     // ConcatWs(separator, col1, col2, ...) -> CONCAT_WS(',', col1, col2)
     public static FunctionCallNode<string> ConcatWs(IGenericSql separator, params IGenericSql[] columns)
