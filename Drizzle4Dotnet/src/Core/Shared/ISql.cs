@@ -15,8 +15,8 @@ public interface ISqlBuilder
 
 public struct SqlBuilder<TDialect>: ISqlBuilder where TDialect : ISqlDialect
 {
-    private readonly StringBuilder _sb = new StringBuilder();
-    private readonly Dictionary<string, object?> _parameters = new Dictionary<string, object?>();
+    private readonly StringBuilder _sb = new();
+    private readonly Dictionary<string, object?> _parameters = new();
 
     public SqlBuilder()
     {

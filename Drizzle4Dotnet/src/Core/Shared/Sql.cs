@@ -11,37 +11,37 @@ public static class Sql
     /// <summary>
     /// Creates a parameterized value expression.
     /// </summary>
-    public static SqlValueNode<T> Value<T>(T value) => new SqlValueNode<T>(value);
+    public static SqlValueNode<T> Value<T>(T value) => new(value);
     
     /// <summary>
     /// Creates a raw (non-typed) SQL fragment.
     /// </summary>
-    public static RawSql Raw(string sql) => new RawSql(sql);
+    public static RawSql Raw(string sql) => new(sql);
     
     /// <summary>
     /// Creates a typed raw SQL fragment.
     /// </summary>
-    public static RawSql<T> Raw<T>(string sql) => new RawSql<T>(sql);
+    public static RawSql<T> Raw<T>(string sql) => new(sql);
     
     /// <summary>
     /// Creates an unsafe literal SQL fragment (no parameterization).
     /// </summary>
-    public static RawSql Literal(string sql) => new RawSql(sql);
+    public static RawSql Literal(string sql) => new(sql);
     
     /// <summary>
     /// Creates a typed unsafe literal SQL fragment.
     /// </summary>
-    public static RawSql<T> Literal<T>(string sql) => new RawSql<T>(sql);
+    public static RawSql<T> Literal<T>(string sql) => new(sql);
     
     /// <summary>
     /// Creates a NULL literal of the specified type.
     /// </summary>
-    public static SqlNullNode<T> Null<T>() => new SqlNullNode<T>();
+    public static SqlNullNode<T> Null<T>() => new();
     
     /// <summary>
     /// Creates a DEFAULT keyword expression.
     /// </summary>
-    public static SqlDefaultNode Default() => new SqlDefaultNode();
+    public static SqlDefaultNode Default() => new();
     
     // Note: PostgreSQL-specific INTERVAL and TimeZone factory methods
     // have been moved to PgSqlStatics in the Drizzle4Dotnet.PgSql namespace.

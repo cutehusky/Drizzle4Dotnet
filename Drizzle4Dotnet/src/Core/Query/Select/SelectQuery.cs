@@ -22,7 +22,7 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
     protected bool _distinct;
     protected readonly List<IGenericSql> _groupBys = new();
     protected readonly List<IGenericSql> _havings = new();
-    protected readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    protected readonly List<ICteTable<TDialect>> _cteTables = new();
     protected bool _recursive;
     protected string? _intoTable;
 
@@ -275,7 +275,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     protected bool _distinct;
     protected readonly List<IGenericSql> _groupBys = new();
     protected readonly List<IGenericSql> _havings = new();
-    protected readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    protected readonly List<ICteTable<TDialect>> _cteTables = new();
     protected bool _recursive;
     protected string? _intoTable;
 

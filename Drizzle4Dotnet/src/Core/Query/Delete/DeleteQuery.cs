@@ -11,7 +11,7 @@ public class DeleteQuery<TTable, TDialect, TSelf> : Query<TDialect>
 {
     protected readonly TTable _table;
     protected readonly List<IGenericSql> _wheres = new();
-    protected readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    protected readonly List<ICteTable<TDialect>> _cteTables = new();
 
     public DeleteQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
     {

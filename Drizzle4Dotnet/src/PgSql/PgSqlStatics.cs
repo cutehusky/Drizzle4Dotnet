@@ -13,17 +13,17 @@ public static class PgSqlStatics
     /// Usage: PgSqlStatics.Interval(1, "day") → INTERVAL '1 day'
     /// </summary>
     public static PgIntervalNode Interval(int amount, string unit)
-        => new PgIntervalNode(amount, unit);
+        => new(amount, unit);
 
     /// <summary>
     /// Creates a PostgreSQL INTERVAL literal with decimal amount.
     /// </summary>
     public static PgIntervalNode Interval(double amount, string unit)
-        => new PgIntervalNode(amount, unit);
+        => new(amount, unit);
 
     /// <summary>
     /// Creates a PostgreSQL timezone name as a SQL string literal: 'UTC', 'Asia/Saigon', etc.
     /// Use with AtTimeZone: AtTimeZone(col, PgSqlStatics.TimeZone("UTC"))
     /// </summary>
-    public static PgTimeZoneNode TimeZone(string timeZone) => new PgTimeZoneNode(timeZone);
+    public static PgTimeZoneNode TimeZone(string timeZone) => new(timeZone);
 }

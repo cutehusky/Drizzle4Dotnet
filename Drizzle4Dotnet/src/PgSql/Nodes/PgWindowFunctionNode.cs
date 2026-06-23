@@ -41,21 +41,9 @@ public readonly struct PgWindowFunctionNode<TReturn> : IOperator<TReturn>
 public static class PgWindowFunctionExtensions
 {
     /// <summary>
-    /// Appends an OVER clause to any UnaryNode<T> (aggregate function).
-    /// </summary>
-    public static PgWindowFunctionNode<T> Over<T>(this UnaryNode<T> aggregate, PgOverNode over)
-        => new PgWindowFunctionNode<T>(aggregate.Op, over, aggregate.Argument);
-
-    /// <summary>
-    /// Appends an OVER clause to any UnaryNode<T, TReturn>.
-    /// </summary>
-    public static PgWindowFunctionNode<TReturn> Over<T, TReturn>(this UnaryNode<T, TReturn> aggregate, PgOverNode over)
-        => new PgWindowFunctionNode<TReturn>(aggregate.Op, over, aggregate.Argument);
-
-    /// <summary>
     /// Appends an OVER clause to any FunctionCallNode<T>.
     /// Supports functions like PgFunctions.RowNumber(), Rank(), Lead(), etc.
     /// </summary>
     public static PgWindowFunctionNode<T> Over<T>(this FunctionCallNode<T> aggregate, PgOverNode over)
-        => new PgWindowFunctionNode<T>(aggregate.FunctionName, over, aggregate.Arguments);
+        => new(aggregate.FunctionName, over, aggregate.Arguments);
 }

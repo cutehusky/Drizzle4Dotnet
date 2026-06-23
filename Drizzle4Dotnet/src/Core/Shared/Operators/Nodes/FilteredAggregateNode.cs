@@ -29,12 +29,6 @@ public readonly struct FilteredAggregateNode<T> : IOperator<T>
 /// </summary>
 public static class FilteredAggregateExtensions
 {
-    public static FilteredAggregateNode<T> Filter<T>(this IOperator<T> aggregate, IGenericSql where)
-        => new FilteredAggregateNode<T>(aggregate, where);
-    
-    public static FilteredAggregateNode<T> Filter<T>(this UnaryNode<T> aggregate, IGenericSql where)
-        => new FilteredAggregateNode<T>(aggregate, where);
-    
-    public static FilteredAggregateNode<TReturn> Filter<T, TReturn>(this UnaryNode<T, TReturn> aggregate, IGenericSql where)
-        => new FilteredAggregateNode<TReturn>(aggregate, where);
+    public static FilteredAggregateNode<T> Filter<T>(this ISql<T> aggregate, IGenericSql where) =>
+        new(aggregate, where);
 }
