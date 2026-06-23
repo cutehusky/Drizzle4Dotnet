@@ -11,7 +11,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>
 {
     protected readonly TTable _table;
     protected readonly List<Dictionary<string, object?>> _values = new();
-    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    protected readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
     private bool _useDefaultValues;
     private IGenericSql? _fromQuery;
 

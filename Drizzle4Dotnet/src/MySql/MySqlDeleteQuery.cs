@@ -67,6 +67,18 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        // CTE (WITH clause)
+        if (_cteTables.Count > 0)
+        {
+            sqlBuilder.Append("WITH ");
+            for (int i = 0; i < _cteTables.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                _cteTables[i].BuildSql(sqlBuilder);
+            }
+            sqlBuilder.Append(' ');
+        }
+
         // MySQL DELETE with JOIN syntax: DELETE t1 FROM t1 JOIN t2 ON ... WHERE ...
         sqlBuilder.Append("DELETE ");
         _table.BuildRefSql(sqlBuilder);

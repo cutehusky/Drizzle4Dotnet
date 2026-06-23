@@ -3,6 +3,8 @@ using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.MySql;
 using SharedDemo.MySql;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+using Drizzle4Dotnet.Core.Query;
+using Drizzle4Dotnet.Core;
 
 namespace Test.Update;
 
@@ -126,5 +128,30 @@ public class MySqlUpdateTests
 
         var (sql, parameters) = query.Build();
         Print("MySQL UPDATE with RIGHT JOIN", sql, parameters);
+    }
+
+    // =========================================================================
+    // MySQL UPDATE with CTE
+    // =========================================================================
+
+    [Test]
+    public void Update_WithCte()
+    {
+        var cte = _db
+            .Select(UsersTable.Id)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, false))
+            .AsSubQuery("inactive_users", (from) => new
+            {
+                Id = from.Field<long>("Id")
+            }).AsCte();
+
+        var query = _db.Update(users)
+            .With(cte)
+            .Set(UsersTable.IsActive, true)
+            .Where(In(UsersTable.Id, Sql.Raw<long>("SELECT Id FROM inactive_users")));
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL UPDATE with CTE", sql, parameters);
     }
 }

@@ -1,5 +1,6 @@
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Core.Shared.Operators;
 
 namespace Drizzle4Dotnet.Core.Query;
 
@@ -197,4 +198,39 @@ public static class CompoundQueryExtensions
         where TDialect : ISqlDialect
         where TVirtualTable : IVirtualTable<TDialect>
         => new(left, right, "EXCEPT", left.DbClient);
+
+    // ====== AsRecursiveCte — wrap compound query as a recursive CTE table ======
+
+    /// <summary>
+    /// Wraps a compound query (anchor UNION ALL recursive member) as a recursive CTE table.
+    /// Usage: query.UnionAll(recursiveMember).AsRecursiveCte("cte_name")
+    /// Then use .WithRecursive(cte).From(cte) in the main query.
+    /// </summary>
+    public static RecursiveCteTable<TReturn, TDialect> AsRecursiveCte<TReturn, TDialect>(
+        this CompoundQuery<TReturn, TDialect> compoundQuery,
+        string alias)
+        where TDialect : ISqlDialect
+    {
+        return new RecursiveCteTable<TReturn, TDialect>(
+            alias,
+            compoundQuery,
+            (ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>>)
+                compoundQuery.SelectedColumns);
+    }
+
+    /// <summary>
+    /// Wraps a compound query with virtual table support as a recursive CTE table.
+    /// </summary>
+    public static RecursiveCteTable<TReturn, TDialect> AsRecursiveCte<TReturn, TDialect, TVirtualTable>(
+        this CompoundQuery<TReturn, TDialect, TVirtualTable> compoundQuery,
+        string alias)
+        where TDialect : ISqlDialect
+        where TVirtualTable : IVirtualTable<TDialect>
+    {
+        return new RecursiveCteTable<TReturn, TDialect>(
+            alias,
+            compoundQuery,
+            (ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>>)
+                compoundQuery.SelectedColumns);
+    }
 }

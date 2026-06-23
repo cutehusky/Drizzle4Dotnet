@@ -166,4 +166,73 @@ public class PgSqlInsertTests
         var (sql, parameters) = query.Build();
         Print("PgSQL INSERT with CTE", sql, parameters);
     }
+
+    // =========================================================================
+    // CTE + ON CONFLICT + RETURNING combination tests
+    // =========================================================================
+
+    [Test]
+    public void Insert_OnConflictDoUpdateWithReturning()
+    {
+        var query = _db.Insert(users)
+            .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
+            .OnConflictDoUpdate("(Email)",
+                ("Name", "EXCLUDED"),
+                ("Age", "EXCLUDED")
+            )
+            .Returning(UsersTable.ModelAll);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL INSERT ON CONFLICT DO UPDATE + RETURNING", sql, parameters);
+    }
+
+    [Test]
+    public void Insert_OnConflictDoNothingWithReturning()
+    {
+        var query = _db.Insert(users)
+            .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
+            .OnConflictDoNothing("(Email)")
+            .Returning(UsersTable.ModelAll);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL INSERT ON CONFLICT DO NOTHING + RETURNING", sql, parameters);
+    }
+
+    [Test]
+    public void Insert_WithCteAndReturning()
+    {
+        var cte = _db
+            .Select(UsersTable.Name, UsersTable.Email)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true))
+            .AsSubQuery("active_users", (from) => new
+            {
+                Name = from.Field<string>("Name"),
+                Email = from.Field<string>("Email")
+            }).AsCte();
+
+        var query = _db.Insert(users)
+            .With(cte)
+            .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
+            .Returning(UsersTable.ModelAll);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL INSERT with CTE + RETURNING", sql, parameters);
+    }
+
+    [Test]
+    public void Insert_SelectFrom_WithReturning()
+    {
+        var selectQuery = _db
+            .Select(UsersTable.Name, UsersTable.Email, UsersTable.Age, UsersTable.IsActive, UsersTable.DepartmentId, UsersTable.RoleId)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true));
+
+        var query = _db.Insert(users)
+            .From(selectQuery)
+            .Returning(UsersTable.ModelAll);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL INSERT SELECT + RETURNING", sql, parameters);
+    }
 }

@@ -44,13 +44,13 @@ public static class PgWindowFunctionExtensions
     /// Appends an OVER clause to any UnaryNode<T> (aggregate function).
     /// </summary>
     public static PgWindowFunctionNode<T> Over<T>(this UnaryNode<T> aggregate, PgOverNode over)
-        => new PgWindowFunctionNode<T>(aggregate.FunctionName, over, aggregate.Argument);
+        => new PgWindowFunctionNode<T>(aggregate.Op, over, aggregate.Argument);
 
     /// <summary>
     /// Appends an OVER clause to any UnaryNode<T, TReturn>.
     /// </summary>
     public static PgWindowFunctionNode<TReturn> Over<T, TReturn>(this UnaryNode<T, TReturn> aggregate, PgOverNode over)
-        => new PgWindowFunctionNode<TReturn>(aggregate.FunctionName, over, aggregate.Argument);
+        => new PgWindowFunctionNode<TReturn>(aggregate.Op, over, aggregate.Argument);
 
     /// <summary>
     /// Appends an OVER clause to any FunctionCallNode<T>.

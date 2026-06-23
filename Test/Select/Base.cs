@@ -1,4 +1,6 @@
 using Drizzle4Dotnet.Core;
+using Drizzle4Dotnet.Core.Query;
+using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 using Drizzle4Dotnet.Dialect;
@@ -570,29 +572,59 @@ public class SelectQueryPgTests
         Print("Multiple CTEs Join with RAW SQL CTE", sql, parameters);
     }
     
-    //
-    // [Test]
-    // public void Select_DepartmentHierarchy_Recursive()
-    // {
-    //     var deptTree = _db
-    //         .Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
-    //         .From(departments)
-    //         .Where(Eq(DepartmentsTable.Id, 1))
-    //         .UnionAll(
-    //             _db.Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
-    //                 .From(departments)
-    //                 .InnerJoin("dept_tree", Eq(DepartmentsTable.ParentDepartmentId, Field("dept_tree", "Id")))
-    //         )
-    //         .AsRecursiveSubQuery("dept_tree");
-    //
-    //     var query = _db
-    //         .SelectAll()
-    //         .With(deptTree)
-    //         .From(deptTree);
-    //
-    //     var (sql, parameters) = query.Build();
-    //     Print("Recursive Department Tree", sql, parameters);
-    // }
+    [Test]
+    public void Select_WithRecursiveCte()
+    {
+        // Build a recursive CTE: anchor member UNION ALL recursive member
+        var deptTree = _db
+            .Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+            .From(departments)
+            .Where(Eq(DepartmentsTable.Id, 1))
+            .UnionAll(
+                _db.Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+                    .From(departments)
+                    .Where(Gt(DepartmentsTable.Id, 1))
+            )
+            .AsRecursiveCte("dept_tree");
+
+        // Main query using the recursive CTE
+        var query = _db
+            .Select(deptTree.Field<long>("Id"), deptTree.Field<string>("Name"))
+            .WithRecursive(deptTree)
+            .From(deptTree)
+            .OrderBy(deptTree.Field<long>("Id"));
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL WITH RECURSIVE CTE", sql, parameters);
+    }
+
+    [Test]
+    public void Select_WithRecursiveCte_SelfJoin()
+    {
+        // Self-join pattern using recursive CTE via raw SQL reference for the recursive member
+        var cteBody = _db
+            .Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+            .From(departments)
+            .Where(Eq(DepartmentsTable.ParentDepartmentId, Sql.Value<long?>(null)))
+            .UnionAll(
+                _db.Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+                    .From(departments)
+                    .InnerJoin( 
+                        new RawSqlTableAlias<PgSqlSqlDialectImpl>("dept_tree"),
+                        Eq(DepartmentsTable.ParentDepartmentId, new RawSqlTableAlias<PgSqlSqlDialectImpl>("dept_tree").Field<long>("Id"))
+                    )
+            )
+            .AsRecursiveCte("dept_tree");
+
+        var query = _db
+            .Select(cteBody.Field<long>("Id"), cteBody.Field<string>("Name"))
+            .WithRecursive(cteBody)
+            .From(cteBody)
+            .OrderBy(cteBody.Field<long>("Id"));
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL WITH RECURSIVE CTE (self-join)", sql, parameters);
+    }
     
     [Test]
     public void Select_SalaryGapWithManager()

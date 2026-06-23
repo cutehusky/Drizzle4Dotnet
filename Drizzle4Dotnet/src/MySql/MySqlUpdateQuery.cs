@@ -73,6 +73,18 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
             throw new InvalidOperationException("No columns set for update.");
         }
 
+        // CTE (WITH clause)
+        if (_cteTables.Count > 0)
+        {
+            sqlBuilder.Append("WITH ");
+            for (int i = 0; i < _cteTables.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                _cteTables[i].BuildSql(sqlBuilder);
+            }
+            sqlBuilder.Append(' ');
+        }
+
         sqlBuilder.Append("UPDATE ");
         _table.BuildRefSql(sqlBuilder);
 

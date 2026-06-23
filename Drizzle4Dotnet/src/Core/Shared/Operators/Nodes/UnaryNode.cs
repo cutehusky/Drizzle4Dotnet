@@ -9,7 +9,7 @@ public readonly struct UnaryNode<T> : IOperator<T>
     /// <summary>
     /// The function/operator name (e.g., "COUNT", "UPPER", "ABS").
     /// </summary>
-    public string FunctionName => _op;
+    public string Op => _op;
 
     /// <summary>
     /// The argument expression passed to this unary operator.
@@ -50,7 +50,7 @@ public readonly struct UnaryNode<T, TReturn> : IOperator<TReturn>
     /// <summary>
     /// The function/operator name (e.g., "COUNT", "SUM", "AVG").
     /// </summary>
-    public string FunctionName => _op;
+    public string Op => _op;
 
     /// <summary>
     /// The argument expression passed to this unary operator.

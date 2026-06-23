@@ -69,6 +69,18 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        // CTE (WITH clause) — applies to all INSERT variants
+        if (_cteTables.Count > 0)
+        {
+            sqlBuilder.Append("WITH ");
+            for (int i = 0; i < _cteTables.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                _cteTables[i].BuildSql(sqlBuilder);
+            }
+            sqlBuilder.Append(' ');
+        }
+
         // INSERT IGNORE or INSERT ... SET syntax
         if (_setValues.Count > 0)
         {

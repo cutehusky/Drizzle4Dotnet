@@ -174,4 +174,50 @@ public class MySqlInsertTests
         var (sql, parameters) = query.Build();
         Print("MySQL REPLACE multiple rows", sql, parameters);
     }
+
+    // =========================================================================
+    // MySQL INSERT with CTE
+    // =========================================================================
+
+    [Test]
+    public void Insert_WithCte()
+    {
+        var cte = _db
+            .Select(UsersTable.Name, UsersTable.Email)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true))
+            .AsSubQuery("active_users", (from) => new
+            {
+                Name = from.Field<string>("Name"),
+                Email = from.Field<string>("Email")
+            }).AsCte();
+
+        var query = _db.Insert(users)
+            .With(cte)
+            .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 });
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL INSERT with CTE", sql, parameters);
+    }
+
+    [Test]
+    public void Insert_WithCteAndOnDuplicateKeyUpdate()
+    {
+        var cte = _db
+            .Select(UsersTable.Email)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true))
+            .AsSubQuery("active_emails", (from) => new
+            {
+                Email = from.Field<string>("Email")
+            }).AsCte();
+
+        var query = _db.Insert(users)
+            .With(cte)
+            .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
+            .OnDuplicateKeyUpdate("Name", "Email");
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL INSERT with CTE + ON DUPLICATE KEY UPDATE", sql, parameters);
+    }
 }

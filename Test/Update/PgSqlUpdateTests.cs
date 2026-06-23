@@ -3,6 +3,7 @@ using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.PgSql;
 using SharedDemo.PgSql;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+using Drizzle4Dotnet.Core.Query;
 
 namespace Test.Update;
 
@@ -142,5 +143,47 @@ public class PgSqlUpdateTests
 
         var (sql, parameters) = query.Build();
         Print("PgSQL UPDATE with CTE", sql, parameters);
+    }
+
+    // =========================================================================
+    // CTE + RETURNING combination tests
+    // =========================================================================
+
+    [Test]
+    public void Update_WithCteAndReturning()
+    {
+        var cte = _db
+            .Select(UsersTable.Id)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, false))
+            .AsSubQuery("inactive_users", (from) => new
+            {
+                Id = from.Field<long>("Id")
+            }).AsCte();
+
+        var query = _db.Update(users)
+            .With(cte)
+            .Set(UsersTable.IsActive, true)
+            .Where(In(UsersTable.Id, Sql.Raw<long>("SELECT Id FROM inactive_users")))
+            .Returning(UsersTable.ModelAll);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL UPDATE with CTE + RETURNING", sql, parameters);
+    }
+
+    [Test]
+    public void Update_WithFromAndReturning()
+    {
+        var query = _db.Update(users)
+            .Set(UsersTable.Name, DepartmentsTable.Name)
+            .From(departments)
+            .Where(And(
+                Eq(UsersTable.DepartmentId, DepartmentsTable.Id),
+                Eq(DepartmentsTable.Name, "Engineering")
+            ))
+            .Returning(UsersTable.Id, UsersTable.Name, UsersTable.Email);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL UPDATE FROM + RETURNING", sql, parameters);
     }
 }

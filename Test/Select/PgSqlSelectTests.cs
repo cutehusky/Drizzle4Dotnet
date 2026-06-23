@@ -1,5 +1,6 @@
 using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query;
+using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 using Drizzle4Dotnet.Dialect;
@@ -1858,5 +1859,149 @@ public class PgSqlSelectTests
 
         var (sql, parameters) = query.Build();
         Print("PgSQL IIF function", sql, parameters);
+    }
+
+    // =========================================================================
+    // SELECT INTO
+    // =========================================================================
+
+    [Test]
+    public void Select_Into()
+    {
+        var query = _db
+            .Select(PgUserSelect.Record)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true))
+            .Into("users_backup");
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL SELECT INTO", sql, parameters);
+    }
+
+    [Test]
+    public void Select_ForNoKeyUpdate_WithOptions()
+    {
+        var query = _db
+            .Select(PgUserSelect.Record)
+            .From(users)
+            .Where(Eq(UsersTable.Id, 1))
+            .ForNoKeyUpdate(skipLocked: true, nowait: false, UsersTable.Id, UsersTable.Name);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL FOR NO KEY UPDATE with OF + SKIP LOCKED", sql, parameters);
+    }
+
+    [Test]
+    public void Select_ForKeyShare_WithNowait()
+    {
+        var query = _db
+            .Select(PgUserSelect.Record)
+            .From(users)
+            .Where(Eq(UsersTable.Id, 1))
+            .ForKeyShare(skipLocked: false, nowait: true);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL FOR KEY SHARE NOWAIT", sql, parameters);
+    }
+
+    // =========================================================================
+    // LATERAL Joins (non-virtual-table variant)
+    // =========================================================================
+
+    [Test]
+    public void Select_InnerLateralJoinWithSubquery()
+    {
+        var subQuery = _db
+            .Select(UsersTable.Id, UsersTable.Name)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true))
+            .AsSubQuery("active_users", (from) => new
+            {
+                Id = from.Field<long>("Id"),
+                Name = from.Field<string>("Name")
+            });
+
+        // Use the non-virtual-table SelectQuery's LATERAL join
+        var query = _db
+            .Select(UsersTable.Name, DepartmentsTable.Name)
+            .From(departments)
+            .InnerLateralJoin(subQuery,
+                Eq(DepartmentsTable.Id, subQuery.Shape.Id)
+            );
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL INNER LATERAL JOIN WITH SUBQUERY", sql, parameters);
+    }
+
+    [Test]
+    public void Select_LeftLateralJoinWithSubquery()
+    {
+        var subQuery = _db
+            .Select(UsersTable.Id, UsersTable.Name)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true))
+            .AsSubQuery("active_users", (from) => new
+            {
+                Id = from.Field<long>("Id"),
+                Name = from.Field<string>("Name")
+            });
+
+        var query = _db
+            .Select(UsersTable.Name, DepartmentsTable.Name)
+            .From(departments)
+            .LeftLateralJoin(subQuery,
+                Eq(DepartmentsTable.Id, subQuery.Field<long>("Id"))
+            );
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL LEFT LATERAL JOIN WITH SUBQUERY", sql, parameters);
+    }
+
+    [Test]
+    public void Select_CrossLateralJoinWithSubquery()
+    {
+        var subQuery = _db
+            .Select(UsersTable.Name, UsersTable.Email)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true))
+            .AsSubQuery("active_users", (from) => new
+            {
+                Name = from.Field<string>("Name"),
+                Email = from.Field<string>("Email")
+            });
+
+        var query = _db
+            .Select(PgUserSelect.Record)
+            .From(users)
+            .CrossLateralJoin(subQuery);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL CROSS LATERAL JOIN WITH SUBQUERY", sql, parameters);
+    }
+
+    // =========================================================================
+    // RETURNING clause on SELECT (should not include RETURNING on plain SELECT)
+    // =========================================================================
+
+    [Test]
+    public void Select_WithReturningSubquery()
+    {
+        // Verify that a subquery used with RETURNING works
+        var subQuery = _db
+            .Select(UsersTable.Id, UsersTable.Name)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, true))
+            .AsSubQuery("active_users", (from) => new
+            {
+                Id = from.Field<long>("Id"),
+                Name = from.Field<string>("Name")
+            });
+
+        var query = _db
+            .Select(subQuery.Field<long>("Id"), subQuery.Field<string>("Name"))
+            .From(subQuery);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL subquery with RETURNING-style columns", sql, parameters);
     }
 }

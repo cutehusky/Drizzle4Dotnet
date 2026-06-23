@@ -13,7 +13,7 @@ public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>
     protected readonly TTable _table;
     protected readonly Dictionary<string, object?> _setValues = new();
     protected readonly List<IGenericSql> _wheres = new();
-    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    protected readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
 
     public UpdateQuery(
         TTable table, 

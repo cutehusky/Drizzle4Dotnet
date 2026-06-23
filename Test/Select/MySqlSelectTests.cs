@@ -1,4 +1,5 @@
 using Drizzle4Dotnet.Core;
+using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 using Drizzle4Dotnet.Dialect;
@@ -1465,5 +1466,55 @@ public class MySqlSelectTests
 
         var (sql, parameters) = query.Build();
         Print("MySQL STDDEV and VARIANCE", sql, parameters);
+    }
+
+    // =========================================================================
+    // MySQL CTE (WITH)
+    // =========================================================================
+
+    [Test]
+    public void Select_WithCte()
+    {
+        var cte = _db
+            .Select(DepartmentsTable.Id, DepartmentsTable.Name)
+            .From(departments)
+            .Where(Eq(DepartmentsTable.IsActive, true))
+            .AsSubQuery("active_depts", (from) => new
+            {
+                Id = from.Field<long>("Id"),
+                Name = from.Field<string>("Name")
+            }).AsCte();
+
+        var query = _db
+            .Select(cte.Field<long>("Id"), cte.Field<string>("Name"))
+            .With(cte)
+            .From(cte);
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL SELECT WITH CTE", sql, parameters);
+    }
+
+    [Test]
+    public void Select_WithRecursiveCte()
+    {
+        var cte = _db
+            .Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+            .From(departments)
+            .Where(Eq(DepartmentsTable.ParentDepartmentId, Sql.Value<long?>(null)))
+            .UnionAll(
+                _db.Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+                    .From(departments)
+                    .Where(Gt(DepartmentsTable.Id, 0))
+            )
+            .AsRecursiveCte("dept_tree");
+
+        var query = _db
+            .Select(cte.Field<long>("Id"), cte.Field<string>("Name"))
+            .WithRecursive(cte)
+            .From(cte)
+            .OrderBy(cte.Field<long>("Id"));
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL SELECT WITH RECURSIVE CTE", sql, parameters);
     }
 }

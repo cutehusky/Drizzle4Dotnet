@@ -4,6 +4,7 @@ using Drizzle4Dotnet.Dialect;
 using Drizzle4Dotnet.MySql;
 using SharedDemo.MySql;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+using Drizzle4Dotnet.Core.Query;
 
 namespace Test.Delete;
 
@@ -134,5 +135,29 @@ public class MySqlDeleteTests
 
         var (sql, parameters) = query.Build();
         Print("MySQL DELETE with complex WHERE", sql, parameters);
+    }
+
+    // =========================================================================
+    // MySQL DELETE with CTE
+    // =========================================================================
+
+    [Test]
+    public void Delete_WithCte()
+    {
+        var cte = _db
+            .Select(UsersTable.Id)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, false))
+            .AsSubQuery("inactive_users", (from) => new
+            {
+                Id = from.Field<long>("Id")
+            }).AsCte();
+
+        var query = _db.Delete(users)
+            .With(cte)
+            .Where(In(UsersTable.Id, Sql.Raw<long>("SELECT Id FROM inactive_users")));
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL DELETE with CTE", sql, parameters);
     }
 }

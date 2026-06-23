@@ -14,6 +14,7 @@ public class MySqlCompoundQueryTests
     private MySqlQueryBuilder _db = null!;
     private UsersTable users = null!;
     private UserProjectsTable userProjects = null!;
+    private DepartmentsTable departments = null!;
 
     [SetUp]
     public void Setup()
@@ -21,6 +22,7 @@ public class MySqlCompoundQueryTests
         _db = new MySqlQueryBuilder();
         users = new UsersTable();
         userProjects = new UserProjectsTable();
+        departments = new DepartmentsTable();
     }
 
     private void Print(string title, string sql, Dictionary<string, object?> parameters)
@@ -126,5 +128,55 @@ public class MySqlCompoundQueryTests
 
         var (sql, parameters) = unionResult.Build();
         Print("MySQL UNION ALL - department merge", sql, parameters);
+    }
+
+    // =========================================================================
+    // MySQL WITH RECURSIVE CTE
+    // =========================================================================
+
+    [Test]
+    public void Select_WithRecursiveCte()
+    {
+        var cte = _db
+            .Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+            .From(departments)
+            .Where(Eq(DepartmentsTable.ParentDepartmentId, Sql.Value<long?>(null)))
+            .UnionAll(
+                _db.Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+                    .From(departments)
+                    .Where(Gt(DepartmentsTable.Id, 0))
+            )
+            .AsRecursiveCte("dept_tree");
+
+        var query = _db
+            .Select(cte.Field<long>("Id"), cte.Field<string>("Name"))
+            .WithRecursive(cte)
+            .From(cte)
+            .OrderBy(cte.Field<long>("Id"));
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL WITH RECURSIVE CTE", sql, parameters);
+    }
+
+    [Test]
+    public void Select_WithCte()
+    {
+        var cte = _db
+            .Select(DepartmentsTable.Id, DepartmentsTable.Name)
+            .From(departments)
+            .Where(Eq(DepartmentsTable.IsActive, true))
+            .AsSubQuery("active_depts", (from) => new
+            {
+                Id = from.Field<long>("Id"),
+                Name = from.Field<string>("Name")
+            }).AsCte();
+
+        var query = _db
+            .Select(cte.Field<long>("Id"), cte.Field<string>("Name"))
+            .With(cte)
+            .From(cte);
+
+        var (sql, parameters) = query.Build();
+        Print("MySQL WITH CTE", sql, parameters);
     }
 }

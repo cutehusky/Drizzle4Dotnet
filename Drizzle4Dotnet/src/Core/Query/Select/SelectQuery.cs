@@ -270,7 +270,14 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
         _joins.Add((table, "CROSS", null));
         return (TSelf)this;
     }
-    
+
+    // ====== SELECT INTO ======
+    public TSelf Into(string tableName)
+    {
+        _intoTable = tableName;
+        return (TSelf)this;
+    }
+
     public TSelf Distinct()
     {
         _distinct = true;
@@ -560,7 +567,14 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
         _joins.Add((table, "CROSS", null));
         return (TSelf)this;
     }
-    
+
+    // ====== SELECT INTO ======
+    public TSelf Into(string tableName)
+    {
+        _intoTable = tableName;
+        return (TSelf)this;
+    }
+
     public TSelf Distinct()
     {
         _distinct = true;

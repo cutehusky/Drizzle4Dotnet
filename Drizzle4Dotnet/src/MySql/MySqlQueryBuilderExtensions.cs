@@ -18,7 +18,6 @@ namespace Drizzle4Dotnet.Core;
 
 public static class MySqlQueryBuilderExtensions
 {
-
     public static MySqlSelectQuery<T1, TypedTupleGeneratedSubqueryTable<T1, MySqlSqlDialectImpl>> Select<T1>(this MySqlQueryBuilder builder, IAliasedSql<T1> col1)
         => builder.Select(new TypedTupleSelectedColumns<T1, MySqlSqlDialectImpl>(col1));
 

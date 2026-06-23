@@ -34,6 +34,18 @@ public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl, Pg
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        // CTE (WITH clause)
+        if (_cteTables.Count > 0)
+        {
+            sqlBuilder.Append("WITH ");
+            for (int i = 0; i < _cteTables.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                _cteTables[i].BuildSql(sqlBuilder);
+            }
+            sqlBuilder.Append(' ');
+        }
+
         sqlBuilder.Append("DELETE FROM ");
         _table.BuildRefSql(sqlBuilder);
 

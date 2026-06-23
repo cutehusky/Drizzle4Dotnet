@@ -4,6 +4,7 @@ using Drizzle4Dotnet.Dialect;
 using Drizzle4Dotnet.PgSql;
 using SharedDemo.PgSql;
 using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+using Drizzle4Dotnet.Core.Query;
 
 namespace Test.Delete;
 
@@ -134,5 +135,45 @@ public class PgSqlDeleteTests
 
         var (sql, parameters) = query.Build();
         Print("PgSQL DELETE with CTE", sql, parameters);
+    }
+
+    // =========================================================================
+    // CTE + RETURNING combination tests
+    // =========================================================================
+
+    [Test]
+    public void Delete_WithCteAndReturning()
+    {
+        var cte = _db
+            .Select(UsersTable.Id)
+            .From(users)
+            .Where(Eq(UsersTable.IsActive, false))
+            .AsSubQuery("inactive_users", (from) => new
+            {
+                Id = from.Field<long>("Id")
+            }).AsCte();
+
+        var query = _db.Delete(users)
+            .With(cte)
+            .Where(In(UsersTable.Id, Sql.Raw<long>("SELECT Id FROM inactive_users")))
+            .Returning(UsersTable.ModelAll);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL DELETE with CTE + RETURNING", sql, parameters);
+    }
+
+    [Test]
+    public void Delete_WithUsingAndReturning()
+    {
+        var query = ((PgDeleteQuery<UsersTable>)_db.Delete(users))
+            .Using(departments)
+            .Where(And(
+                Eq(UsersTable.DepartmentId, DepartmentsTable.Id),
+                Eq(DepartmentsTable.Name, "Archived")
+            ))
+            .Returning(UsersTable.Id, UsersTable.Name, UsersTable.Email);
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL DELETE USING + RETURNING", sql, parameters);
     }
 }

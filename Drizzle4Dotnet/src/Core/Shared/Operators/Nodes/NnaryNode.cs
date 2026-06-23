@@ -1,5 +1,6 @@
 using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Query.Select;
+using Drizzle4Dotnet.Core.Schema.Columns;
 
 namespace Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
@@ -64,6 +65,16 @@ public readonly struct SqlValue<T, TDialect> where TDialect : ISqlDialect
 
     public static implicit operator SqlValue<T, TDialect>(T value) => new(value);
     public static implicit operator SqlValue<T, TDialect>(ReturningQuery<T, TDialect>? query) 
+    {
+        if (query == null) return new SqlValue<T, TDialect>(default(T)!);
+        return new SqlValue<T, TDialect>(new SqlConverter<T>(query));
+    }
+    public static implicit operator SqlValue<T, TDialect>(Query<T, TDialect>? query) 
+    {
+        if (query == null) return new SqlValue<T, TDialect>(default(T)!);
+        return new SqlValue<T, TDialect>(new SqlConverter<T>(query));
+    }
+    public static implicit operator SqlValue<T, TDialect>(RawSql<T, TDialect>? query) 
     {
         if (query == null) return new SqlValue<T, TDialect>(default(T)!);
         return new SqlValue<T, TDialect>(new SqlConverter<T>(query));
