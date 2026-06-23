@@ -50,23 +50,11 @@ public class PgSelectQuery<TReturn> : SelectQuery<TReturn, PgSqlSqlDialectImpl, 
 
     // ====== PostgreSQL-specific LATERAL Joins ======
     
-    public PgSelectQuery<TReturn> InnerLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
-    {
-        _joins.Add((table, "INNER LATERAL", on));
-        return this;
-    }
+    public PgSelectQuery<TReturn> InnerLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on) => JoinInternal(table, on, "INNER LATERAL");
 
-    public PgSelectQuery<TReturn> LeftLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
-    {
-        _joins.Add((table, "LEFT LATERAL", on));
-        return this;
-    }
+    public PgSelectQuery<TReturn> LeftLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on) => JoinInternal(table, on, "LEFT LATERAL");
 
-    public PgSelectQuery<TReturn> CrossLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table)
-    {
-        _joins.Add((table, "CROSS LATERAL", null));
-        return this;
-    }
+    public PgSelectQuery<TReturn> CrossLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table) => JoinInternal(table, null, "CROSS LATERAL");
 
     // ====== PostgreSQL Lock Clauses ======
     // Each method adds a lock clause to the list, supporting multi-clause combinations.
@@ -165,7 +153,7 @@ public class PgSelectQuery<TReturn> : SelectQuery<TReturn, PgSqlSqlDialectImpl, 
 public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlSqlDialectImpl, TVirtualTable, PgSelectQuery<TReturn, TVirtualTable>>
     where TVirtualTable : IVirtualTable<PgSqlSqlDialectImpl>
 {
-    protected readonly List<PgLockSpec> _lockClauses = new();
+    protected readonly List<PgLockSpec> LockClauses = new();
 
     public PgSelectQuery(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl, TVirtualTable> selectedColumns,
@@ -175,88 +163,78 @@ public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlS
     }
 
     // ====== PostgreSQL-specific LATERAL Joins ======
-    
     public PgSelectQuery<TReturn, TVirtualTable> InnerLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
-    {
-        _joins.Add((table, "INNER LATERAL", on));
-        return this;
-    }
+        => JoinInternal(table, on, "INNER LATERAL");
 
     public PgSelectQuery<TReturn, TVirtualTable> LeftLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
-    {
-        _joins.Add((table, "LEFT LATERAL", on));
-        return this;
-    }
+        => JoinInternal(table, on, "LEFT LATERAL");
 
     public PgSelectQuery<TReturn, TVirtualTable> CrossLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table)
-    {
-        _joins.Add((table, "CROSS LATERAL", null));
-        return this;
-    }
+        => JoinInternal(table, null, "CROSS LATERAL");
 
     // ====== PostgreSQL Lock Clauses ======
 
     /// <summary>FOR UPDATE</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForUpdate(params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        _lockClauses.Add(new PgLockSpec("FOR UPDATE", tables));
+        LockClauses.Add(new PgLockSpec("FOR UPDATE", tables));
         return this;
     }
 
     /// <summary>FOR UPDATE with NOWAIT / SKIP LOCKED and target tables</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForUpdate(bool skipLocked, bool nowait, params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        _lockClauses.Add(new PgLockSpec("FOR UPDATE", tables, nowait, skipLocked));
+        LockClauses.Add(new PgLockSpec("FOR UPDATE", tables, nowait, skipLocked));
         return this;
     }
 
     /// <summary>FOR NO KEY UPDATE</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForNoKeyUpdate(params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        _lockClauses.Add(new PgLockSpec("FOR NO KEY UPDATE", tables));
+        LockClauses.Add(new PgLockSpec("FOR NO KEY UPDATE", tables));
         return this;
     }
 
     /// <summary>FOR NO KEY UPDATE with NOWAIT / SKIP LOCKED and target tables</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForNoKeyUpdate(bool skipLocked, bool nowait, params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        _lockClauses.Add(new PgLockSpec("FOR NO KEY UPDATE", tables, nowait, skipLocked));
+        LockClauses.Add(new PgLockSpec("FOR NO KEY UPDATE", tables, nowait, skipLocked));
         return this;
     }
 
     /// <summary>FOR SHARE</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForShare(params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        _lockClauses.Add(new PgLockSpec("FOR SHARE", tables));
+        LockClauses.Add(new PgLockSpec("FOR SHARE", tables));
         return this;
     }
 
     /// <summary>FOR SHARE with NOWAIT / SKIP LOCKED and target tables</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForShare(bool skipLocked, bool nowait, params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        _lockClauses.Add(new PgLockSpec("FOR SHARE", tables, nowait, skipLocked));
+        LockClauses.Add(new PgLockSpec("FOR SHARE", tables, nowait, skipLocked));
         return this;
     }
 
     /// <summary>FOR KEY SHARE</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForKeyShare(params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        _lockClauses.Add(new PgLockSpec("FOR KEY SHARE", tables));
+        LockClauses.Add(new PgLockSpec("FOR KEY SHARE", tables));
         return this;
     }
 
     /// <summary>FOR KEY SHARE with NOWAIT / SKIP LOCKED and target tables</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForKeyShare(bool skipLocked, bool nowait, params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        _lockClauses.Add(new PgLockSpec("FOR KEY SHARE", tables, nowait, skipLocked));
+        LockClauses.Add(new PgLockSpec("FOR KEY SHARE", tables, nowait, skipLocked));
         return this;
     }
 
     protected override void BuildSqlLock(ISqlBuilder sqlBuilder)
     {
-        if (_lockClauses.Count == 0) return;
+        if (LockClauses.Count == 0) return;
 
-        foreach (var clause in _lockClauses)
+        foreach (var clause in LockClauses)
         {
             sqlBuilder.Append(' ').Append(clause.LockType);
 

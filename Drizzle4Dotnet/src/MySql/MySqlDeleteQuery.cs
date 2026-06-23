@@ -29,7 +29,7 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
     
     private MySqlDeleteQuery<TTable> JoinInternal(
         IGenericTable<MySqlSqlDialectImpl> table,
-        IGenericSql on,
+        IGenericSql? on,
         string type)
     {
         _joins.Add((table, type, on));
@@ -46,10 +46,7 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
         => JoinInternal(table, on, "RIGHT");
 
     public MySqlDeleteQuery<TTable> CrossJoin(IGenericTable<MySqlSqlDialectImpl> table)
-    {
-        _joins.Add((table, "CROSS", null));
-        return this;
-    }
+        => JoinInternal(table, null, "CROSS");
 
     // ====== MySQL LIMIT and ORDER BY on DELETE ======
 
@@ -67,23 +64,13 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        // CTE (WITH clause)
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
+        BuildSqlCte(sqlBuilder);
 
         // MySQL DELETE with JOIN syntax: DELETE t1 FROM t1 JOIN t2 ON ... WHERE ...
         sqlBuilder.Append("DELETE ");
-        _table.BuildRefSql(sqlBuilder);
+        Table.BuildRefSql(sqlBuilder);
         sqlBuilder.Append(" FROM ");
-        _table.BuildRefSql(sqlBuilder);
+        Table.BuildRefSql(sqlBuilder);
 
         if (_joins.Count > 0)
         {
@@ -100,7 +87,7 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
             }
         }
 
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
 
         // ORDER BY (MySQL-specific on DELETE)
         if (_orderBys.Count > 0)

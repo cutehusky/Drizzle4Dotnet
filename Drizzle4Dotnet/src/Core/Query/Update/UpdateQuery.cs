@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
@@ -10,40 +9,39 @@ public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>
     where TTable : ITable<TDialect>
     where TDialect : ISqlDialect
 {
-    protected readonly TTable _table;
-    protected readonly Dictionary<string, object?> _setValues = new();
-    protected readonly List<IGenericSql> _wheres = new();
-    protected readonly List<ICteTable<TDialect>> _cteTables = new();
+    protected readonly TTable Table;
+    protected readonly Dictionary<string, object?> SetValues = new();
+    protected readonly List<IGenericSql> Wheres = new();
 
     public UpdateQuery(
         TTable table, 
         DbClient<TDialect> dbClient
     ): base(dbClient)
     {
-        _table = table;
+        Table = table;
     }
 
     public TSelf Set<T>(DbColumn<T, TTable, TDialect> column, T value)
     {
-        _setValues[column.Identifier] = value;
+        SetValues[column.Identifier] = value;
         return (TSelf)this;
     }
     
     public TSelf With(ICteTable<TDialect> cteTable)
     {
-        _cteTables.Add(cteTable);
+        CteTables.Add(cteTable);
         return (TSelf)this;
     }
     
     public TSelf Set(IUpdateRecord<TTable, TDialect> record)
     {
-        record.Writer(_setValues);
+        record.Writer(SetValues);
         return (TSelf)this;
     }
     
     public TSelf Set<T>(DbColumn<T, TTable, TDialect> column, ISql<T> value)
     {
-        _setValues[column.Identifier] = value;
+        SetValues[column.Identifier] = value;
         return (TSelf)this;
     }
     
@@ -51,50 +49,51 @@ public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>
     {
         foreach (var kv in columnValuePairs)
         {
-            _setValues[kv.Key.Identifier] = kv.Value;
+            SetValues[kv.Key.Identifier] = kv.Value;
         }
         return (TSelf)this;
     }
 
     public TSelf Where(IGenericSql condition)
     {
-        _wheres.Add(condition);
+        Wheres.Add(condition);
         return (TSelf)this;
     }
     
     public TSelf Where(params IGenericSql[] conditions)
     {
-        _wheres.AddRange(conditions);
+        Wheres.AddRange(conditions);
         return (TSelf)this;
     }
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (_setValues.Count == 0)
+        if (SetValues.Count == 0)
         {
             throw new InvalidOperationException("No columns set for update.");
         }
         
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
+        BuildSqlCte(sqlBuilder);
 
         sqlBuilder.Append("UPDATE ");
-        _table.BuildRefSql(sqlBuilder);
-        sqlBuilder.Append(" SET ");
+        Table.BuildRefSql(sqlBuilder);
+        BuildSqlSet(sqlBuilder, SetValues);
 
+        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
+    }
+    
+    /// <summary>
+    /// Builds the SET clause for UPDATE queries from a dictionary of column → value pairs.
+    /// Values can be raw scalars (added as parameters) or IGenericSql expressions (rendered inline).
+    /// </summary>
+    protected void BuildSqlSet(ISqlBuilder sqlBuilder, Dictionary<string, object?> setValues)
+    {
+        sqlBuilder.Append(" SET ");
         bool firstSet = true;
-        foreach (var kv in _setValues)
+        foreach (var kv in setValues)
         {
             if (!firstSet) sqlBuilder.Append(", ");
-        
+
             sqlBuilder.Append(TDialect.BuildIdentifier(kv.Key));
             sqlBuilder.Append(" = ");
 
@@ -110,7 +109,5 @@ public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>
             }
             firstSet = false;
         }
-
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
     }
 }

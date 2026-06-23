@@ -9,48 +9,38 @@ public class DeleteQuery<TTable, TDialect, TSelf> : Query<TDialect>
     where TTable : ITable<TDialect>
     where TDialect : ISqlDialect
 {
-    protected readonly TTable _table;
-    protected readonly List<IGenericSql> _wheres = new();
-    protected readonly List<ICteTable<TDialect>> _cteTables = new();
+    protected readonly TTable Table;
+    protected readonly List<IGenericSql> Wheres = new();
 
     public DeleteQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
     {
-        _table = table;
+        Table = table;
     }
     
     public TSelf With(ICteTable<TDialect> cteTable)
     {
-        _cteTables.Add(cteTable);
+        CteTables.Add(cteTable);
         return (TSelf)this;
     }
 
     public TSelf Where(IGenericSql condition)
     {
-        _wheres.Add(condition);
+        Wheres.Add(condition);
         return (TSelf)this;
     }
     
     public TSelf Where(params IGenericSql[] conditions)
     {
-        _wheres.AddRange(conditions);
+        Wheres.AddRange(conditions);
         return (TSelf)this;
     }
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
+        BuildSqlCte(sqlBuilder);
 
         sqlBuilder.Append("DELETE FROM ");
-        _table.BuildRefSql(sqlBuilder);
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+        Table.BuildRefSql(sqlBuilder);
+        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
     }
 }

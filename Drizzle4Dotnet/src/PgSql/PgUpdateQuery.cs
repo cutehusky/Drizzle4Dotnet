@@ -34,25 +34,15 @@ public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, Pg
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (_setValues.Count == 0)
+        if (SetValues.Count == 0)
         {
             throw new InvalidOperationException("No columns set for update.");
         }
 
-        // CTE (WITH clause)
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
+        BuildSqlCte(sqlBuilder);
 
         sqlBuilder.Append("UPDATE ");
-        _table.BuildRefSql(sqlBuilder);
+        Table.BuildRefSql(sqlBuilder);
 
         // PostgreSQL UPDATE ... FROM syntax
         if (_fromTables.Count > 0)
@@ -65,30 +55,9 @@ public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, Pg
             }
         }
 
-        sqlBuilder.Append(" SET ");
-
-        bool firstSet = true;
-        foreach (var kv in _setValues)
-        {
-            if (!firstSet) sqlBuilder.Append(", ");
-
-            sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(kv.Key));
-            sqlBuilder.Append(" = ");
-
-            if (kv.Value is IGenericSql op)
-            {
-                sqlBuilder.Append('(');
-                op.BuildSql(sqlBuilder);
-                sqlBuilder.Append(')');
-            }
-            else
-            {
-                sqlBuilder.Append(sqlBuilder.AddParameter(kv.Value));
-            }
-            firstSet = false;
-        }
+        BuildSqlSet(sqlBuilder, SetValues);
 
         // WHERE clause (includes join conditions if combined)
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
     }
 }

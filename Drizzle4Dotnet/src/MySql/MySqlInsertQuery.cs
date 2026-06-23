@@ -69,17 +69,7 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        // CTE (WITH clause) — applies to all INSERT variants
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
+        BuildSqlCte(sqlBuilder);
 
         // INSERT IGNORE or INSERT ... SET syntax
         if (_setValues.Count > 0)
@@ -88,7 +78,7 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
             sqlBuilder.Append("INSERT");
             if (_ignore) sqlBuilder.Append(" IGNORE");
             sqlBuilder.Append(" INTO ");
-            _table.BuildRefSql(sqlBuilder);
+            Table.BuildRefSql(sqlBuilder);
             sqlBuilder.Append(" SET ");
 
             bool first = true;
@@ -120,13 +110,13 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
 
     private void BuildInsertIgnore(ISqlBuilder sqlBuilder)
     {
-        if (_values.Count == 0)
+        if (NewValues.Count == 0)
             throw new InvalidOperationException("No values provided for insert.");
 
-        var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
+        var allColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
 
         sqlBuilder.Append("INSERT IGNORE INTO ");
-        _table.BuildRefSql(sqlBuilder);
+        Table.BuildRefSql(sqlBuilder);
         sqlBuilder.Append(" (");
 
         for (int i = 0; i < allColumns.Count; i++)
@@ -136,11 +126,11 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
         }
         sqlBuilder.Append(") VALUES ");
 
-        for (int rowIndex = 0; rowIndex < _values.Count; rowIndex++)
+        for (int rowIndex = 0; rowIndex < NewValues.Count; rowIndex++)
         {
             if (rowIndex > 0) sqlBuilder.Append(", ");
             sqlBuilder.Append('(');
-            var row = _values[rowIndex];
+            var row = NewValues[rowIndex];
 
             for (int colIndex = 0; colIndex < allColumns.Count; colIndex++)
             {
@@ -165,7 +155,7 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
         if (_onDuplicateKeyUpdateAll)
         {
             // Resolve all columns from current values
-            updateColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
+            updateColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
         }
 
         if (updateColumns != null && updateColumns.Count > 0)

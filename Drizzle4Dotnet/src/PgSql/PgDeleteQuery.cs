@@ -34,20 +34,10 @@ public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl, Pg
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        // CTE (WITH clause)
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
+        BuildSqlCte(sqlBuilder);
 
         sqlBuilder.Append("DELETE FROM ");
-        _table.BuildRefSql(sqlBuilder);
+        Table.BuildRefSql(sqlBuilder);
 
         // PostgreSQL DELETE ... USING syntax
         if (_usingTables.Count > 0)
@@ -60,6 +50,6 @@ public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl, Pg
             }
         }
 
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
     }
 }

@@ -68,25 +68,15 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (_setValues.Count == 0)
+        if (SetValues.Count == 0)
         {
             throw new InvalidOperationException("No columns set for update.");
         }
 
-        // CTE (WITH clause)
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
+        BuildSqlCte(sqlBuilder);
 
         sqlBuilder.Append("UPDATE ");
-        _table.BuildRefSql(sqlBuilder);
+        Table.BuildRefSql(sqlBuilder);
 
         // MySQL UPDATE JOIN syntax
         if (_joins.Count > 0)
@@ -104,30 +94,9 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
             }
         }
 
-        sqlBuilder.Append(" SET ");
+        BuildSqlSet(sqlBuilder, SetValues);
 
-        bool firstSet = true;
-        foreach (var kv in _setValues)
-        {
-            if (!firstSet) sqlBuilder.Append(", ");
-
-            sqlBuilder.Append(MySqlSqlDialectImpl.BuildIdentifier(kv.Key));
-            sqlBuilder.Append(" = ");
-
-            if (kv.Value is IGenericSql op)
-            {
-                sqlBuilder.Append('(');
-                op.BuildSql(sqlBuilder);
-                sqlBuilder.Append(')');
-            }
-            else
-            {
-                sqlBuilder.Append(sqlBuilder.AddParameter(kv.Value));
-            }
-            firstSet = false;
-        }
-
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
 
         // ORDER BY (MySQL-specific on UPDATE)
         if (_orderBys.Count > 0)

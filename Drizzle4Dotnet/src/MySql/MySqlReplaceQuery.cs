@@ -23,13 +23,15 @@ public class MySqlReplaceQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (_values.Count == 0)
+        if (NewValues.Count == 0)
             throw new InvalidOperationException("No values provided for replace.");
 
-        var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
+        var allColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
+
+        BuildSqlCte(sqlBuilder);
 
         sqlBuilder.Append("REPLACE INTO ");
-        _table.BuildRefSql(sqlBuilder);
+        Table.BuildRefSql(sqlBuilder);
         sqlBuilder.Append(" (");
 
         for (int i = 0; i < allColumns.Count; i++)
@@ -39,12 +41,12 @@ public class MySqlReplaceQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl
         }
         sqlBuilder.Append(") VALUES ");
 
-        for (int rowIndex = 0; rowIndex < _values.Count; rowIndex++)
+        for (int rowIndex = 0; rowIndex < NewValues.Count; rowIndex++)
         {
             if (rowIndex > 0) sqlBuilder.Append(", ");
 
             sqlBuilder.Append('(');
-            var row = _values[rowIndex];
+            var row = NewValues[rowIndex];
 
             for (int colIndex = 0; colIndex < allColumns.Count; colIndex++)
             {

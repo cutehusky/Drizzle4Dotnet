@@ -13,17 +13,15 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
     where TSelf : SelectQuery<TReturn, TDialect, TSelf>
     where TDialect : ISqlDialect
 {
-    protected IGenericTable<TDialect>? _from;
-    protected readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> _joins = new();
-    protected readonly List<IGenericSql> _wheres = new();
-    protected readonly List<(IGenericSql, bool)> _orderBys = new();
+    protected IGenericTable<TDialect>? FromTable;
+    protected readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> Joins = new();
+    protected readonly List<IGenericSql> Wheres = new();
+    protected readonly List<(IGenericSql, bool)> OrderBys = new();
     protected int? _limit;
     protected int? _offset;
     protected bool _distinct;
     protected readonly List<IGenericSql> _groupBys = new();
     protected readonly List<IGenericSql> _havings = new();
-    protected readonly List<ICteTable<TDialect>> _cteTables = new();
-    protected bool _recursive;
     protected string? _intoTable;
 
     public SelectQuery(
@@ -35,20 +33,20 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
     
     public TSelf With(ICteTable<TDialect> cteTable)
     {
-        _cteTables.Add(cteTable);
+        CteTables.Add(cteTable);
         return (TSelf)this;
     }
     
     public TSelf WithRecursive(params ICteTable<TDialect>[] cteTables)
     {
-        _recursive = true;
-        foreach (var t in cteTables) _cteTables.Add(t);
+        Recursive = true;
+        foreach (var t in cteTables) CteTables.Add(t);
         return (TSelf)this;
     }
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        BuildSqlPrefix(sqlBuilder);
+        BuildSqlCte(sqlBuilder);
         
         sqlBuilder.Append("SELECT ");
         if (_distinct) sqlBuilder.Append("DISTINCT ");
@@ -62,16 +60,16 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
         }
 
         // FROM
-        if (_from != null)
+        if (FromTable != null)
         {
             sqlBuilder.Append(" FROM ");
-            _from.BuildRefSql(sqlBuilder);
+            FromTable.BuildRefSql(sqlBuilder);
         }
 
         BuildSqlJoins(sqlBuilder);
 
         // WHERE
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
 
         // GROUP BY
         AppendClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
@@ -90,33 +88,13 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
     }
     
     /// <summary>
-    /// Hook for dialect-specific prefix (e.g., WITH clause). Override in subclasses if needed.
-    /// </summary>
-    protected virtual void BuildSqlPrefix(ISqlBuilder sqlBuilder)
-    {
-        // WITH / WITH RECURSIVE
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH");
-            if (_recursive) sqlBuilder.Append(" RECURSIVE");
-            sqlBuilder.Append(' ');
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
-    }
-    
-    /// <summary>
     /// Hook for dialect-specific JOIN rendering. Override in subclasses if needed.
     /// </summary>
     protected virtual void BuildSqlJoins(ISqlBuilder sqlBuilder)
     {
-        if (_joins.Count > 0)
+        if (Joins.Count > 0)
         {
-            foreach (var (table, type, on) in _joins)
+            foreach (var (table, type, on) in Joins)
             {
                 sqlBuilder.Append(' ').Append(type).Append(" JOIN ");
                 table.BuildRefSql(sqlBuilder);
@@ -135,13 +113,13 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
     /// </summary>
     protected virtual void BuildSqlOrderBy(ISqlBuilder sqlBuilder)
     {
-        if (_orderBys.Count > 0)
+        if (OrderBys.Count > 0)
         {
             sqlBuilder.Append(" ORDER BY ");
-            for (int i = 0; i < _orderBys.Count; i++)
+            for (int i = 0; i < OrderBys.Count; i++)
             {
                 if (i > 0) sqlBuilder.Append(", ");
-                var (expr, isAsc) = _orderBys[i];
+                var (expr, isAsc) = OrderBys[i];
                 expr.BuildSql(sqlBuilder);
                 sqlBuilder.Append(isAsc ? " ASC" : " DESC");
             }
@@ -159,20 +137,20 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
 
     public TSelf From(IGenericTable<TDialect> table)
     {
-        _from = table;
+        FromTable = table;
         return (TSelf)this;
     }
 
     
     public TSelf Where(params IGenericSql[] conditions)
     {
-        _wheres.AddRange(conditions);
+        Wheres.AddRange(conditions);
         return (TSelf)this;
     }
     
     public TSelf Where(IGenericSql conditions)
     {
-        _wheres.AddRange(conditions);
+        Wheres.AddRange(conditions);
         return (TSelf)this;
     }
     
@@ -202,7 +180,7 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
 
     public TSelf OrderBy(IGenericSql col, bool asc = true)
     {
-        _orderBys.Add((col, asc));
+        OrderBys.Add((col, asc));
         return (TSelf)this;
     }
 
@@ -221,10 +199,10 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
     // ====== JOINS ======
     protected TSelf JoinInternal(
         IGenericTable<TDialect> table,
-        IGenericSql on,
+        IGenericSql? on,
         string type)
     {
-        _joins.Add((table, type, on));
+        Joins.Add((table, type, on));
         return (TSelf)this;
     }
 
@@ -240,11 +218,8 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
     public TSelf FullJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "FULL");
 
-    public TSelf CrossJoin(IGenericTable<TDialect> table)
-    {
-        _joins.Add((table, "CROSS", null));
-        return (TSelf)this;
-    }
+    public TSelf CrossJoin(IGenericTable<TDialect> table) 
+        => JoinInternal(table, null, "CROSS");
 
     // ====== SELECT INTO ======
     public TSelf Into(string tableName)
@@ -275,8 +250,6 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     protected bool _distinct;
     protected readonly List<IGenericSql> _groupBys = new();
     protected readonly List<IGenericSql> _havings = new();
-    protected readonly List<ICteTable<TDialect>> _cteTables = new();
-    protected bool _recursive;
     protected string? _intoTable;
 
     public SelectQuery(
@@ -288,20 +261,20 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     
     public TSelf With(ICteTable<TDialect> cteTable)
     {
-        _cteTables.Add(cteTable);
+        CteTables.Add(cteTable);
         return (TSelf)this;
     }
     
     public TSelf WithRecursive(params ICteTable<TDialect>[] cteTables)
     {
-        _recursive = true;
-        foreach (var t in cteTables) _cteTables.Add(t);
+        Recursive = true;
+        foreach (var t in cteTables) CteTables.Add(t);
         return (TSelf)this;
     }
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        BuildSqlPrefix(sqlBuilder);
+        BuildSqlCte(sqlBuilder);
         
         sqlBuilder.Append("SELECT ");
         if (_distinct) sqlBuilder.Append("DISTINCT ");
@@ -342,25 +315,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
         BuildSqlLock(sqlBuilder);
     }
     
-    protected virtual void BuildSqlPrefix(ISqlBuilder sqlBuilder)
-    {
-        // WITH / WITH RECURSIVE
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH");
-            if (_recursive) sqlBuilder.Append(" RECURSIVE");
-            sqlBuilder.Append('\n');
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                sqlBuilder.Append('\n');
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append('\n');
-        }
-    }
-    
-    protected virtual void BuildSqlJoins(ISqlBuilder sqlBuilder)
+    protected void BuildSqlJoins(ISqlBuilder sqlBuilder)
     {
         if (_joins.Count > 0)
         {
@@ -472,7 +427,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     // ====== JOINS ======
     protected TSelf JoinInternal(
         IGenericTable<TDialect> table,
-        IGenericSql on,
+        IGenericSql? on,
         string type)
     {
         _joins.Add((table, type, on));
@@ -492,10 +447,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
         => JoinInternal(table, on, "FULL");
 
     public TSelf CrossJoin(IGenericTable<TDialect> table)
-    {
-        _joins.Add((table, "CROSS", null));
-        return (TSelf)this;
-    }
+        => JoinInternal(table, null, "CROSS");
 
     // ====== SELECT INTO ======
     public TSelf Into(string tableName)

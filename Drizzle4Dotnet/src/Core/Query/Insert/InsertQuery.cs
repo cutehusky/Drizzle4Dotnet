@@ -9,20 +9,19 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>
     where TTable : ITable<TDialect>
     where TDialect : ISqlDialect
 {
-    protected readonly TTable _table;
-    protected readonly List<Dictionary<string, object?>> _values = new();
-    protected readonly List<ICteTable<TDialect>> _cteTables = new();
+    protected readonly TTable Table;
+    protected readonly List<Dictionary<string, object?>> NewValues = new();
     private bool _useDefaultValues;
     private IGenericSql? _fromQuery;
 
     public InsertQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
     {
-        _table = table;
+        Table = table;
     }
     
     public TSelf With(ICteTable<TDialect> cteTable)
     {
-        _cteTables.Add(cteTable);
+        CteTables.Add(cteTable);
         return (TSelf)this;
     }
     
@@ -30,7 +29,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>
     {
         Dictionary<string, object?> value = new();
         record.Writer(value);
-        _values.Add(value);
+        NewValues.Add(value);
         return (TSelf)this;
     }
     
@@ -40,7 +39,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>
         {
             Dictionary<string, object?> value = new();
             record.Writer(value);
-            _values.Add(value);
+            NewValues.Add(value);
         }
         return (TSelf)this;
     }
@@ -54,7 +53,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>
             var val = columnValuePair.Value;
             value[col.Identifier] = val;
         }
-        _values.Add(value);
+        NewValues.Add(value);
         return (TSelf)this;
     }
     
@@ -69,7 +68,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>
                 var val = columnValuePair.Value;
                 value[col.Identifier] = val;
             }
-            _values.Add(value);
+            NewValues.Add(value);
         }
         return (TSelf)this;
     }
@@ -95,24 +94,15 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (_values.Count == 0 && !_useDefaultValues && _fromQuery == null)
+        if (NewValues.Count == 0 && !_useDefaultValues && _fromQuery == null)
             throw new InvalidOperationException("No values provided for insert. Use Value(s), DefaultValues(), or From().");
 
-        var allColumns = _values.SelectMany(d => d.Keys).Distinct().ToList();
+        var allColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
         
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
+        BuildSqlCte(sqlBuilder);
 
         sqlBuilder.Append("INSERT INTO ");
-        _table.BuildRefSql(sqlBuilder);
+        Table.BuildRefSql(sqlBuilder);
 
         // Column list
         if (allColumns.Count > 0)
@@ -138,12 +128,12 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>
         else
         {
             sqlBuilder.Append(" VALUES ");
-            for (int rowIndex = 0; rowIndex < _values.Count; rowIndex++)
+            for (int rowIndex = 0; rowIndex < NewValues.Count; rowIndex++)
             {
                 if (rowIndex > 0) sqlBuilder.Append(", ");
             
                 sqlBuilder.Append('(');
-                var row = _values[rowIndex];
+                var row = NewValues[rowIndex];
             
                 for (int colIndex = 0; colIndex < allColumns.Count; colIndex++)
                 {
