@@ -44,6 +44,6 @@ public static class PgWindowFunctionExtensions
     /// Appends an OVER clause to any FunctionCallNode<T>.
     /// Supports functions like PgFunctions.RowNumber(), Rank(), Lead(), etc.
     /// </summary>
-    public static PgWindowFunctionNode<T> Over<T>(this FunctionCallNode<T> aggregate, PgOverNode over)
+    public static PgWindowFunctionNode<T> Over<T>(this IFunctionCallNode<T> aggregate, PgOverNode over)
         => new(aggregate.FunctionName, over, aggregate.Arguments);
 }

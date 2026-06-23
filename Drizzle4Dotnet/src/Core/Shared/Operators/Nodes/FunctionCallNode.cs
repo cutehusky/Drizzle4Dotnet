@@ -1,11 +1,17 @@
 namespace Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
+public interface IFunctionCallNode<TReturn> : IOperator<TReturn>
+{
+    string FunctionName { get; }
+    IGenericSql[] Arguments { get; }
+}
+
 /// <summary>
 /// Represents a function call: FUNC_NAME(arg1, arg2, ...)
 /// For unary functions like UPPER(col), use FunctionCallNode with 1 typed argument.
 /// For functions with multiple arguments, use this node.
 /// </summary>
-public readonly struct FunctionCallNode<TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql[] _arguments;
@@ -53,7 +59,7 @@ public readonly struct FunctionCallNode<TReturn> : IOperator<TReturn>
 /// <summary>
 /// Function call with 1 typed argument: FUNC_NAME(arg1)
 /// </summary>
-public readonly struct FunctionCallNode<T1, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -61,6 +67,7 @@ public readonly struct FunctionCallNode<T1, TReturn> : IOperator<TReturn>
 
     public string FunctionName => _functionName;
     public IGenericSql Arg1 => _arg1;
+    public IGenericSql[] Arguments => [_arg1];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName, ISql<T1> arg1)
@@ -86,7 +93,7 @@ public readonly struct FunctionCallNode<T1, TReturn> : IOperator<TReturn>
 /// <summary>
 /// Function call with 2 typed arguments: FUNC_NAME(arg1, arg2)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -96,6 +103,7 @@ public readonly struct FunctionCallNode<T1, T2, TReturn> : IOperator<TReturn>
     public string FunctionName => _functionName;
     public IGenericSql Arg1 => _arg1;
     public IGenericSql Arg2 => _arg2;
+    public IGenericSql[] Arguments => [_arg1, _arg2];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName, ISql<T1> arg1, ISql<T2> arg2)
@@ -124,7 +132,7 @@ public readonly struct FunctionCallNode<T1, T2, TReturn> : IOperator<TReturn>
 /// <summary>
 /// Function call with 3 typed arguments: FUNC_NAME(arg1, arg2, arg3)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -136,6 +144,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, TReturn> : IOperator<TReturn
     public IGenericSql Arg1 => _arg1;
     public IGenericSql Arg2 => _arg2;
     public IGenericSql Arg3 => _arg3;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName, ISql<T1> arg1, ISql<T2> arg2, ISql<T3> arg3)
@@ -167,7 +176,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, TReturn> : IOperator<TReturn
 /// <summary>
 /// Function call with 4 typed arguments: FUNC_NAME(arg1, arg2, arg3, arg4)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -181,6 +190,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, TReturn> : IOperator<TRe
     public IGenericSql Arg2 => _arg2;
     public IGenericSql Arg3 => _arg3;
     public IGenericSql Arg4 => _arg4;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName, ISql<T1> arg1, ISql<T2> arg2, ISql<T3> arg3, ISql<T4> arg4)
@@ -215,7 +225,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, TReturn> : IOperator<TRe
 /// <summary>
 /// Function call with 5 typed arguments: FUNC_NAME(arg1, arg2, arg3, arg4, arg5)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -231,6 +241,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, TReturn> : IOperator
     public IGenericSql Arg3 => _arg3;
     public IGenericSql Arg4 => _arg4;
     public IGenericSql Arg5 => _arg5;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName, ISql<T1> arg1, ISql<T2> arg2, ISql<T3> arg3, ISql<T4> arg4, ISql<T5> arg5)
@@ -268,7 +279,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, TReturn> : IOperator
 /// <summary>
 /// Function call with 6 typed arguments: FUNC_NAME(arg1, arg2, arg3, arg4, arg5, arg6)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -286,6 +297,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, TReturn> : IOper
     public IGenericSql Arg4 => _arg4;
     public IGenericSql Arg5 => _arg5;
     public IGenericSql Arg6 => _arg6;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5, _arg6];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName, ISql<T1> arg1, ISql<T2> arg2, ISql<T3> arg3, ISql<T4> arg4, ISql<T5> arg5, ISql<T6> arg6)
@@ -326,7 +338,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, TReturn> : IOper
 /// <summary>
 /// Function call with 7 typed arguments: FUNC_NAME(arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -346,6 +358,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, TReturn> : I
     public IGenericSql Arg5 => _arg5;
     public IGenericSql Arg6 => _arg6;
     public IGenericSql Arg7 => _arg7;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName, ISql<T1> arg1, ISql<T2> arg2, ISql<T3> arg3, ISql<T4> arg4, ISql<T5> arg5, ISql<T6> arg6, ISql<T7> arg7)
@@ -389,7 +402,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, TReturn> : I
 /// <summary>
 /// Function call with 8 typed arguments: FUNC_NAME(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -411,6 +424,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, TReturn>
     public IGenericSql Arg6 => _arg6;
     public IGenericSql Arg7 => _arg7;
     public IGenericSql Arg8 => _arg8;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName, ISql<T1> arg1, ISql<T2> arg2, ISql<T3> arg3, ISql<T4> arg4, ISql<T5> arg5, ISql<T6> arg6, ISql<T7> arg7, ISql<T8> arg8)
@@ -457,7 +471,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, TReturn>
 /// <summary>
 /// Function call with 9 typed arguments: FUNC_NAME(arg1, ..., arg9)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -481,6 +495,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, TRet
     public IGenericSql Arg7 => _arg7;
     public IGenericSql Arg8 => _arg8;
     public IGenericSql Arg9 => _arg9;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8, _arg9];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName, ISql<T1> arg1, ISql<T2> arg2, ISql<T3> arg3, ISql<T4> arg4, ISql<T5> arg5, ISql<T6> arg6, ISql<T7> arg7, ISql<T8> arg8, ISql<T9> arg9)
@@ -516,7 +531,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, TRet
 /// <summary>
 /// Function call with 10 typed arguments: FUNC_NAME(arg1, ..., arg10)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -542,6 +557,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
     public IGenericSql Arg8 => _arg8;
     public IGenericSql Arg9 => _arg9;
     public IGenericSql Arg10 => _arg10;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8, _arg9, _arg10];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName, ISql<T1> arg1, ISql<T2> arg2, ISql<T3> arg3, ISql<T4> arg4, ISql<T5> arg5, ISql<T6> arg6, ISql<T7> arg7, ISql<T8> arg8, ISql<T9> arg9, ISql<T10> arg10)
@@ -579,7 +595,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
 /// <summary>
 /// Function call with 11 typed arguments: FUNC_NAME(arg1, ..., arg11)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -607,6 +623,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
     public IGenericSql Arg9 => _arg9;
     public IGenericSql Arg10 => _arg10;
     public IGenericSql Arg11 => _arg11;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8, _arg9, _arg10, _arg11];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName,
@@ -651,7 +668,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
 /// <summary>
 /// Function call with 12 typed arguments: FUNC_NAME(arg1, ..., arg12)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -681,6 +698,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
     public IGenericSql Arg10 => _arg10;
     public IGenericSql Arg11 => _arg11;
     public IGenericSql Arg12 => _arg12;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8, _arg9, _arg10, _arg11, _arg12];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName,
@@ -726,7 +744,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
 /// <summary>
 /// Function call with 13 typed arguments: FUNC_NAME(arg1, ..., arg13)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -758,6 +776,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
     public IGenericSql Arg11 => _arg11;
     public IGenericSql Arg12 => _arg12;
     public IGenericSql Arg13 => _arg13;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8, _arg9, _arg10, _arg11, _arg12, _arg13];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName,
@@ -805,7 +824,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
 /// <summary>
 /// Function call with 14 typed arguments: FUNC_NAME(arg1, ..., arg14)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -839,6 +858,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
     public IGenericSql Arg12 => _arg12;
     public IGenericSql Arg13 => _arg13;
     public IGenericSql Arg14 => _arg14;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8, _arg9, _arg10, _arg11, _arg12, _arg13, _arg14];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName,
@@ -887,7 +907,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
 /// <summary>
 /// Function call with 15 typed arguments: FUNC_NAME(arg1, ..., arg15)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -923,6 +943,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
     public IGenericSql Arg13 => _arg13;
     public IGenericSql Arg14 => _arg14;
     public IGenericSql Arg15 => _arg15;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8, _arg9, _arg10, _arg11, _arg12, _arg13, _arg14, _arg15];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName,
@@ -972,7 +993,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
 /// <summary>
 /// Function call with 16 typed arguments: FUNC_NAME(arg1, ..., arg16)
 /// </summary>
-public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, TReturn> : IOperator<TReturn>
+public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, TReturn> : IFunctionCallNode<TReturn>
 {
     private readonly string _functionName;
     private readonly IGenericSql _arg1;
@@ -1010,6 +1031,7 @@ public readonly struct FunctionCallNode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
     public IGenericSql Arg14 => _arg14;
     public IGenericSql Arg15 => _arg15;
     public IGenericSql Arg16 => _arg16;
+    public IGenericSql[] Arguments => [_arg1, _arg2, _arg3, _arg4, _arg5, _arg6, _arg7, _arg8, _arg9, _arg10, _arg11, _arg12, _arg13, _arg14, _arg15, _arg16];
     public string Separator => _separator;
 
     public FunctionCallNode(string functionName,
