@@ -40,16 +40,3 @@ public interface IPgDbTable : IDbTable<PgSqlSqlDialectImpl> { }
 /// PostgreSQL-specific table alias. Alias for ITableAlias&lt;PgSqlSqlDialectImpl&gt;.
 /// </summary>
 public interface IPgTableAlias : ITableAlias<PgSqlSqlDialectImpl> { }
-
-
-/// <summary>
-/// PostgreSQL-specific virtual table for subqueries.
-/// Alias for RawSubqueryTableSql&lt;PgSqlSqlDialectImpl&gt;.
-/// Implements IPgGenericTable, IPgCteTable, IPgVirtualTable.
-/// </summary>
-public class PgSubqueryTable : RawSubqueryTableSql<PgSqlSqlDialectImpl>,
-    IPgGenericTable, IPgCteTable, IPgVirtualTable
-{
-    public PgSubqueryTable(RawSql<PgSqlSqlDialectImpl> sql, string alias, bool isCte = false) 
-        : base(sql, alias, isCte) { }
-}

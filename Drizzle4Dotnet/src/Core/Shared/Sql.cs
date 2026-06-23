@@ -16,22 +16,22 @@ public static class Sql
     /// <summary>
     /// Creates a raw (non-typed) SQL fragment.
     /// </summary>
-    public static SqlRawNode<object> Raw(string sql) => new SqlRawNode<object>(sql);
+    public static RawSql Raw(string sql) => new RawSql(sql);
     
     /// <summary>
     /// Creates a typed raw SQL fragment.
     /// </summary>
-    public static SqlRawNode<T> Raw<T>(string sql) => new SqlRawNode<T>(sql);
+    public static RawSql<T> Raw<T>(string sql) => new RawSql<T>(sql);
     
     /// <summary>
     /// Creates an unsafe literal SQL fragment (no parameterization).
     /// </summary>
-    public static SqlRawNode<object> Literal(string sql) => new SqlRawNode<object>(sql);
+    public static RawSql Literal(string sql) => new RawSql(sql);
     
     /// <summary>
     /// Creates a typed unsafe literal SQL fragment.
     /// </summary>
-    public static SqlRawNode<T> Literal<T>(string sql) => new SqlRawNode<T>(sql);
+    public static RawSql<T> Literal<T>(string sql) => new RawSql<T>(sql);
     
     /// <summary>
     /// Creates a NULL literal of the specified type.

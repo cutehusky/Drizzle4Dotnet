@@ -1671,7 +1671,7 @@ public class PgSqlSelectTests
         var query = _db
             .Select(
                 UsersTable.Id,
-                Sql.Literal("'constant_value'").As("ConstVal")
+                Sql.Literal<string>("'constant_value'").As("ConstVal")
             )
             .From(users);
 
@@ -1796,7 +1796,7 @@ public class PgSqlSelectTests
     {
         var query = _db.Select(PgUserSelect.Record)
             .From(users)
-            .ForNoKeyUpdate(skipLocked: true, nowait: false, UsersTable.Id, UsersTable.Name);
+            .ForNoKeyUpdate(skipLocked: true, nowait: false, users);
 
         var (sql, parameters) = query.Build();
         Print("PgSQL FOR NO KEY UPDATE SKIP LOCKED OF", sql, parameters);
@@ -1885,7 +1885,7 @@ public class PgSqlSelectTests
             .Select(PgUserSelect.Record)
             .From(users)
             .Where(Eq(UsersTable.Id, 1))
-            .ForNoKeyUpdate(skipLocked: true, nowait: false, UsersTable.Id, UsersTable.Name);
+            .ForNoKeyUpdate(skipLocked: true, nowait: false, users);
 
         var (sql, parameters) = query.Build();
         Print("PgSQL FOR NO KEY UPDATE with OF + SKIP LOCKED", sql, parameters);

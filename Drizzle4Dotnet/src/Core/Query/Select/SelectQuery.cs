@@ -1,16 +1,8 @@
-using System.Runtime.CompilerServices;
-using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query.Select;
 
-public enum ELockType
-{
-    None,
-    ForUpdate,
-    ForShare
-}
 
 /// <summary>
 /// Core SELECT query builder — produces standard SQL only.
@@ -30,10 +22,6 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
     protected bool _distinct;
     protected readonly List<IGenericSql> _groupBys = new();
     protected readonly List<IGenericSql> _havings = new();
-    protected string? _lockClause;
-    protected IGenericColumn[]? _lockColumns;
-    protected bool _skipLocked;
-    protected bool _nowait;
     protected readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
     protected bool _recursive;
     protected string? _intoTable;
@@ -162,24 +150,11 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
     
     /// <summary>
     /// Hook for dialect-specific locking clause. Override in subclasses if needed.
+    /// Default implementation does nothing (no lock support in core SQL).
     /// </summary>
     protected virtual void BuildSqlLock(ISqlBuilder sqlBuilder)
     {
-        if (_lockClause != null)
-        {
-            sqlBuilder.Append(' ').Append(_lockClause);
-            if (_lockColumns != null && _lockColumns.Length > 0)
-            {
-                sqlBuilder.Append(" OF ");
-                for (int i = 0; i < _lockColumns.Length; i++)
-                {
-                    if (i > 0) sqlBuilder.Append(", ");
-                    _lockColumns[i].BuildSql(sqlBuilder);
-                }
-            }
-            if (_nowait) sqlBuilder.Append(" NOWAIT");
-            else if (_skipLocked) sqlBuilder.Append(" SKIP LOCKED");
-        }
+        // No-op by default — dialect subclasses override this for lock support.
     }
 
     public TSelf From(IGenericTable<TDialect> table)
@@ -284,38 +259,6 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
         return (TSelf)this;
     }
     
-    public TSelf ForUpdate() { _lockClause = "FOR UPDATE"; _lockColumns = null; _skipLocked = false; _nowait = false; return (TSelf)this; }
-    public TSelf ForShare() { _lockClause = "FOR SHARE"; _lockColumns = null; _skipLocked = false; _nowait = false; return (TSelf)this; }
-    public TSelf For(ELockType lockType)
-    {
-        _lockClause = lockType switch
-        {
-            ELockType.ForUpdate => "FOR UPDATE",
-            ELockType.ForShare => "FOR SHARE",
-            _ => null
-        };
-        _lockColumns = null;
-        _skipLocked = false;
-        _nowait = false;
-        return (TSelf)this;
-    }
-    
-    // Enhanced overloads with skipLocked/nowait/OF columns
-    public TSelf ForUpdate(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR UPDATE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return (TSelf)this; }
-    public TSelf ForShare(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR SHARE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return (TSelf)this; }
-    public TSelf For(ELockType lockType, bool skipLocked, bool nowait, params IGenericColumn[] ofColumns)
-    {
-        _lockClause = lockType switch
-        {
-            ELockType.ForUpdate => "FOR UPDATE",
-            ELockType.ForShare => "FOR SHARE",
-            _ => null
-        };
-        _lockColumns = ofColumns;
-        _skipLocked = skipLocked;
-        _nowait = nowait;
-        return (TSelf)this;
-    }
 }
 
 public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn, TDialect, TVirtualTable>
@@ -332,11 +275,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     protected bool _distinct;
     protected readonly List<IGenericSql> _groupBys = new();
     protected readonly List<IGenericSql> _havings = new();
-    protected string? _lockClause;
     protected readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
-    protected IGenericColumn[]? _lockColumns;
-    protected bool _skipLocked;
-    protected bool _nowait;
     protected bool _recursive;
     protected string? _intoTable;
 
@@ -454,23 +393,13 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
         }
     }
     
+    /// <summary>
+    /// Hook for dialect-specific locking clause. Override in subclasses if needed.
+    /// Default implementation does nothing (no lock support in core SQL).
+    /// </summary>
     protected virtual void BuildSqlLock(ISqlBuilder sqlBuilder)
     {
-        if (_lockClause != null)
-        {
-            sqlBuilder.Append(' ').Append(_lockClause);
-            if (_lockColumns != null && _lockColumns.Length > 0)
-            {
-                sqlBuilder.Append(" OF ");
-                for (int i = 0; i < _lockColumns.Length; i++)
-                {
-                    if (i > 0) sqlBuilder.Append(", ");
-                    _lockColumns[i].BuildSql(sqlBuilder);
-                }
-            }
-            if (_nowait) sqlBuilder.Append(" NOWAIT");
-            else if (_skipLocked) sqlBuilder.Append(" SKIP LOCKED");
-        }
+        // No-op by default — dialect subclasses override this for lock support.
     }
 
     public TSelf From(IGenericTable<TDialect> table)
@@ -578,38 +507,6 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     public TSelf Distinct()
     {
         _distinct = true;
-        return (TSelf)this;
-    }
-    
-    public TSelf ForUpdate() { _lockClause = "FOR UPDATE"; _lockColumns = null; _skipLocked = false; _nowait = false; return (TSelf)this; }
-    public TSelf ForShare() { _lockClause = "FOR SHARE"; _lockColumns = null; _skipLocked = false; _nowait = false; return (TSelf)this; }
-    public TSelf For(ELockType lockType)
-    {
-        _lockClause = lockType switch
-        {
-            ELockType.ForUpdate => "FOR UPDATE",
-            ELockType.ForShare => "FOR SHARE",
-            _ => null
-        };
-        _lockColumns = null;
-        _skipLocked = false;
-        _nowait = false;
-        return (TSelf)this;
-    }
-    
-    public TSelf ForUpdate(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR UPDATE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return (TSelf)this; }
-    public TSelf ForShare(bool skipLocked, bool nowait, params IGenericColumn[] ofColumns) { _lockClause = "FOR SHARE"; _lockColumns = ofColumns; _skipLocked = skipLocked; _nowait = nowait; return (TSelf)this; }
-    public TSelf For(ELockType lockType, bool skipLocked, bool nowait, params IGenericColumn[] ofColumns)
-    {
-        _lockClause = lockType switch
-        {
-            ELockType.ForUpdate => "FOR UPDATE",
-            ELockType.ForShare => "FOR SHARE",
-            _ => null
-        };
-        _lockColumns = ofColumns;
-        _skipLocked = skipLocked;
-        _nowait = nowait;
         return (TSelf)this;
     }
 }

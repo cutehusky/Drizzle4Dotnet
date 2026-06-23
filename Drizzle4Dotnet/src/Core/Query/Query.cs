@@ -48,14 +48,14 @@ public abstract class Query<TReturn, TDialect>: QueryBase<TDialect>, IReturning<
     public RawSubqueryTableSql<TDialect> AsSubQuery(string alias)
     {
         var (sql, parameters) = Build();
-        return new RawSubqueryTableSql<TDialect>(new RawSql<TDialect>(sql, parameters), alias);
+        return new RawSubqueryTableSql<TDialect>(new RawSql(sql, parameters), alias);
     }
     
     public RawSubqueryTableSql<TDialect> AsSubQuery<T>(string alias,
         Func<IGetFieldByName, T> columnSelector)
     {
         var (sql, parameters) = Build();
-        var raw = new RawSubqueryTableSql<TDialect>(new RawSql<TDialect>(sql, parameters), alias);
+        var raw = new RawSubqueryTableSql<TDialect>(new RawSql(sql, parameters), alias);
         return raw;
     }
 }

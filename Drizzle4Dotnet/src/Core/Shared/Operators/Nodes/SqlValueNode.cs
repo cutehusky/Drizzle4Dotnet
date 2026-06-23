@@ -19,39 +19,3 @@ public readonly struct SqlValueNode<T> : IOperator<T>
         sqlBuilder.Append(paramName);
     }
 }
-
-/// <summary>
-/// Wraps a raw SQL fragment as an ISql for use in function calls or expressions.
-/// </summary>
-public readonly struct SqlRawNode<T> : IOperator<T>
-{
-    private readonly string _sql;
-
-    public SqlRawNode(string sql)
-    {
-        _sql = sql;
-    }
-
-    public void BuildSql(ISqlBuilder sqlBuilder)
-    {
-        sqlBuilder.Append(_sql);
-    }
-}
-
-/// <summary>
-/// Wraps an IGenericSql (non-typed) into ISql for type compatibility.
-/// </summary>
-public readonly struct GenericSqlWrapper<T> : IOperator<T>
-{
-    private readonly IGenericSql _inner;
-
-    public GenericSqlWrapper(IGenericSql inner)
-    {
-        _inner = inner;
-    }
-
-    public void BuildSql(ISqlBuilder sqlBuilder)
-    {
-        _inner.BuildSql(sqlBuilder);
-    }
-}

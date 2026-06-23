@@ -40,16 +40,3 @@ public interface IMySqlDbTable : IDbTable<MySqlSqlDialectImpl> { }
 /// MySQL-specific table alias. Alias for ITableAlias<MySqlSqlDialectImpl>.
 /// </summary>
 public interface IMySqlTableAlias : ITableAlias<MySqlSqlDialectImpl> { }
-
-
-/// <summary>
-/// MySQL-specific virtual table for subqueries.
-/// Alias for RawSubqueryTableSql<MySqlSqlDialectImpl>.
-/// Implements IMySqlGenericTable, IMySqlCteTable, IMySqlVirtualTable.
-/// </summary>
-public class MySqlSubqueryTable : RawSubqueryTableSql<MySqlSqlDialectImpl>,
-    IMySqlGenericTable, IMySqlCteTable, IMySqlVirtualTable
-{
-    public MySqlSubqueryTable(RawSql<MySqlSqlDialectImpl> sql, string alias, bool isCte = false) 
-        : base(sql, alias, isCte) { }
-}

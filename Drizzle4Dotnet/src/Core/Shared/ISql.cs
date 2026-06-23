@@ -89,15 +89,15 @@ public readonly struct AliasedSql<T>: IAliasedSql<T>
 }
 
 public static class SqlExtensions {
-    public static RawSubqueryTableSql<TDialect> AsSubQuery<TDialect>(this RawSql<TDialect> sql, string alias) where TDialect : ISqlDialect 
-        => new RawSubqueryTableSql<TDialect>(sql, alias);
+    public static RawSubqueryTableSql<TDialect> AsSubQuery<TDialect>(this RawSql sql, string alias)
+        where TDialect : ISqlDialect =>
+        new(sql, alias);
     
-    public static AliasedSql<T> As<T>(this ISql<T> sql, string alias) 
-        => new AliasedSql<T>(sql, alias);
+    public static AliasedSql<T> As<T>(this ISql<T> sql, string alias) => new(sql, alias);
 }
 
 
-public class RawSql<TDialect>: ISql where TDialect : ISqlDialect
+public class RawSql: ISql
 {
     private readonly string _sql;
     private readonly Dictionary<string, object?> _parameters;
@@ -124,7 +124,7 @@ public class RawSql<TDialect>: ISql where TDialect : ISqlDialect
     }
 }
 
-public class RawSql<TReturn, TDialect>: ISql<TReturn> where TDialect : ISqlDialect
+public class RawSql<TReturn>: ISql<TReturn>
 {
     private readonly string _sql;
     private readonly Dictionary<string, object?> _parameters;
@@ -157,12 +157,12 @@ public class RawSubqueryTableSql<TDialect>:
     IGetFieldByName
     where TDialect : ISqlDialect
 {
-    private readonly RawSql<TDialect> _sql;
+    private readonly RawSql _sql;
     private readonly string _alias;
     private readonly bool _isCte = false;
 
     public RawSubqueryTableSql(
-        RawSql<TDialect> sql,
+        RawSql sql,
         string alias,
         bool isCte = false
     )

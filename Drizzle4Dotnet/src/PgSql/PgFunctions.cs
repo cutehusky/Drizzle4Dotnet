@@ -32,9 +32,9 @@ public static class PgFunctions
     // Extract(field FROM col) -> EXTRACT(year FROM col)
     // Note: EXTRACT is SQL standard but included here for the PostgreSQL-specific overloads
     public static FunctionCallNode<double> Extract(IGenericSql field, ISql c1)
-        => new FunctionCallNode<double>("EXTRACT", field, new SqlRawNode<double>("FROM "), c1);
+        => new FunctionCallNode<double>("EXTRACT", field, new RawSql<double>("FROM "), c1);
     public static FunctionCallNode<double> Extract(string field, ISql c1)
-        => new FunctionCallNode<double>("EXTRACT", new SqlRawNode<double>(field), new SqlRawNode<double>("FROM "), c1);
+        => new FunctionCallNode<double>("EXTRACT", new SqlValueNode<string>(field), new RawSql<double>("FROM "), c1);
     
     // DateTrunc(field, col) -> DATE_TRUNC('day', col)
     public static FunctionCallNode<DateTime> DateTrunc(IGenericSql precision, ISql c1)

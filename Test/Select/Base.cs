@@ -545,8 +545,8 @@ public class SelectQueryPgTests
     public void Select_ActiveUsersInActiveProjects_RawSQL()
     {
         
-        var activeProjectsRaw = new RawSql<PgSqlSqlDialectImpl>("SELECT up.\"UserId\", p.\"Name\" AS \"ProjectName\" FROM \"Projects\" p INNER JOIN \"UserProjects\" up ON p.\"Id\" = up.\"ProjectId\" WHERE p.\"IsActive\" = TRUE")
-            .AsSubQuery("active_projects_raw").AsCte();
+        var activeProjectsRaw = new RawSql("SELECT up.\"UserId\", p.\"Name\" AS \"ProjectName\" FROM \"Projects\" p INNER JOIN \"UserProjects\" up ON p.\"Id\" = up.\"ProjectId\" WHERE p.\"IsActive\" = TRUE")
+            .AsSubQuery<PgSqlSqlDialectImpl>("active_projects_raw").AsCte();
 
         var projectMembers = _db
             .Select(

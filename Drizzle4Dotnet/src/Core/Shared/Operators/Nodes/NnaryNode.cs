@@ -74,7 +74,7 @@ public readonly struct SqlValue<T, TDialect> where TDialect : ISqlDialect
         if (query == null) return new SqlValue<T, TDialect>(default(T)!);
         return new SqlValue<T, TDialect>(new SqlConverter<T>(query));
     }
-    public static implicit operator SqlValue<T, TDialect>(RawSql<T, TDialect>? query) 
+    public static implicit operator SqlValue<T, TDialect>(RawSql<T>? query) 
     {
         if (query == null) return new SqlValue<T, TDialect>(default(T)!);
         return new SqlValue<T, TDialect>(new SqlConverter<T>(query));
