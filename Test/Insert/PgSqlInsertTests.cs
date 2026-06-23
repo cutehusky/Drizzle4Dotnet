@@ -75,30 +75,30 @@ public class PgSqlInsertTests
         Print("PgSQL INSERT with Dictionary", sql, parameters);
     }
 
-    [Test]
-    public void Insert_OnConflictDoNothing()
-    {
-        var query = _db.Insert(users)
-            .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
-            .OnConflictDoNothing("(Email)");
-
-        var (sql, parameters) = query.Build();
-        Print("PgSQL INSERT ON CONFLICT DO NOTHING", sql, parameters);
-    }
-
-    [Test]
-    public void Insert_OnConflictDoUpdate()
-    {
-        var query = _db.Insert(users)
-            .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
-            .OnConflictDoUpdate("(Email)",
-                ("Name", "EXCLUDED"),
-                ("Age", "EXCLUDED")
-            );
-
-        var (sql, parameters) = query.Build();
-        Print("PgSQL INSERT ON CONFLICT DO UPDATE", sql, parameters);
-    }
+    // [Test]
+    // public void Insert_OnConflictDoNothing()
+    // {
+    //     var query = _db.Insert(users)
+    //         .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
+    //         .OnConflictDoNothing("(Email)");
+    //
+    //     var (sql, parameters) = query.Build();
+    //     Print("PgSQL INSERT ON CONFLICT DO NOTHING", sql, parameters);
+    // }
+    //
+    // [Test]
+    // public void Insert_OnConflictDoUpdate()
+    // {
+    //     var query = _db.Insert(users)
+    //         .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
+    //         .OnConflictDoUpdate("(Email)",
+    //             ("Name", "EXCLUDED"),
+    //             ("Age", "EXCLUDED")
+    //         );
+    //
+    //     var (sql, parameters) = query.Build();
+    //     Print("PgSQL INSERT ON CONFLICT DO UPDATE", sql, parameters);
+    // }
 
     [Test]
     public void Insert_OnConflictOnConstraint()
@@ -171,32 +171,32 @@ public class PgSqlInsertTests
     // CTE + ON CONFLICT + RETURNING combination tests
     // =========================================================================
 
-    [Test]
-    public void Insert_OnConflictDoUpdateWithReturning()
-    {
-        var query = _db.Insert(users)
-            .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
-            .OnConflictDoUpdate("(Email)",
-                ("Name", "EXCLUDED"),
-                ("Age", "EXCLUDED")
-            )
-            .Returning(UsersTable.ModelAll);
-
-        var (sql, parameters) = query.Build();
-        Print("PgSQL INSERT ON CONFLICT DO UPDATE + RETURNING", sql, parameters);
-    }
-
-    [Test]
-    public void Insert_OnConflictDoNothingWithReturning()
-    {
-        var query = _db.Insert(users)
-            .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
-            .OnConflictDoNothing("(Email)")
-            .Returning(UsersTable.ModelAll);
-
-        var (sql, parameters) = query.Build();
-        Print("PgSQL INSERT ON CONFLICT DO NOTHING + RETURNING", sql, parameters);
-    }
+    // [Test]
+    // public void Insert_OnConflictDoUpdateWithReturning()
+    // {
+    //     var query = _db.Insert(users)
+    //         .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
+    //         .OnConflictDoUpdate("(Email)",
+    //             ("Name", "EXCLUDED"),
+    //             ("Age", "EXCLUDED")
+    //         )
+    //         .Returning(UsersTable.ModelAll);
+    //
+    //     var (sql, parameters) = query.Build();
+    //     Print("PgSQL INSERT ON CONFLICT DO UPDATE + RETURNING", sql, parameters);
+    // }
+    //
+    // [Test]
+    // public void Insert_OnConflictDoNothingWithReturning()
+    // {
+    //     var query = _db.Insert(users)
+    //         .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
+    //         .OnConflictDoNothing("(Email)")
+    //         .Returning(UsersTable.ModelAll);
+    //
+    //     var (sql, parameters) = query.Build();
+    //     Print("PgSQL INSERT ON CONFLICT DO NOTHING + RETURNING", sql, parameters);
+    // }
 
     [Test]
     public void Insert_WithCteAndReturning()

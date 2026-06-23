@@ -1,0 +1,451 @@
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Text;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
+
+namespace SourceGenerators;
+
+/// <summary>
+/// Source generator that reads [Table] and [Column] attributes from partial table classes
+/// and generates a GetTableDefinition() method returning a pre-built TableDefinition.
+/// Supports rich column configuration: DataType, DefaultValue, AutoIncrement, 
+/// NotNull/Nullable, Check, Comment, PrimaryKey, and table-level Constraints.
+/// 
+/// Example input:
+/// <code>
+/// [Table("Users", Schema = "public", Dialect = typeof(PgSqlSqlDialectImpl),
+///     Constraints = new[] { "UNIQUE(Email)" })]
+/// public partial class UsersTable
+/// {
+///     public static class Columns
+///     {
+///         [Column("Id", DataType = "BIGSERIAL", PrimaryKey = true, AutoIncrement = true)]
+///         public static long Id { get; set; }
+///         
+///         [Column("Name", DataType = "VARCHAR(100)", NotNull = true)]
+///         public static string Name { get; set; }
+///         
+///         [Column("Salary", DataType = "NUMERIC(18,2)", DefaultValue = "0")]
+///         public static decimal Salary { get; set; }
+///         
+///         [Column("CreatedAt", DataType = "TIMESTAMP", DefaultValue = "NOW()", NotNull = true)]
+///         public static DateTime CreatedAt { get; set; }
+///     }
+/// }
+/// </code>
+/// </summary>
+[Generator]
+public class MigrationSchemaGenerator : IIncrementalGenerator
+{
+    public void Initialize(IncrementalGeneratorInitializationContext context)
+    {
+        var provider = context.SyntaxProvider.CreateSyntaxProvider(
+                predicate: static (s, _) => s is ClassDeclarationSyntax { AttributeLists.Count: > 0 },
+                transform: static (ctx, _) => GetTableModel(ctx))
+            .Where(static m => m is not null);
+
+        context.RegisterSourceOutput(provider.Collect(), GenerateCode);
+    }
+
+    private static TableSchemaModel? GetTableModel(GeneratorSyntaxContext ctx)
+    {
+        var classDecl = (ClassDeclarationSyntax)ctx.Node;
+        var symbol = ctx.SemanticModel.GetDeclaredSymbol(classDecl) as INamedTypeSymbol;
+
+        if (symbol == null)
+            return null;
+
+        var tableAttr = symbol.GetAttributes().FirstOrDefault(a =>
+            a.AttributeClass?.Name == "TableAttribute");
+
+        if (tableAttr == null)
+            return null;
+
+        // Read table name and schema from attribute
+        string? dbTableName = null;
+        string? schemaName = null;
+        string? dialectTypeName = null;
+        var tableConstraints = new List<string>();
+
+        if (tableAttr.ConstructorArguments.Length > 0)
+            dbTableName = tableAttr.ConstructorArguments[0].Value?.ToString();
+        if (tableAttr.ConstructorArguments.Length > 1)
+            schemaName = tableAttr.ConstructorArguments[1].Value?.ToString();
+
+        foreach (var namedArg in tableAttr.NamedArguments)
+        {
+            switch (namedArg.Key)
+            {
+                case "Schema":
+                    schemaName = namedArg.Value.Value?.ToString();
+                    break;
+                case "Dialect":
+                    if (namedArg.Value.Value is INamedTypeSymbol typeSymbol)
+                        dialectTypeName = typeSymbol.ToDisplayString();
+                    break;
+                case "Constraints":
+                    if (namedArg.Value.Value is IArrayTypeSymbol)
+                    {
+                        var values = namedArg.Value.Values;
+                        foreach (var val in values)
+                        {
+                            if (val.Value?.ToString() is { } s)
+                                tableConstraints.Add(s);
+                        }
+                    }
+                    break;
+            }
+        }
+
+        if (string.IsNullOrEmpty(dbTableName))
+            dbTableName = symbol.Name;
+        if (string.IsNullOrEmpty(schemaName))
+            schemaName = "public";
+
+        var dialect = DialectInfo.Resolve(dialectTypeName);
+
+        // Read columns from nested Columns class
+        var columns = new List<ColumnSchemaModel>();
+
+        foreach (var member in symbol.GetMembers().OfType<INamedTypeSymbol>())
+        {
+            if (member.Name != "Columns")
+                continue;
+
+            foreach (var subMember in member.GetMembers().OfType<IPropertySymbol>())
+            {
+                var colAttr = subMember.GetAttributes().FirstOrDefault(a =>
+                    a.AttributeClass?.Name == "ColumnAttribute");
+
+                if (colAttr == null)
+                    continue;
+
+                var dbColumnName = colAttr.ConstructorArguments.Length > 0
+                    ? colAttr.ConstructorArguments[0].Value?.ToString() ?? subMember.Name
+                    : subMember.Name;
+
+                var clrType = subMember.Type;
+                var typeName = clrType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                var isNullableByDefault = clrType.NullableAnnotation == NullableAnnotation.Annotated
+                    || (clrType is INamedTypeSymbol namedType && namedType.IsGenericType &&
+                        namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T);
+
+                // Read column attribute properties
+                string? explicitDataType = null;
+                string? defaultValue = null;
+                bool autoIncrement = false;
+                bool? notNullOverride = null;
+                string? checkExpression = null;
+                string? comment = null;
+                bool primaryKey = false;
+
+                foreach (var namedArg in colAttr.NamedArguments)
+                {
+                    switch (namedArg.Key)
+                    {
+                        case "DataType":
+                            explicitDataType = namedArg.Value.Value?.ToString();
+                            break;
+                        case "DefaultValue":
+                            defaultValue = namedArg.Value.Value?.ToString();
+                            break;
+                        case "AutoIncrement":
+                            autoIncrement = namedArg.Value.Value?.Equals(true) ?? false;
+                            break;
+                        case "NotNull":
+                            notNullOverride = namedArg.Value.Value?.Equals(true) ?? false;
+                            break;
+                        case "Nullable":
+                            if (notNullOverride == null)
+                                notNullOverride = !(namedArg.Value.Value?.Equals(true) ?? false);
+                            break;
+                        case "Check":
+                            checkExpression = namedArg.Value.Value?.ToString();
+                            break;
+                        case "Comment":
+                            comment = namedArg.Value.Value?.ToString();
+                            break;
+                        case "PrimaryKey":
+                            primaryKey = namedArg.Value.Value?.Equals(true) ?? false;
+                            break;
+                    }
+                }
+
+                // Also check for [PrimaryKey] attribute
+                if (!primaryKey)
+                {
+                    primaryKey = subMember.GetAttributes().Any(a =>
+                        a.AttributeClass?.Name == "PrimaryKeyAttribute");
+                }
+
+                // Determine final nullability
+                bool isNullable;
+                if (notNullOverride.HasValue)
+                    isNullable = !notNullOverride.Value;
+                else
+                    isNullable = isNullableByDefault;
+
+                columns.Add(new ColumnSchemaModel
+                {
+                    PropName = subMember.Name,
+                    DbColumnName = dbColumnName,
+                    ClrType = typeName,
+                    IsNullable = isNullable,
+                    ExplicitDataType = explicitDataType,
+                    DefaultValue = defaultValue,
+                    AutoIncrement = autoIncrement,
+                    PrimaryKey = primaryKey,
+                    CheckExpression = checkExpression,
+                    Comment = comment
+                });
+            }
+            break;
+        }
+
+        if (columns.Count == 0)
+            return null;
+
+        var hasExistingInterface = symbol.AllInterfaces.Any(i =>
+            i.Name == dialect.TableInterface.Replace("I", ""));
+
+        return new TableSchemaModel
+        {
+            Namespace = (symbol.ContainingNamespace.IsGlobalNamespace
+                || symbol.ContainingNamespace.ToDisplayString() == "<global namespace>")
+                ? "" : symbol.ContainingNamespace.ToDisplayString(),
+            ClassName = symbol.Name,
+            DbTableName = dbTableName,
+            DbSchemaName = schemaName,
+            Dialect = dialect,
+            Columns = columns,
+            TableConstraints = tableConstraints,
+            HasExistingInterface = hasExistingInterface
+        };
+    }
+
+    private static void GenerateCode(
+        SourceProductionContext context,
+        ImmutableArray<TableSchemaModel?> tables)
+    {
+        if (tables.IsDefaultOrEmpty)
+            return;
+
+        foreach (var table in tables)
+        {
+            if (table == null)
+                continue;
+
+            var sb = new StringBuilder();
+            var dialect = table.Dialect;
+
+            sb.AppendLine("// <auto-generated/>");
+            sb.AppendLine("#pragma warning disable CS0108, CS0114, CS8600, CS8601, CS8602, CS8603, CS8604, CS8618");
+
+            bool isGlobalNamespace = string.IsNullOrEmpty(table.Namespace);
+
+            if (!isGlobalNamespace)
+            {
+                sb.AppendLine($"namespace {table.Namespace};");
+                sb.AppendLine();
+            }
+
+            sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Migration;");
+            sb.AppendLine("using Drizzle4Dotnet.Core.Shared;");
+            sb.AppendLine("using Drizzle4Dotnet.Dialect;");
+            sb.AppendLine();
+
+            sb.AppendLine($"partial class {table.ClassName}");
+            sb.AppendLine("{");
+
+            sb.AppendLine("    private static TableDefinition? _schemaDefinition;");
+            sb.AppendLine();
+
+            sb.AppendLine("    /// <summary>");
+            sb.AppendLine("    /// Gets a TableDefinition for this table, usable with the Migration system.");
+            sb.AppendLine("    /// </summary>");
+            sb.AppendLine("    public static TableDefinition SchemaDefinition");
+            sb.AppendLine("    {");
+            sb.AppendLine("        get");
+            sb.AppendLine("        {");
+            sb.AppendLine("            if (_schemaDefinition != null)");
+            sb.AppendLine("                return _schemaDefinition;");
+            sb.AppendLine();
+
+            // Build column definitions
+            sb.AppendLine("            var columns = new ColumnDefinition[]");
+            sb.AppendLine("            {");
+            foreach (var col in table.Columns)
+            {
+                var sqlType = col.ExplicitDataType ?? MapClrToSqlType(col.ClrType, dialect.DialectImplType);
+                var isNullable = col.IsNullable ? "true" : "false";
+                var autoIncrement = col.AutoIncrement ? "true" : "false";
+                var primaryKey = col.PrimaryKey ? "true" : "false";
+
+                sb.AppendLine($"                new ColumnDefinition(\"{col.DbColumnName}\", \"{sqlType}\")");
+                sb.AppendLine("                {");
+
+                if (!col.IsNullable)
+                    sb.AppendLine($"                    IsNullable = {isNullable},");
+                else
+                    sb.AppendLine($"                    IsNullable = {isNullable},");
+
+                if (col.PrimaryKey)
+                    sb.AppendLine($"                    IsPrimaryKey = {primaryKey},");
+
+                if (col.AutoIncrement)
+                    sb.AppendLine($"                    IsAutoIncrement = {autoIncrement},");
+
+                if (col.DefaultValue != null)
+                    sb.AppendLine($"                    DefaultValue = \"{EscapeString(col.DefaultValue)}\",");
+
+                if (col.CheckExpression != null)
+                    sb.AppendLine($"                    CheckExpression = \"{EscapeString(col.CheckExpression)}\",");
+
+                if (col.Comment != null)
+                    sb.AppendLine($"                    Comment = \"{EscapeString(col.Comment)}\",");
+
+                sb.AppendLine("                },");
+            }
+            sb.AppendLine("            };");
+            sb.AppendLine();
+
+            // Build table constraints
+            bool hasConstraints = table.TableConstraints.Count > 0;
+
+            if (hasConstraints)
+            {
+                sb.AppendLine("            var tableConstraints = new string[]");
+                sb.AppendLine("            {");
+                foreach (var constraint in table.TableConstraints)
+                {
+                    sb.AppendLine($"                \"{EscapeString(constraint)}\",");
+                }
+                sb.AppendLine("            };");
+                sb.AppendLine();
+            }
+
+            sb.AppendLine($"            _schemaDefinition = new TableDefinition(");
+            sb.AppendLine($"                \"{table.DbTableName}\",");
+            sb.AppendLine($"                \"{table.DbSchemaName}\",");
+            sb.AppendLine("                columns");
+            if (hasConstraints)
+            {
+                sb.AppendLine("                , tableConstraints");
+            }
+            sb.AppendLine("            );");
+            sb.AppendLine();
+            sb.AppendLine("            return _schemaDefinition;");
+            sb.AppendLine("        }");
+            sb.AppendLine("    }");
+            sb.AppendLine();
+
+            // Generate convenience method
+            sb.AppendLine("    /// <summary>");
+            sb.AppendLine("    /// Creates a CREATE TABLE query for this table.");
+            sb.AppendLine("    /// </summary>");
+            sb.AppendLine("    public static CreateTableQuery CreateTableQuery(bool ifNotExists = false)");
+            sb.AppendLine("    {");
+            sb.AppendLine("        var q = new CreateTableQuery(SchemaDefinition);");
+            sb.AppendLine("        if (ifNotExists)");
+            sb.AppendLine("            q = q.IfNotExists();");
+            sb.AppendLine("        return q;");
+            sb.AppendLine("    }");
+            sb.AppendLine();
+
+            // Generate convenience method for building CREATE TABLE SQL
+            sb.AppendLine("    /// <summary>");
+            sb.AppendLine("    /// Builds the CREATE TABLE SQL for this table.");
+            sb.AppendLine("    /// </summary>");
+            sb.AppendLine(
+                $"    public static string ToCreateTableSql{GetDialectSuffix(dialect.DialectImplType)}(bool ifNotExists = false)");
+            sb.AppendLine("    {");
+            sb.AppendLine("        var q = CreateTableQuery(ifNotExists);");
+            sb.AppendLine(
+                $"        var builder = new SqlBuilder<{dialect.DialectImplType}>();");
+            sb.AppendLine("        q.BuildSql(builder);");
+            sb.AppendLine("        return builder.Build().Item1;");
+            sb.AppendLine("    }");
+
+            sb.AppendLine("}");
+
+            var nsPrefix = string.IsNullOrEmpty(table.Namespace)
+                ? "" : $"{table.Namespace.Replace(".", "_")}_";
+            context.AddSource($"{nsPrefix}{table.ClassName}_Migration.g.cs",
+                SourceText.From(sb.ToString(), Encoding.UTF8));
+        }
+    }
+
+    private static string EscapeString(string value)
+    {
+        return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    private static string MapClrToSqlType(string fullyQualifiedTypeName, string dialectType)
+    {
+        var simplified = fullyQualifiedTypeName
+            .Replace("global::", "")
+            .Replace("System.", "")
+            .Replace("?", "");
+
+        var isPgSql = dialectType.Contains("PgSql");
+        var isMySql = dialectType.Contains("MySql");
+
+        return simplified switch
+        {
+            "int" or "Int32" => "INTEGER",
+            "long" or "Int64" => "BIGINT",
+            "short" or "Int16" => "SMALLINT",
+            "byte" or "Byte" => isMySql ? "TINYINT" : "SMALLINT",
+            "string" or "String" => isMySql ? "VARCHAR(255)" : "TEXT",
+            "bool" or "Boolean" => isMySql ? "TINYINT(1)" : "BOOLEAN",
+            "decimal" or "Decimal" => isMySql ? "DECIMAL(18,2)" : "NUMERIC(18,2)",
+            "float" or "Single" => "REAL",
+            "double" or "Double" => isMySql ? "DOUBLE" : "DOUBLE PRECISION",
+            "DateTime" => isMySql ? "DATETIME(6)" : "TIMESTAMP",
+            "DateOnly" => "DATE",
+            "TimeOnly" => "TIME",
+            "Guid" => isMySql ? "CHAR(36)" : "UUID",
+            "byte[]" or "Byte[]" => isMySql ? "BLOB" : "BYTEA",
+            "char" or "Char" => "CHAR(1)",
+            _ => "TEXT"
+        };
+    }
+
+    private static string GetDialectSuffix(string dialectType)
+    {
+        if (dialectType.Contains("MySql"))
+            return "MySql";
+        return "PgSql";
+    }
+
+    private class ColumnSchemaModel
+    {
+        public string PropName { get; set; } = "";
+        public string DbColumnName { get; set; } = "";
+        public string ClrType { get; set; } = "";
+        public bool IsNullable { get; set; }
+
+        // Extended column configuration
+        public string? ExplicitDataType { get; set; }
+        public string? DefaultValue { get; set; }
+        public bool AutoIncrement { get; set; }
+        public bool PrimaryKey { get; set; }
+        public string? CheckExpression { get; set; }
+        public string? Comment { get; set; }
+    }
+
+    private class TableSchemaModel
+    {
+        public string Namespace { get; set; } = "";
+        public string ClassName { get; set; } = "";
+        public string DbTableName { get; set; } = "";
+        public string DbSchemaName { get; set; } = "public";
+        public DialectInfo Dialect { get; set; } = DialectInfo.PgSql;
+        public List<ColumnSchemaModel> Columns { get; set; } = new();
+        public List<string> TableConstraints { get; set; } = new();
+        public bool HasExistingInterface { get; set; }
+    }
+}
