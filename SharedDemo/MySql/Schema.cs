@@ -4,51 +4,56 @@ using Drizzle4Dotnet.Dialect;
 
 namespace SharedDemo.MySql
 {
-    [Table("Users", Dialect = typeof(MySqlSqlDialectImpl))]
+    [Table("Users", Dialect = typeof(MySqlSqlDialectImpl),
+        Constraints = new[] {
+            "CONSTRAINT `FK_Users_Departments` FOREIGN KEY (`DepartmentId`) REFERENCES `Departments`(`Id`)",
+            "CONSTRAINT `FK_Users_Roles` FOREIGN KEY (`RoleId`) REFERENCES `Roles`(`Id`)",
+            "CONSTRAINT `FK_Users_Manager` FOREIGN KEY (`ManagerId`) REFERENCES `Users`(`Id`)"
+        })]
     public partial class UsersTable
     {
         public static class Columns
         {
-            [Column("Id")]
+            [Column("Id", DataType = "BIGINT", PrimaryKey = true, AutoIncrement = true)]
             public static long Id { get; set; }
 
-            [Column("Guid")]
+            [Column("Guid", DataType = "CHAR(36)", NotNull = true)]
             public static Guid Guid { get; set; }
 
-            [Column("Name")]
+            [Column("Name", DataType = "VARCHAR(255)", NotNull = true)]
             public static string Name { get; set; }
 
-            [Column("Email")]
+            [Column("Email", DataType = "VARCHAR(255)", NotNull = true)]
             public static string Email { get; set; }
 
-            [Column("Age")]
+            [Column("Age", DataType = "BIGINT", NotNull = true)]
             public static long Age { get; set; }
 
-            [Column("Salary")]
+            [Column("Salary", DataType = "DECIMAL(18,2)", DefaultValue = "0", NotNull = true)]
             public static decimal Salary { get; set; }
 
-            [Column("Rating")]
+            [Column("Rating", DataType = "DOUBLE", NotNull = true)]
             public static double Rating { get; set; }
 
-            [Column("IsActive")]
+            [Column("IsActive", DataType = "TINYINT(1)", NotNull = true)]
             public static bool IsActive { get; set; }
 
-            [Column("DepartmentId")]
+            [Column("DepartmentId", DataType = "BIGINT", NotNull = true)]
             public static long DepartmentId { get; set; }
 
-            [Column("ManagerId")]
+            [Column("ManagerId", DataType = "BIGINT")]
             public static long? ManagerId { get; set; }
 
-            [Column("RoleId")]
+            [Column("RoleId", DataType = "BIGINT", NotNull = true)]
             public static long RoleId { get; set; }
 
-            [Column("CreatedAt")]
+            [Column("CreatedAt", DataType = "DATETIME(6)", NotNull = true, DefaultValue = "CURRENT_TIMESTAMP(6)")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt")]
+            [Column("UpdatedAt", DataType = "DATETIME(6)")]
             public static DateTime? UpdatedAt { get; set; }
             
-            [Column("DeletedAt")]
+            [Column("DeletedAt", DataType = "DATETIME(6)")]
             public static DateTime? DeletedAt { get; set; }
         }
     }
@@ -58,48 +63,52 @@ namespace SharedDemo.MySql
     {
     }
     
-    [Table("Departments", Dialect = typeof(MySqlSqlDialectImpl))]
+    [Table("Departments", Dialect = typeof(MySqlSqlDialectImpl),
+        Constraints = new[] {
+            "CONSTRAINT `FK_Departments_Parent` FOREIGN KEY (`ParentDepartmentId`) REFERENCES `Departments`(`Id`)",
+            "CONSTRAINT `FK_Departments_Manager` FOREIGN KEY (`ManagerId`) REFERENCES `Users`(`Id`)"
+        })]
     public partial class DepartmentsTable
     {
         public static class Columns
         {
-            [Column("Id")]
+            [Column("Id", DataType = "BIGINT", PrimaryKey = true, AutoIncrement = true)]
             public static long Id { get; set; }
 
-            [Column("Guid")]
+            [Column("Guid", DataType = "CHAR(36)", NotNull = true)]
             public static Guid Guid { get; set; }
 
-            [Column("Name")]
+            [Column("Name", DataType = "VARCHAR(255)", NotNull = true)]
             public static string Name { get; set; }
 
-            [Column("Code")]
+            [Column("Code", DataType = "VARCHAR(100)", NotNull = true)]
             public static string Code { get; set; }
 
-            [Column("Location")]
+            [Column("Location", DataType = "VARCHAR(255)", NotNull = true)]
             public static string Location { get; set; }
 
-            [Column("Budget")]
+            [Column("Budget", DataType = "DECIMAL(18,2)", DefaultValue = "0", NotNull = true)]
             public static decimal Budget { get; set; }
 
-            [Column("HeadCount")]
+            [Column("HeadCount", DataType = "BIGINT", DefaultValue = "0", NotNull = true)]
             public static long HeadCount { get; set; }
 
-            [Column("IsActive")]
+            [Column("IsActive", DataType = "TINYINT(1)", NotNull = true)]
             public static bool IsActive { get; set; }
 
-            [Column("CreatedAt")]
+            [Column("CreatedAt", DataType = "DATETIME(6)", NotNull = true, DefaultValue = "CURRENT_TIMESTAMP(6)")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt")]
+            [Column("UpdatedAt", DataType = "DATETIME(6)")]
             public static DateTime? UpdatedAt { get; set; }
 
-            [Column("Description")]
+            [Column("Description", DataType = "TEXT", NotNull = true)]
             public static string Description { get; set; }
             
-            [Column("ParentDepartmentId")]
+            [Column("ParentDepartmentId", DataType = "BIGINT")]
             public static long? ParentDepartmentId { get; set; }
             
-            [Column("ManagerId")]
+            [Column("ManagerId", DataType = "BIGINT", NotNull = true)]
             public static long ManagerId { get; set; }
         }
     }
@@ -109,110 +118,131 @@ namespace SharedDemo.MySql
     {
         public static class Columns
         {
-            [Column("Id")]
+            [Column("Id", DataType = "BIGINT", PrimaryKey = true, AutoIncrement = true)]
             public static long Id { get; set; }
 
-            [Column("Guid")]
+            [Column("Guid", DataType = "CHAR(36)", NotNull = true)]
             public static Guid Guid { get; set; }
 
-            [Column("Name")]
+            [Column("Name", DataType = "VARCHAR(255)", NotNull = true)]
             public static string Name { get; set; }
 
-            [Column("Level")]
+            [Column("Level", DataType = "BIGINT", NotNull = true)]
             public static long Level { get; set; }
 
-            [Column("BaseSalary")]
+            [Column("BaseSalary", DataType = "DECIMAL(18,2)", DefaultValue = "0", NotNull = true)]
             public static decimal BaseSalary { get; set; }
 
-            [Column("BonusRate")]
+            [Column("BonusRate", DataType = "DOUBLE", DefaultValue = "0", NotNull = true)]
             public static double BonusRate { get; set; }
 
-            [Column("IsActive")]
+            [Column("IsActive", DataType = "TINYINT(1)", NotNull = true)]
             public static bool IsActive { get; set; }
 
-            [Column("CanApproveBudget")]
+            [Column("CanApproveBudget", DataType = "TINYINT(1)", NotNull = true)]
             public static bool CanApproveBudget { get; set; }
 
-            [Column("CreatedAt")]
+            [Column("CreatedAt", DataType = "DATETIME(6)", NotNull = true, DefaultValue = "CURRENT_TIMESTAMP(6)")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt")]
+            [Column("UpdatedAt", DataType = "DATETIME(6)")]
             public static DateTime? UpdatedAt { get; set; }
 
-            [Column("Description")]
+            [Column("Description", DataType = "TEXT", NotNull = true)]
             public static string Description { get; set; }
         }
     }
 
-    [Table("Projects", Dialect = typeof(MySqlSqlDialectImpl))]
+    [Table("Projects", Dialect = typeof(MySqlSqlDialectImpl),
+        Constraints = new[] {
+            "CONSTRAINT `FK_Projects_Departments` FOREIGN KEY (`DepartmentId`) REFERENCES `Departments`(`Id`)",
+            "CONSTRAINT `FK_Projects_Owner` FOREIGN KEY (`OwnerId`) REFERENCES `Users`(`Id`)"
+        })]
     public partial class ProjectsTable
     {
         public static class Columns
         {
-            [Column("Id")] public static long Id { get; set; }
+            [Column("Id", DataType = "BIGINT", PrimaryKey = true, AutoIncrement = true)]
+            public static long Id { get; set; }
 
-            [Column("Guid")] public static Guid Guid { get; set; }
+            [Column("Guid", DataType = "CHAR(36)", NotNull = true)]
+            public static Guid Guid { get; set; }
 
-            [Column("Name")] public static string Name { get; set; }
+            [Column("Name", DataType = "VARCHAR(255)", NotNull = true)]
+            public static string Name { get; set; }
 
-            [Column("Code")] public static string Code { get; set; }
+            [Column("Code", DataType = "VARCHAR(100)", NotNull = true)]
+            public static string Code { get; set; }
 
-            [Column("OwnerId")] public static long OwnerId { get; set; }
+            [Column("OwnerId", DataType = "BIGINT", NotNull = true)]
+            public static long OwnerId { get; set; }
 
-            [Column("DepartmentId")] public static long DepartmentId { get; set; }
+            [Column("DepartmentId", DataType = "BIGINT", NotNull = true)]
+            public static long DepartmentId { get; set; }
 
-            [Column("Budget")] public static decimal Budget { get; set; }
+            [Column("Budget", DataType = "DECIMAL(18,2)", DefaultValue = "0", NotNull = true)]
+            public static decimal Budget { get; set; }
 
-            [Column("Progress")] public static double Progress { get; set; }
+            [Column("Progress", DataType = "DOUBLE", DefaultValue = "0", NotNull = true)]
+            public static double Progress { get; set; }
 
-            [Column("IsActive")] public static bool IsActive { get; set; }
+            [Column("IsActive", DataType = "TINYINT(1)", NotNull = true)]
+            public static bool IsActive { get; set; }
 
-            [Column("StartDate")] public static DateTime StartDate { get; set; }
+            [Column("StartDate", DataType = "DATETIME(6)", NotNull = true)]
+            public static DateTime StartDate { get; set; }
 
-            [Column("EndDate")] public static DateTime? EndDate { get; set; }
+            [Column("EndDate", DataType = "DATETIME(6)")]
+            public static DateTime? EndDate { get; set; }
 
-            [Column("CreatedAt")] public static DateTime CreatedAt { get; set; }
+            [Column("CreatedAt", DataType = "DATETIME(6)", NotNull = true, DefaultValue = "CURRENT_TIMESTAMP(6)")]
+            public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt")] public static DateTime? UpdatedAt { get; set; }
+            [Column("UpdatedAt", DataType = "DATETIME(6)")]
+            public static DateTime? UpdatedAt { get; set; }
         }
     }
 
-    [Table("UserProjects", Dialect = typeof(MySqlSqlDialectImpl))]
+    [Table("UserProjects", Dialect = typeof(MySqlSqlDialectImpl),
+        Constraints = new[] {
+            "CONSTRAINT `FK_UserProjects_User` FOREIGN KEY (`UserId`) REFERENCES `Users`(`Id`)",
+            "CONSTRAINT `FK_UserProjects_Project` FOREIGN KEY (`ProjectId`) REFERENCES `Projects`(`Id`)"
+        })]
     public partial class UserProjectsTable
     {
         public static class Columns
         {
-            [Column("Id")]
+            [Column("Id", DataType = "BIGINT", PrimaryKey = true, AutoIncrement = true)]
             public static long Id { get; set; }
 
-            [Column("UserId")]
+            [Column("UserId", DataType = "BIGINT", NotNull = true)]
             public static long UserId { get; set; }
 
-            [Column("ProjectId")]
+            [Column("ProjectId", DataType = "BIGINT", NotNull = true)]
             public static long ProjectId { get; set; }
 
-            [Column("Role")]
+            [Column("Role", DataType = "VARCHAR(100)", NotNull = true)]
             public static string Role { get; set; }
 
-            [Column("Allocation")]
+            [Column("Allocation", DataType = "DOUBLE", DefaultValue = "0", NotNull = true)]
             public static double Allocation { get; set; }
 
-            [Column("HourlyRate")]
+            [Column("HourlyRate", DataType = "DECIMAL(18,2)", DefaultValue = "0", NotNull = true)]
             public static decimal HourlyRate { get; set; }
 
-            [Column("IsActive")]
+            [Column("IsActive", DataType = "TINYINT(1)", NotNull = true)]
             public static bool IsActive { get; set; }
 
-            [Column("AssignedAt")]
+            [Column("AssignedAt", DataType = "DATETIME(6)", NotNull = true, DefaultValue = "CURRENT_TIMESTAMP(6)")]
             public static DateTime AssignedAt { get; set; }
 
-            [Column("RemovedAt")]
+            [Column("RemovedAt", DataType = "DATETIME(6)")]
             public static DateTime? RemovedAt { get; set; }
 
-            [Column("CreatedAt")]
+            [Column("CreatedAt", DataType = "DATETIME(6)", NotNull = true, DefaultValue = "CURRENT_TIMESTAMP(6)")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt")]
+            [Column("UpdatedAt", DataType = "DATETIME(6)")]
             public static DateTime? UpdatedAt { get; set; }
         }
     }

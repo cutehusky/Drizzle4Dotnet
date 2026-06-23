@@ -34,8 +34,6 @@ public class PgSqlMigrationTests
     [Test]
     public void ColumnDefinition_Basic()
     {
-        var tableDef = PgSql.UsersTable.SchemaDefinition;
-
         var col = new ColumnDefinition("Id", "BIGINT")
             .PrimaryKey()
             .AutoIncrement();
@@ -1257,5 +1255,206 @@ public class PgSqlMigrationTests
         Assert.That(sql, Does.Contain("ADD COLUMN Name TEXT NOT NULL"));  // Users modified
         Assert.That(sql, Does.Contain("CREATE TABLE public.Roles"));     // Roles added
         Assert.That(sql, Does.Contain("DROP TABLE public.Departments")); // Departments removed
+    }
+
+    // =========================================================================
+    // SharedDemo Schema Verification — validates source-generated SchemaDefinition
+    // =========================================================================
+
+    [Test]
+    public void SharedDemo_PgSql_UsersTable_Schema()
+    {
+        var schema = PgSql.UsersTable.SchemaDefinition;
+        Assert.That(schema.TableName, Is.EqualTo("Users"));
+        Assert.That(schema.SchemaName, Is.EqualTo("public"));
+
+        var cols = schema.Columns.ToDictionary(c => c.Name);
+        Assert.That(cols["Id"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Id"].IsPrimaryKey, Is.True);
+        Assert.That(cols["Id"].IsNullable, Is.False);
+
+        Assert.That(cols["Guid"].DataType, Is.EqualTo("UUID"));
+        Assert.That(cols["Guid"].IsNullable, Is.False);
+
+        Assert.That(cols["Name"].DataType, Is.EqualTo("TEXT"));
+        Assert.That(cols["Name"].IsNullable, Is.False);
+
+        Assert.That(cols["Salary"].DataType, Is.EqualTo("NUMERIC(18,2)"));
+        Assert.That(cols["Salary"].DefaultValue, Is.EqualTo("0"));
+
+        Assert.That(cols["CreatedAt"].DataType, Is.EqualTo("TIMESTAMP"));
+        Assert.That(cols["CreatedAt"].DefaultValue, Is.EqualTo("NOW()"));
+        Assert.That(cols["CreatedAt"].IsNullable, Is.False);
+
+        Assert.That(cols["ManagerId"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["ManagerId"].IsNullable, Is.True);
+
+        // Verify CREATE TABLE SQL output
+        var sql = PgSql.UsersTable.ToCreateTableSqlPgSql();
+        Print("PgSql Users DDL", sql);
+        Assert.That(sql, Does.Contain("CREATE TABLE public.Users"));
+        Assert.That(sql, Does.Contain("Id BIGINT NOT NULL PRIMARY KEY"));
+        Assert.That(sql, Does.Contain("Salary NUMERIC(18,2) NOT NULL DEFAULT 0"));
+        Assert.That(sql, Does.Contain("CreatedAt TIMESTAMP NOT NULL DEFAULT NOW()"));
+        Assert.That(sql, Does.Contain("ManagerId BIGINT"));
+    }
+
+    [Test]
+    public void SharedDemo_PgSql_DepartmentsTable_Schema()
+    {
+        var schema = PgSql.DepartmentsTable.SchemaDefinition;
+        Assert.That(schema.TableName, Is.EqualTo("Departments"));
+
+        var cols = schema.Columns.ToDictionary(c => c.Name);
+        Assert.That(cols["Id"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Id"].IsPrimaryKey, Is.True);
+
+        Assert.That(cols["Name"].DataType, Is.EqualTo("TEXT"));
+        Assert.That(cols["Name"].IsNullable, Is.False);
+
+        Assert.That(cols["Budget"].DataType, Is.EqualTo("NUMERIC(18,2)"));
+        Assert.That(cols["Budget"].DefaultValue, Is.EqualTo("0"));
+
+        Assert.That(cols["Description"].DataType, Is.EqualTo("TEXT"));
+
+        var sql = PgSql.DepartmentsTable.ToCreateTableSqlPgSql();
+        Print("PgSql Departments DDL", sql);
+        Assert.That(sql, Does.Contain("CREATE TABLE public.Departments"));
+    }
+
+    [Test]
+    public void SharedDemo_PgSql_RolesTable_Schema()
+    {
+        var schema = PgSql.RolesTable.SchemaDefinition;
+        Assert.That(schema.TableName, Is.EqualTo("Roles"));
+
+        var cols = schema.Columns.ToDictionary(c => c.Name);
+        Assert.That(cols["Id"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Id"].IsPrimaryKey, Is.True);
+
+        Assert.That(cols["BaseSalary"].DataType, Is.EqualTo("NUMERIC(18,2)"));
+        Assert.That(cols["BonusRate"].DataType, Is.EqualTo("DOUBLE PRECISION"));
+
+        Assert.That(cols["CanApproveBudget"].DataType, Is.EqualTo("BOOLEAN"));
+
+        var sql = PgSql.RolesTable.ToCreateTableSqlPgSql();
+        Print("PgSql Roles DDL", sql);
+        Assert.That(sql, Does.Contain("CREATE TABLE public.Roles"));
+    }
+
+    [Test]
+    public void SharedDemo_PgSql_ProjectsTable_Schema()
+    {
+        var schema = PgSql.ProjectsTable.SchemaDefinition;
+        Assert.That(schema.TableName, Is.EqualTo("Projects"));
+
+        var cols = schema.Columns.ToDictionary(c => c.Name);
+        Assert.That(cols["Code"].DataType, Is.EqualTo("TEXT"));
+        Assert.That(cols["OwnerId"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Progress"].DataType, Is.EqualTo("DOUBLE PRECISION"));
+        Assert.That(cols["StartDate"].DataType, Is.EqualTo("TIMESTAMP"));
+        Assert.That(cols["StartDate"].IsNullable, Is.False);
+
+        var sql = PgSql.ProjectsTable.ToCreateTableSqlPgSql();
+        Print("PgSql Projects DDL", sql);
+        Assert.That(sql, Does.Contain("CREATE TABLE public.Projects"));
+    }
+
+    [Test]
+    public void SharedDemo_PgSql_UserProjectsTable_Schema()
+    {
+        var schema = PgSql.UserProjectsTable.SchemaDefinition;
+        Assert.That(schema.TableName, Is.EqualTo("UserProjects"));
+
+        var cols = schema.Columns.ToDictionary(c => c.Name);
+        Assert.That(cols["UserId"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["ProjectId"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Role"].DataType, Is.EqualTo("TEXT"));
+        Assert.That(cols["Allocation"].DataType, Is.EqualTo("DOUBLE PRECISION"));
+        Assert.That(cols["HourlyRate"].DataType, Is.EqualTo("NUMERIC(18,2)"));
+        Assert.That(cols["AssignedAt"].DataType, Is.EqualTo("TIMESTAMP"));
+
+        var sql = PgSql.UserProjectsTable.ToCreateTableSqlPgSql();
+        Print("PgSql UserProjects DDL", sql);
+        Assert.That(sql, Does.Contain("CREATE TABLE public.UserProjects"));
+    }
+
+    [Test]
+    public void SharedDemo_MySql_UsersTable_Schema()
+    {
+        var schema = SharedDemo.MySql.UsersTable.SchemaDefinition;
+        Assert.That(schema.TableName, Is.EqualTo("Users"));
+
+        var cols = schema.Columns.ToDictionary(c => c.Name);
+        Assert.That(cols["Id"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Id"].IsPrimaryKey, Is.True);
+        Assert.That(cols["Id"].IsAutoIncrement, Is.True);
+
+        Assert.That(cols["Guid"].DataType, Is.EqualTo("CHAR(36)"));
+        Assert.That(cols["Name"].DataType, Is.EqualTo("VARCHAR(255)"));
+        Assert.That(cols["Email"].DataType, Is.EqualTo("VARCHAR(255)"));
+        Assert.That(cols["IsActive"].DataType, Is.EqualTo("TINYINT(1)"));
+        Assert.That(cols["Salary"].DataType, Is.EqualTo("DECIMAL(18,2)"));
+        Assert.That(cols["Rating"].DataType, Is.EqualTo("DOUBLE"));
+        Assert.That(cols["CreatedAt"].DataType, Is.EqualTo("DATETIME(6)"));
+        Assert.That(cols["DeletedAt"].DataType, Is.EqualTo("DATETIME(6)"));
+        Assert.That(cols["DeletedAt"].IsNullable, Is.True);
+
+        var sql = SharedDemo.MySql.UsersTable.ToCreateTableSqlMySql();
+        Print("MySql Users DDL", sql);
+        Assert.That(sql, Does.Contain("CREATE TABLE"));
+        Assert.That(sql, Does.Contain("Id BIGINT GENERATED BY DEFAULT AS IDENTITY NOT NULL PRIMARY KEY"));
+        Assert.That(sql, Does.Contain("Name VARCHAR(255) NOT NULL"));
+        Assert.That(sql, Does.Contain("IsActive TINYINT(1) NOT NULL"));
+    }
+
+    [Test]
+    public void SharedDemo_MySql_ProjectsTable_Schema()
+    {
+        var schema = SharedDemo.MySql.ProjectsTable.SchemaDefinition;
+        Assert.That(schema.TableName, Is.EqualTo("Projects"));
+
+        var cols = schema.Columns.ToDictionary(c => c.Name);
+        Assert.That(cols["Code"].DataType, Is.EqualTo("VARCHAR(100)"));
+        Assert.That(cols["StartDate"].DataType, Is.EqualTo("DATETIME(6)"));
+
+        var sql = SharedDemo.MySql.ProjectsTable.ToCreateTableSqlMySql();
+        Print("MySql Projects DDL", sql);
+        Assert.That(sql, Does.Contain("CREATE TABLE"));
+    }
+
+    [Test]
+    public void SharedDemo_PgSql_ToCreateTableSql_MatchesExpectedOutput()
+    {
+        var sql = PgSql.UsersTable.ToCreateTableSqlPgSql();
+        Print("PgSql Users CREATE TABLE", sql);
+
+        // Verify the generated SQL matches the expected schema
+        Assert.That(sql, Does.StartWith("CREATE TABLE public.Users"));
+        Assert.That(sql, Does.Contain("Id BIGINT"));
+        Assert.That(sql, Does.Contain("Guid UUID"));
+        Assert.That(sql, Does.Contain("Name TEXT"));
+        Assert.That(sql, Does.Contain("Email TEXT"));
+        Assert.That(sql, Does.Contain("Salary NUMERIC(18,2) NOT NULL DEFAULT 0"));
+        Assert.That(sql, Does.Contain("CreatedAt TIMESTAMP NOT NULL DEFAULT NOW()"));
+        Assert.That(sql, Does.Contain("ManagerId BIGINT"));
+
+        // Verify order: PRIMARY KEY should be on Id
+        Assert.That(sql, Does.Contain("Id BIGINT NOT NULL PRIMARY KEY"));
+    }
+
+    [Test]
+    public void SharedDemo_AllTables_HaveSchemaDefinitions()
+    {
+        Assert.That(PgSql.UsersTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(PgSql.DepartmentsTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(PgSql.RolesTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(PgSql.ProjectsTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(PgSql.UserProjectsTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(MySql.UsersTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(SharedDemo.MySql.DepartmentsTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(SharedDemo.MySql.RolesTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(SharedDemo.MySql.ProjectsTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(SharedDemo.MySql.UserProjectsTable.SchemaDefinition, Is.Not.Null);
     }
 }

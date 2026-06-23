@@ -80,17 +80,17 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
             switch (namedArg.Key)
             {
                 case "Schema":
-                    schemaName = namedArg.Value.Value?.ToString();
+                    if (namedArg.Value.Kind == TypedConstantKind.Primitive)
+                        schemaName = namedArg.Value.Value?.ToString();
                     break;
                 case "Dialect":
                     if (namedArg.Value.Value is INamedTypeSymbol typeSymbol)
                         dialectTypeName = typeSymbol.ToDisplayString();
                     break;
                 case "Constraints":
-                    if (namedArg.Value.Value is IArrayTypeSymbol)
+                    if (namedArg.Value.Kind == TypedConstantKind.Array)
                     {
-                        var values = namedArg.Value.Values;
-                        foreach (var val in values)
+                        foreach (var val in namedArg.Value.Values)
                         {
                             if (val.Value?.ToString() is { } s)
                                 tableConstraints.Add(s);
