@@ -13,7 +13,7 @@ public class ReturningQuery<TReturn, TDialect> : QueryBase<TDialect>, IReturning
     public ReturningQuery(
         Query<TDialect> baseQuery,
         ISelectedColumns<TReturn, TDialect> selectedColumns
-    ): base(baseQuery.DbClient)
+    ): base(baseQuery.Executor)
     {
         _baseQuery = baseQuery;
         SelectedColumns = selectedColumns;
@@ -21,7 +21,7 @@ public class ReturningQuery<TReturn, TDialect> : QueryBase<TDialect>, IReturning
     
     public TaskAwaiter<List<TReturn>> GetAwaiter()
     {
-        return DbClient.ExecuteGetListAsync(this).GetAwaiter();
+        return Executor.ExecuteGetListAsync(this).GetAwaiter();
     }
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
@@ -41,7 +41,7 @@ public class ReturningQuery<TReturn, TDialect, TVirtualTable> : QueryBase<TDiale
     public ReturningQuery(
         Query<TDialect> baseQuery,
         ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns
-    ): base(baseQuery.DbClient)
+    ): base(baseQuery.Executor)
     {
         _baseQuery = baseQuery;
         SelectedColumns = selectedColumns;
@@ -49,7 +49,7 @@ public class ReturningQuery<TReturn, TDialect, TVirtualTable> : QueryBase<TDiale
     
     public TaskAwaiter<List<TReturn>> GetAwaiter()
     {
-        return DbClient.ExecuteGetListAsync(this).GetAwaiter();
+        return Executor.ExecuteGetListAsync(this).GetAwaiter();
     }
 
     public override void BuildSql(ISqlBuilder sqlBuilder)

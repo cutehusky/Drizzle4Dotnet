@@ -4,7 +4,9 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query.Update;
 
-public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>
+public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>,
+    ISupportWhere<TSelf>,
+    ISupportCte<TSelf, TDialect>
     where TSelf : UpdateQuery<TTable, TDialect, TSelf>
     where TTable : ITable<TDialect>
     where TDialect : ISqlDialect
@@ -15,8 +17,8 @@ public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>
 
     public UpdateQuery(
         TTable table, 
-        DbClient<TDialect> dbClient
-    ): base(dbClient)
+        IQueryExecutor<TDialect> executor
+    ): base(executor)
     {
         Table = table;
     }

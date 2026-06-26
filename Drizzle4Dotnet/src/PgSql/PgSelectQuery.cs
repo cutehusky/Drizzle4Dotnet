@@ -37,14 +37,15 @@ public readonly struct PgLockSpec
 /// - FOR NO KEY UPDATE / FOR KEY SHARE / FOR UPDATE / FOR SHARE lock types (table-based)
 /// - Multiple lock clause support (e.g., FOR UPDATE OF table1 FOR SHARE OF table2)
 /// </summary>
-public class PgSelectQuery<TReturn> : SelectQuery<TReturn, PgSqlSqlDialectImpl, PgSelectQuery<TReturn>>
+public class PgSelectQuery<TReturn> : SelectQuery<TReturn, PgSqlSqlDialectImpl, PgSelectQuery<TReturn>>,
+    ILateralJoin<PgSelectQuery<TReturn>, PgSqlSqlDialectImpl>
 {
     protected readonly List<PgLockSpec> _lockClauses = new();
 
     public PgSelectQuery(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl> selectedColumns,
-        DbClient<PgSqlSqlDialectImpl> dbClient
-    ) : base(selectedColumns, dbClient)
+        IQueryExecutor<PgSqlSqlDialectImpl> executor
+    ) : base(selectedColumns, executor)
     {
     }
 
@@ -150,15 +151,16 @@ public class PgSelectQuery<TReturn> : SelectQuery<TReturn, PgSqlSqlDialectImpl, 
 /// <summary>
 /// PostgreSQL-specific SELECT query builder with virtual table support.
 /// </summary>
-public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlSqlDialectImpl, TVirtualTable, PgSelectQuery<TReturn, TVirtualTable>>
+public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlSqlDialectImpl, TVirtualTable, PgSelectQuery<TReturn, TVirtualTable>>,
+    ILateralJoin<PgSelectQuery<TReturn, TVirtualTable>, PgSqlSqlDialectImpl>
     where TVirtualTable : IVirtualTable<PgSqlSqlDialectImpl>
 {
     protected readonly List<PgLockSpec> LockClauses = new();
 
     public PgSelectQuery(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl, TVirtualTable> selectedColumns,
-        DbClient<PgSqlSqlDialectImpl> dbClient
-    ) : base(selectedColumns, dbClient)
+        IQueryExecutor<PgSqlSqlDialectImpl> executor
+    ) : base(selectedColumns, executor)
     {
     }
 

@@ -16,8 +16,8 @@ namespace Drizzle4Dotnet.MySql;
 public class MySqlReplaceQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl, MySqlReplaceQuery<TTable>>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
-    public MySqlReplaceQuery(TTable table, DbClient<MySqlSqlDialectImpl> dbClient) 
-        : base(table, dbClient)
+    public MySqlReplaceQuery(TTable table, IQueryExecutor<MySqlSqlDialectImpl> executor) 
+        : base(table, executor)
     {
     }
 

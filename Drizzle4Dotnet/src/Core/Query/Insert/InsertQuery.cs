@@ -4,7 +4,8 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query.Insert;
 
-public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>
+public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
+    ISupportCte<TSelf, TDialect>
     where TSelf : InsertQuery<TTable, TDialect, TSelf>
     where TTable : ITable<TDialect>
     where TDialect : ISqlDialect
@@ -14,7 +15,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>
     private bool _useDefaultValues;
     private IGenericSql? _fromQuery;
 
-    public InsertQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
+    public InsertQuery(TTable table, IQueryExecutor<TDialect> executor) : base(executor)
     {
         Table = table;
     }

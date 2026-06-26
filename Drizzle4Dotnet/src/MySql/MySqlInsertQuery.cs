@@ -23,8 +23,8 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
     private bool _ignore;
     private readonly Dictionary<string, object?> _setValues = new();
 
-    public MySqlInsertQuery(TTable table, DbClient<MySqlSqlDialectImpl> dbClient) 
-        : base(table, dbClient)
+    public MySqlInsertQuery(TTable table, IQueryExecutor<MySqlSqlDialectImpl> executor) 
+        : base(table, executor)
     {
     }
 

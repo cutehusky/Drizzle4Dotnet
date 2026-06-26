@@ -17,8 +17,8 @@ public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl, Pg
 {
     private readonly List<(IGenericTable<PgSqlSqlDialectImpl>, IGenericSql?)> _usingTables = new();
 
-    public PgDeleteQuery(TTable table, DbClient<PgSqlSqlDialectImpl> dbClient) 
-        : base(table, dbClient)
+    public PgDeleteQuery(TTable table, IQueryExecutor<PgSqlSqlDialectImpl> executor) 
+        : base(table, executor)
     {
     }
 

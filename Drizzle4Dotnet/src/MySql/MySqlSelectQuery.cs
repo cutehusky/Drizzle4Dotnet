@@ -9,10 +9,12 @@ namespace Drizzle4Dotnet.MySql;
 /// <summary>
 /// MySQL-specific SELECT query builder.
 /// Extends the standard SelectQuery with MySQL-specific behavior.
-/// MySQL does not support LATERAL joins, FOR NO KEY UPDATE, or FOR KEY SHARE.
+/// MySQL 8.0.14+ supports LATERAL joins.
+/// MySQL does not support FOR NO KEY UPDATE or FOR KEY SHARE.
 /// MySQL supports FOR UPDATE and FOR SHARE (table-based locking).
 /// </summary>
-public class MySqlSelectQuery<TReturn> : SelectQuery<TReturn, MySqlSqlDialectImpl, MySqlSelectQuery<TReturn>>
+public class MySqlSelectQuery<TReturn> : SelectQuery<TReturn, MySqlSqlDialectImpl, MySqlSelectQuery<TReturn>>,
+    ILateralJoin<MySqlSelectQuery<TReturn>, MySqlSqlDialectImpl>
 {
     protected string? _lockClause;
     protected bool _nowait;
@@ -20,10 +22,21 @@ public class MySqlSelectQuery<TReturn> : SelectQuery<TReturn, MySqlSqlDialectImp
 
     public MySqlSelectQuery(
         ISelectedColumns<TReturn, MySqlSqlDialectImpl> selectedColumns,
-        DbClient<MySqlSqlDialectImpl> dbClient
-    ) : base(selectedColumns, dbClient)
+        IQueryExecutor<MySqlSqlDialectImpl> executor
+    ) : base(selectedColumns, executor)
     {
     }
+
+    // ====== MySQL LATERAL Joins (MySQL 8.0.14+) ======
+
+    public MySqlSelectQuery<TReturn> InnerLateralJoin(IGenericTable<MySqlSqlDialectImpl> table, IGenericSql on)
+        => JoinInternal(table, on, "INNER LATERAL");
+
+    public MySqlSelectQuery<TReturn> LeftLateralJoin(IGenericTable<MySqlSqlDialectImpl> table, IGenericSql on)
+        => JoinInternal(table, on, "LEFT LATERAL");
+
+    public MySqlSelectQuery<TReturn> CrossLateralJoin(IGenericTable<MySqlSqlDialectImpl> table)
+        => JoinInternal(table, null, "CROSS LATERAL");
 
     // ====== MySQL Lock Clauses ======
     // MySQL only supports FOR UPDATE and FOR SHARE (no multi-clause support).
@@ -78,7 +91,8 @@ public class MySqlSelectQuery<TReturn> : SelectQuery<TReturn, MySqlSqlDialectImp
 /// <summary>
 /// MySQL-specific SELECT query builder with virtual table support.
 /// </summary>
-public class MySqlSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, MySqlSqlDialectImpl, TVirtualTable, MySqlSelectQuery<TReturn, TVirtualTable>>
+public class MySqlSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, MySqlSqlDialectImpl, TVirtualTable, MySqlSelectQuery<TReturn, TVirtualTable>>,
+    ILateralJoin<MySqlSelectQuery<TReturn, TVirtualTable>, MySqlSqlDialectImpl>
     where TVirtualTable : IVirtualTable<MySqlSqlDialectImpl>
 {
     protected string? _lockClause;
@@ -87,10 +101,21 @@ public class MySqlSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, MyS
 
     public MySqlSelectQuery(
         ISelectedColumns<TReturn, MySqlSqlDialectImpl, TVirtualTable> selectedColumns,
-        DbClient<MySqlSqlDialectImpl> dbClient
-    ) : base(selectedColumns, dbClient)
+        IQueryExecutor<MySqlSqlDialectImpl> executor
+    ) : base(selectedColumns, executor)
     {
     }
+
+    // ====== MySQL LATERAL Joins (MySQL 8.0.14+) ======
+
+    public MySqlSelectQuery<TReturn, TVirtualTable> InnerLateralJoin(IGenericTable<MySqlSqlDialectImpl> table, IGenericSql on)
+        => JoinInternal(table, on, "INNER LATERAL");
+
+    public MySqlSelectQuery<TReturn, TVirtualTable> LeftLateralJoin(IGenericTable<MySqlSqlDialectImpl> table, IGenericSql on)
+        => JoinInternal(table, on, "LEFT LATERAL");
+
+    public MySqlSelectQuery<TReturn, TVirtualTable> CrossLateralJoin(IGenericTable<MySqlSqlDialectImpl> table)
+        => JoinInternal(table, null, "CROSS LATERAL");
 
     // ====== MySQL Lock Clauses ======
 

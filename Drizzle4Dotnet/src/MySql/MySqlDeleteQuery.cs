@@ -13,15 +13,18 @@ namespace Drizzle4Dotnet.MySql;
 /// - LIMIT and ORDER BY on DELETE
 /// MySQL does not support RETURNING — use MySqlFunctions.RowCount() instead.
 /// </summary>
-public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl, MySqlDeleteQuery<TTable>>
+public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl, MySqlDeleteQuery<TTable>>,
+    ISupportLimit<MySqlDeleteQuery<TTable>>,
+    ISupportOrderBy<MySqlDeleteQuery<TTable>>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
     private readonly List<(IGenericTable<MySqlSqlDialectImpl>, string, IGenericSql?)> _joins = new();
     private int? _limit;
+    private int? _offset;
     private readonly List<(IGenericSql, bool)> _orderBys = new();
 
-    public MySqlDeleteQuery(TTable table, DbClient<MySqlSqlDialectImpl> dbClient) 
-        : base(table, dbClient)
+    public MySqlDeleteQuery(TTable table, IQueryExecutor<MySqlSqlDialectImpl> executor) 
+        : base(table, executor)
     {
     }
 
@@ -53,6 +56,12 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
     public MySqlDeleteQuery<TTable> Limit(int limit)
     {
         _limit = limit;
+        return this;
+    }
+
+    public MySqlDeleteQuery<TTable> Offset(int offset)
+    {
+        _offset = offset;
         return this;
     }
 
@@ -105,5 +114,9 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
         // LIMIT (MySQL-specific on DELETE)
         if (_limit.HasValue)
             sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
+
+        // OFFSET (MySQL-specific on DELETE)
+        if (_offset.HasValue)
+            sqlBuilder.Append(" OFFSET ").Append(sqlBuilder.AddParameter(_offset.Value));
     }
 }

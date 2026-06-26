@@ -6,14 +6,14 @@ namespace Drizzle4Dotnet.Core.Query;
 
 public abstract class Query<TDialect>: QueryBase<TDialect>, ISql where TDialect : ISqlDialect
 {
-    public Query(DbClient<TDialect> dbClient)
-        : base(dbClient)
+    public Query(IQueryExecutor<TDialect> executor)
+        : base(executor)
     {
     }
     
     public TaskAwaiter GetAwaiter()
     {
-        return DbClient.ExecuteAsync(this).GetAwaiter();
+        return Executor.ExecuteAsync(this).GetAwaiter();
     }
     
     public ReturningQuery<TReturn, TDialect> Returning<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
@@ -34,15 +34,15 @@ public abstract class Query<TReturn, TDialect>: QueryBase<TDialect>, IReturning<
 
     public Query(
         ISelectedColumns<TReturn, TDialect> selectedColumns,
-        DbClient<TDialect> dbClient
-        ): base(dbClient)
+        IQueryExecutor<TDialect> executor
+        ): base(executor)
     {
         SelectedColumns = selectedColumns;
     }
     
     public TaskAwaiter<List<TReturn>> GetAwaiter()
     {
-        return DbClient.ExecuteGetListAsync(this).GetAwaiter();
+        return Executor.ExecuteGetListAsync(this).GetAwaiter();
     }
     
     public RawSubqueryTableSql<TDialect> AsSubQuery(string alias)
@@ -66,15 +66,15 @@ public abstract class Query<TReturn, TDialect, TVirtualTable>: QueryBase<TDialec
 
     public Query(
         ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns,
-        DbClient<TDialect> dbClient
-    ): base(dbClient)
+        IQueryExecutor<TDialect> executor
+    ): base(executor)
     {
         SelectedColumns = selectedColumns;
     }
     
     public TaskAwaiter<List<TReturn>> GetAwaiter()
     {
-        return DbClient.ExecuteGetListAsync(this).GetAwaiter();
+        return Executor.ExecuteGetListAsync(this).GetAwaiter();
     }
     
     public TVirtualTable AsSubQuery(string alias)

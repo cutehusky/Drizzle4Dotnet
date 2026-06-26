@@ -14,15 +14,18 @@ namespace Drizzle4Dotnet.MySql;
 /// - LIMIT and ORDER BY on UPDATE
 /// MySQL does not support RETURNING — use MySqlFunctions.RowCount() instead.
 /// </summary>
-public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl, MySqlUpdateQuery<TTable>>
+public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl, MySqlUpdateQuery<TTable>>,
+    ISupportLimit<MySqlUpdateQuery<TTable>>,
+    ISupportOrderBy<MySqlUpdateQuery<TTable>>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
     private readonly List<(IGenericTable<MySqlSqlDialectImpl>, string, IGenericSql?)> _joins = new();
     private int? _limit;
+    private int? _offset;
     private readonly List<(IGenericSql, bool)> _orderBys = new();
 
-    public MySqlUpdateQuery(TTable table, DbClient<MySqlSqlDialectImpl> dbClient) 
-        : base(table, dbClient)
+    public MySqlUpdateQuery(TTable table, IQueryExecutor<MySqlSqlDialectImpl> executor) 
+        : base(table, executor)
     {
     }
 
@@ -57,6 +60,12 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
     public MySqlUpdateQuery<TTable> Limit(int limit)
     {
         _limit = limit;
+        return this;
+    }
+
+    public MySqlUpdateQuery<TTable> Offset(int offset)
+    {
+        _offset = offset;
         return this;
     }
 
@@ -114,5 +123,9 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
         // LIMIT (MySQL-specific on UPDATE)
         if (_limit.HasValue)
             sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
+
+        // OFFSET (MySQL-specific on UPDATE)
+        if (_offset.HasValue)
+            sqlBuilder.Append(" OFFSET ").Append(sqlBuilder.AddParameter(_offset.Value));
     }
 }

@@ -17,8 +17,8 @@ public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, Pg
 {
     private readonly List<(IGenericTable<PgSqlSqlDialectImpl>, IGenericSql?)> _fromTables = new();
 
-    public PgUpdateQuery(TTable table, DbClient<PgSqlSqlDialectImpl> dbClient) 
-        : base(table, dbClient)
+    public PgUpdateQuery(TTable table, IQueryExecutor<PgSqlSqlDialectImpl> executor) 
+        : base(table, executor)
     {
     }
 

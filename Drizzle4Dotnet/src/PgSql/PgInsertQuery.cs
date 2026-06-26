@@ -26,8 +26,8 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl, Pg
     private IGenericSql? _conflictTargetWhere;
     private IGenericSql? _conflictSetWhere;
 
-    public PgInsertQuery(TTable table, DbClient<PgSqlSqlDialectImpl> dbClient) 
-        : base(table, dbClient)
+    public PgInsertQuery(TTable table, IQueryExecutor<PgSqlSqlDialectImpl> executor) 
+        : base(table, executor)
     {
     }
 

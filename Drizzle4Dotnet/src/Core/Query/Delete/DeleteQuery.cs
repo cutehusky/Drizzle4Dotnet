@@ -4,7 +4,9 @@ using Drizzle4Dotnet.Core.Shared;
 namespace Drizzle4Dotnet.Core.Query.Delete;
 
 
-public class DeleteQuery<TTable, TDialect, TSelf> : Query<TDialect>
+public class DeleteQuery<TTable, TDialect, TSelf> : Query<TDialect>,
+    ISupportWhere<TSelf>,
+    ISupportCte<TSelf, TDialect>
     where TSelf : DeleteQuery<TTable, TDialect, TSelf>
     where TTable : ITable<TDialect>
     where TDialect : ISqlDialect
@@ -12,7 +14,7 @@ public class DeleteQuery<TTable, TDialect, TSelf> : Query<TDialect>
     protected readonly TTable Table;
     protected readonly List<IGenericSql> Wheres = new();
 
-    public DeleteQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
+    public DeleteQuery(TTable table, IQueryExecutor<TDialect> executor) : base(executor)
     {
         Table = table;
     }

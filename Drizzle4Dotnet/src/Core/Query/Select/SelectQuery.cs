@@ -9,7 +9,12 @@ namespace Drizzle4Dotnet.Core.Query.Select;
 /// Dialect-specific features (LATERAL joins, PG lock types, RETURNING) 
 /// are available in dialect-specific subclasses (PgSelectQuery, MySqlSelectQuery, etc.).
 /// </summary>
-public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
+public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>,
+    ISupportWhere<TSelf>,
+    ISupportOrderBy<TSelf>,
+    ISupportLimit<TSelf>,
+    ISupportCte<TSelf, TDialect>,
+    IJoin<TSelf, TDialect>
     where TSelf : SelectQuery<TReturn, TDialect, TSelf>
     where TDialect : ISqlDialect
 {
@@ -26,8 +31,8 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect> selectedColumns,
-        DbClient<TDialect> dbClient
-        ): base(selectedColumns, dbClient)
+        IQueryExecutor<TDialect> executor
+        ): base(selectedColumns, executor)
     {
     }
     
@@ -236,7 +241,12 @@ public class SelectQuery<TReturn, TDialect, TSelf>: Query<TReturn, TDialect>
     
 }
 
-public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn, TDialect, TVirtualTable>
+public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn, TDialect, TVirtualTable>,
+    ISupportWhere<TSelf>,
+    ISupportOrderBy<TSelf>,
+    ISupportLimit<TSelf>,
+    ISupportCte<TSelf, TDialect>,
+    IJoin<TSelf, TDialect>
     where TSelf : SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>
     where TDialect : ISqlDialect
     where TVirtualTable : IVirtualTable<TDialect>
@@ -254,8 +264,8 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns,
-        DbClient<TDialect> dbClient
-        ): base(selectedColumns, dbClient)
+        IQueryExecutor<TDialect> executor
+        ): base(selectedColumns, executor)
     {
     }
     
