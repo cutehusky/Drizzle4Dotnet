@@ -92,22 +92,29 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
     /// </summary>
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (NewValues.Count == 0 && FromQuery == null && !UseDefaultValues)
+        var hasValues = NewValues.Count > 0;
+        var hasFrom = FromQuery != null;
+        
+        if (hasValues && hasFrom)
+            throw new InvalidOperationException("Cannot combine Value(s) with From(). Use either explicit values or INSERT ... SELECT, not both.");
+        
+        if (hasValues && UseDefaultValues)
+            throw new InvalidOperationException("Cannot combine Value(s) with DefaultValues(). Use either explicit values or DEFAULT VALUES, not both.");
+        
+        if (hasFrom && UseDefaultValues)
+            throw new InvalidOperationException("Cannot combine From() with DefaultValues(). Use either INSERT ... SELECT or DEFAULT VALUES, not both.");
+        
+        if (!hasValues && !hasFrom && !UseDefaultValues)
             throw new InvalidOperationException("No values provided for insert. Use Value(s), DefaultValues(), or From().");
-
-        var allColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
         
         SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         BuildInsertKeywords(sqlBuilder);
         Table.BuildRefSql(sqlBuilder);
 
-        // Column list
-        SqlStatics.BuildInsertColumnList<TDialect>(sqlBuilder, allColumns);
-
         if (UseDefaultValues)
         {
-            sqlBuilder.Append(" DEFAULT VALUES");
+            BuildDefaultValues(sqlBuilder);
         } else if (FromQuery != null)
         {
             sqlBuilder.Append(' ');
@@ -115,8 +122,16 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
         }
         else if (NewValues.Count > 0)
         {
+            var allColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
+            // Column list
+            SqlStatics.BuildInsertColumnList<TDialect>(sqlBuilder, allColumns);
             SqlStatics.BuildInsertRowValues(sqlBuilder, NewValues, allColumns);
         }
+    }
+    
+    protected virtual void BuildDefaultValues(ISqlBuilder sqlBuilder)
+    {
+        sqlBuilder.Append(" DEFAULT VALUES");
     }
     
     protected virtual void BuildInsertKeywords(ISqlBuilder sqlBuilder)

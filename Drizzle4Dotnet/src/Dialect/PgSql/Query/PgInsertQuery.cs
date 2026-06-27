@@ -183,6 +183,7 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl, Pg
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        ValidateConflictSettings();
         base.BuildSql(sqlBuilder);
         PgConflictHelper.BuildOnConflictSql(sqlBuilder, 
             _conflictTargetColumns, 
@@ -192,6 +193,35 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl, Pg
             _conflictUpdates,
             _conflictTargetWhere,
             _conflictSetWhere);
+    }
+
+    private void ValidateConflictSettings()
+    {
+        var hasTarget = (_conflictTargetColumns is { Count: > 0 }) || !string.IsNullOrEmpty(_conflictTargetString);
+        var hasAction = _conflictAction != null;
+        var hasUpdates = _conflictUpdates.Count > 0;
+        var targetWhere = _conflictTargetWhere != null;
+        var setWhere = _conflictSetWhere != null;
+
+        if (hasAction && !hasTarget)
+            throw new InvalidOperationException(
+                "ON CONFLICT action (DoNothing/DoUpdate) requires a conflict target. " +
+                "Call OnConflict(columns) or OnConflictOnConstraint(name) first.");
+
+        if (hasUpdates && _conflictAction != "DO UPDATE SET")
+            throw new InvalidOperationException(
+                "SetOnConflict requires DoUpdate() to be called first. " +
+                "Usage: .OnConflict(...).DoUpdate().SetOnConflict(column, value)");
+
+        if (targetWhere && !hasTarget)
+            throw new InvalidOperationException(
+                "WhereConflictTarget requires a conflict target. " +
+                "Call OnConflict(columns) or OnConflictOnConstraint(name) first.");
+
+        if (setWhere && _conflictAction != "DO UPDATE SET")
+            throw new InvalidOperationException(
+                "WhereOnConflictSet requires DoUpdate() to be called first. " +
+                "Usage: .OnConflict(...).DoUpdate().WhereOnConflictSet(...)");
     }
 }
 

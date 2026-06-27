@@ -115,6 +115,11 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
         sqlBuilder.Append(" INTO ");
     }
 
+    protected override void BuildDefaultValues(ISqlBuilder sqlBuilder)
+    {
+        sqlBuilder.Append(" () VALUES ()");
+    }
+
     private void AppendOnDuplicateKeyUpdate(ISqlBuilder sqlBuilder)
     {
         if (_onDuplicateKeyUpdates.Count == 0) return;
