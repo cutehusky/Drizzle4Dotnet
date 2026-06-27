@@ -64,16 +64,16 @@ public readonly struct SqlValue<T, TDialect> where TDialect : ISqlDialect
     public SqlValue(T value) { _sql = null; _value = value; _isSql = false; }
 
     public static implicit operator SqlValue<T, TDialect>(T value) => new(value);
-    public static implicit operator SqlValue<T, TDialect>(ReturningQuery<T, TDialect>? query) 
-    {
-        if (query == null) return new SqlValue<T, TDialect>(default(T)!);
-        return new SqlValue<T, TDialect>(new SqlConverter<T>(query));
-    }
-    public static implicit operator SqlValue<T, TDialect>(Query<T, TDialect>? query) 
-    {
-        if (query == null) return new SqlValue<T, TDialect>(default(T)!);
-        return new SqlValue<T, TDialect>(new SqlConverter<T>(query));
-    }
+    // public static implicit operator SqlValue<T, TDialect>(ReturningQuery<T, TDialect, TVirtualTable>? query) 
+    // {
+    //     if (query == null) return new SqlValue<T, TDialect>(default(T)!);
+    //     return new SqlValue<T, TDialect>(new SqlConverter<T>(query));
+    // }
+    // public static implicit operator SqlValue<T, TDialect>(Query<T, TDialect>? query) 
+    // {
+    //     if (query == null) return new SqlValue<T, TDialect>(default(T)!);
+    //     return new SqlValue<T, TDialect>(new SqlConverter<T>(query));
+    // }
     public static implicit operator SqlValue<T, TDialect>(RawSql<T>? query) 
     {
         if (query == null) return new SqlValue<T, TDialect>(default(T)!);

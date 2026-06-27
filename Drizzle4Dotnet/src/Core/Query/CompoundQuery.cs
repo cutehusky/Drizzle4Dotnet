@@ -4,43 +4,6 @@ using Drizzle4Dotnet.Core.Shared.Operators;
 
 namespace Drizzle4Dotnet.Core.Query;
 
-/// <summary>
-/// Represents a compound query combining two select queries with UNION, INTERSECT, or EXCEPT.
-/// Implements IReturning to support ExecuteGetListAsync.
-/// </summary>
-public class CompoundQuery<TReturn, TDialect> : QueryBase<TDialect>, IReturning<TReturn, TDialect>
-    where TDialect : ISqlDialect
-{
-    private readonly IReturning<TReturn, TDialect> _left;
-    private readonly IReturning<TReturn, TDialect> _right;
-    private readonly string _operation;
-
-    public ISelectedColumns<TReturn, TDialect> SelectedColumns { get; }
-
-    public CompoundQuery(
-        IReturning<TReturn, TDialect> left,
-        IReturning<TReturn, TDialect> right,
-        string operation,
-        IQueryExecutor<TDialect> executor
-    ) : base(executor)
-    {
-        _left = left;
-        _right = right;
-        _operation = operation;
-        SelectedColumns = left.SelectedColumns;
-    }
-
-    public override void BuildSql(ISqlBuilder sqlBuilder)
-    {
-        sqlBuilder.Append('(');
-        _left.BuildSql(sqlBuilder);
-        sqlBuilder.Append(')');
-        sqlBuilder.Append(' ').Append(_operation).Append(' ');
-        sqlBuilder.Append('(');
-        _right.BuildSql(sqlBuilder);
-        sqlBuilder.Append(')');
-    }
-}
 
 /// <summary>
 /// Represents a compound query combining two select queries with UNION, INTERSECT, or EXCEPT,
@@ -91,32 +54,6 @@ public class CompoundQuery<TReturn, TDialect, TVirtualTable> : QueryBase<TDialec
 /// </summary>
 public static class CompoundQueryExtensions
 {
-    public static CompoundQuery<TReturn, TDialect> Union<TReturn, TDialect>(
-        this ReturningQuery<TReturn, TDialect> left,
-        IReturning<TReturn, TDialect> right)
-        where TDialect : ISqlDialect
-        => new(left, right, "UNION", left.Executor);
-
-    public static CompoundQuery<TReturn, TDialect> UnionAll<TReturn, TDialect>(
-        this ReturningQuery<TReturn, TDialect> left,
-        IReturning<TReturn, TDialect> right)
-        where TDialect : ISqlDialect
-        => new(left, right, "UNION ALL", left.Executor);
-
-    public static CompoundQuery<TReturn, TDialect> Intersect<TReturn, TDialect>(
-        this ReturningQuery<TReturn, TDialect> left,
-        IReturning<TReturn, TDialect> right)
-        where TDialect : ISqlDialect
-        => new(left, right, "INTERSECT", left.Executor);
-
-    public static CompoundQuery<TReturn, TDialect> Except<TReturn, TDialect>(
-        this ReturningQuery<TReturn, TDialect> left,
-        IReturning<TReturn, TDialect> right)
-        where TDialect : ISqlDialect
-        => new(left, right, "EXCEPT", left.Executor);
-
-    // ====== TVirtualTable variants ======
-
     public static CompoundQuery<TReturn, TDialect, TVirtualTable> Union<TReturn, TDialect, TVirtualTable>(
         this ReturningQuery<TReturn, TDialect, TVirtualTable> left,
         IReturning<TReturn, TDialect, TVirtualTable> right)
@@ -144,32 +81,6 @@ public static class CompoundQueryExtensions
         where TDialect : ISqlDialect
         where TVirtualTable : IVirtualTable<TDialect>
         => new(left, right, "EXCEPT", left.Executor);
-    
-     public static CompoundQuery<TReturn, TDialect> Union<TReturn, TDialect>(
-        this Query<TReturn, TDialect> left,
-        IReturning<TReturn, TDialect> right)
-        where TDialect : ISqlDialect
-        => new(left, right, "UNION", left.Executor);
-
-    public static CompoundQuery<TReturn, TDialect> UnionAll<TReturn, TDialect>(
-        this Query<TReturn, TDialect> left,
-        IReturning<TReturn, TDialect> right)
-        where TDialect : ISqlDialect
-        => new(left, right, "UNION ALL", left.Executor);
-
-    public static CompoundQuery<TReturn, TDialect> Intersect<TReturn, TDialect>(
-        this Query<TReturn, TDialect> left,
-        IReturning<TReturn, TDialect> right)
-        where TDialect : ISqlDialect
-        => new(left, right, "INTERSECT", left.Executor);
-
-    public static CompoundQuery<TReturn, TDialect> Except<TReturn, TDialect>(
-        this Query<TReturn, TDialect> left,
-        IReturning<TReturn, TDialect> right)
-        where TDialect : ISqlDialect
-        => new(left, right, "EXCEPT", left.Executor);
-
-    // ====== TVirtualTable variants ======
 
     public static CompoundQuery<TReturn, TDialect, TVirtualTable> Union<TReturn, TDialect, TVirtualTable>(
         this Query<TReturn, TDialect, TVirtualTable> left,
@@ -200,23 +111,6 @@ public static class CompoundQueryExtensions
         => new(left, right, "EXCEPT", left.Executor);
 
     // ====== AsRecursiveCte — wrap compound query as a recursive CTE table ======
-
-    /// <summary>
-    /// Wraps a compound query (anchor UNION ALL recursive member) as a recursive CTE table.
-    /// Usage: query.UnionAll(recursiveMember).AsRecursiveCte("cte_name")
-    /// Then use .WithRecursive(cte).From(cte) in the main query.
-    /// </summary>
-    public static RecursiveCteTable<TReturn, TDialect> AsRecursiveCte<TReturn, TDialect>(
-        this CompoundQuery<TReturn, TDialect> compoundQuery,
-        string alias)
-        where TDialect : ISqlDialect
-    {
-        return new RecursiveCteTable<TReturn, TDialect>(
-            alias,
-            compoundQuery,
-            (ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>>)
-                compoundQuery.SelectedColumns);
-    }
 
     /// <summary>
     /// Wraps a compound query with virtual table support as a recursive CTE table.

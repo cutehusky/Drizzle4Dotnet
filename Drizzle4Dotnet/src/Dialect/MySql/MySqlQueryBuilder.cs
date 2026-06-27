@@ -13,18 +13,6 @@ public class MySqlQueryBuilder
     // SQL-only builder — no executor needed (queries support Build() without execution)
     private static readonly IQueryExecutor<MySqlSqlDialectImpl>? _nullExecutor = null;
 
-    public MySqlSelectQuery<TReturn> Select<TReturn>(
-        ISelectedColumns<TReturn, MySqlSqlDialectImpl> selectedColumns)
-    {
-        return new MySqlSelectQuery<TReturn>(selectedColumns, _nullExecutor!);
-    }
-
-    public MySqlSelectQuery<TReturn> SelectDistinct<TReturn>(
-        ISelectedColumns<TReturn, MySqlSqlDialectImpl> selectedColumns)
-    {
-        return new MySqlSelectQuery<TReturn>(selectedColumns, _nullExecutor!).Distinct();
-    }
-
     public MySqlSelectQuery<TReturn, TVirtualTable> Select<TReturn, TVirtualTable>(
         ISelectedColumns<TReturn, MySqlSqlDialectImpl, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<MySqlSqlDialectImpl>
     {

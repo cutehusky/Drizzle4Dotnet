@@ -14,18 +14,6 @@ public class PgSqlQueryBuilder
     // SQL-only builder — no executor needed (queries support Build() without execution)
     private static readonly IQueryExecutor<PgSqlSqlDialectImpl>? _nullExecutor = null;
 
-    public PgSelectQuery<TReturn> Select<TReturn>(
-        ISelectedColumns<TReturn, PgSqlSqlDialectImpl> selectedColumns)
-    {
-        return new PgSelectQuery<TReturn>(selectedColumns, _nullExecutor!);
-    }
-
-    public PgSelectQuery<TReturn> SelectDistinct<TReturn>(
-        ISelectedColumns<TReturn, PgSqlSqlDialectImpl> selectedColumns)
-    {
-        return new PgSelectQuery<TReturn>(selectedColumns, _nullExecutor!).Distinct();
-    }
-
     public PgSelectQuery<TReturn, TVirtualTable> Select<TReturn, TVirtualTable>(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<PgSqlSqlDialectImpl>
     {

@@ -62,19 +62,6 @@ public abstract class DbClient<TDialect>: IAsyncDisposable, IQueryExecutor<TDial
         return result;
     }
     
-    public async Task<List<T>> ExecuteGetListAsync<T>(IReturning<T, TDialect> query)
-    {
-        await using var cmd = await CreateCommandAsync(query);
-        await using var reader = await cmd.ExecuteReaderAsync();
-        var result = new List<T>();
-        var mapper = query.Mapper;
-        while (await reader.ReadAsync())
-        {
-            result.Add(mapper(reader));
-        }
-        return result;
-    }
-    
     public async Task ExecuteAsync(IGenericSql query)
     {
         await using var cmd = await CreateCommandAsync(query);

@@ -11,11 +11,6 @@ namespace Drizzle4Dotnet.Core.Shared;
 public interface IQueryExecutor<TDialect> where TDialect : ISqlDialect
 {
     /// <summary>
-    /// Executes a returning query and maps results to a list of T.
-    /// </summary>
-    Task<List<T>> ExecuteGetListAsync<T>(IReturning<T, TDialect> query);
-    
-    /// <summary>
     /// Executes a returning query with virtual table support and maps results to a list of T.
     /// </summary>
     Task<List<T>> ExecuteGetListAsync<T, TVirtualTable>(IReturning<T, TDialect, TVirtualTable> query) 

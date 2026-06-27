@@ -19,18 +19,6 @@ public class MySqlDbClient : DbClientWithTransaction<MySqlDbClient, MySqlSqlDial
     {
     }
 
-    public MySqlSelectQuery<TReturn> Select<TReturn>(
-        ISelectedColumns<TReturn, MySqlSqlDialectImpl> selectedColumns)
-    {
-        return new MySqlSelectQuery<TReturn>(selectedColumns, this);
-    }
-
-    public MySqlSelectQuery<TReturn> SelectDistinct<TReturn>(
-        ISelectedColumns<TReturn, MySqlSqlDialectImpl> selectedColumns)
-    {
-        return new MySqlSelectQuery<TReturn>(selectedColumns, this).Distinct();
-    }
-
     public MySqlSelectQuery<TReturn, TVirtualTable> Select<TReturn, TVirtualTable>(
         ISelectedColumns<TReturn, MySqlSqlDialectImpl, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<MySqlSqlDialectImpl>
     {

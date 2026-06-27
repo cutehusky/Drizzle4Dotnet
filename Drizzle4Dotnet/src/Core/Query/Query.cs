@@ -16,47 +16,9 @@ public abstract class Query<TDialect>: QueryBase<TDialect>, ISql where TDialect 
         return Executor.ExecuteAsync(this).GetAwaiter();
     }
     
-    public ReturningQuery<TReturn, TDialect> Returning<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
-    {
-        return new ReturningQuery<TReturn, TDialect>(this, selectedColumns);
-    }
-    
     public ReturningQuery<TReturn, TDialect, TVirtualTable> Returning<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>
     {
         return new ReturningQuery<TReturn, TDialect, TVirtualTable>(this, selectedColumns);
-    }
-}
-
-
-public abstract class Query<TReturn, TDialect>: QueryBase<TDialect>, IReturning<TReturn, TDialect> where TDialect : ISqlDialect
-{
-    public ISelectedColumns<TReturn, TDialect> SelectedColumns { get; }
-
-    public Query(
-        ISelectedColumns<TReturn, TDialect> selectedColumns,
-        IQueryExecutor<TDialect> executor
-        ): base(executor)
-    {
-        SelectedColumns = selectedColumns;
-    }
-    
-    public TaskAwaiter<List<TReturn>> GetAwaiter()
-    {
-        return Executor.ExecuteGetListAsync(this).GetAwaiter();
-    }
-    
-    public RawSubqueryTableSql<TDialect> AsSubQuery(string alias)
-    {
-        var (sql, parameters) = Build();
-        return new RawSubqueryTableSql<TDialect>(new RawSql(sql, parameters), alias);
-    }
-    
-    public RawSubqueryTableSql<TDialect> AsSubQuery<T>(string alias,
-        Func<IGetFieldByName, T> columnSelector)
-    {
-        var (sql, parameters) = Build();
-        var raw = new RawSubqueryTableSql<TDialect>(new RawSql(sql, parameters), alias);
-        return raw;
     }
 }
 

@@ -19,18 +19,6 @@ public class PgSqlDbClient : DbClientWithTransaction<PgSqlDbClient, PgSqlSqlDial
     {
     }
 
-    public PgSelectQuery<TReturn> Select<TReturn>(
-        ISelectedColumns<TReturn, PgSqlSqlDialectImpl> selectedColumns)
-    {
-        return new PgSelectQuery<TReturn>(selectedColumns, this);
-    }
-
-    public PgSelectQuery<TReturn> SelectDistinct<TReturn>(
-        ISelectedColumns<TReturn, PgSqlSqlDialectImpl> selectedColumns)
-    {
-        return new PgSelectQuery<TReturn>(selectedColumns, this).Distinct();
-    }
-
     public PgSelectQuery<TReturn, TVirtualTable> Select<TReturn, TVirtualTable>(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<PgSqlSqlDialectImpl>
     {
