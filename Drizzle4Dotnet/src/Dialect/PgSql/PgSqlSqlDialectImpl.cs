@@ -55,13 +55,6 @@ public class PgSqlSqlDialectImpl: ISqlDialect
     public static bool SupportsFilteredAggregates => true;
     
     // ======================================================================
-    // Upsert
-    // ======================================================================
-    
-    public static string BuildOnDuplicateKeyUpdate(IReadOnlyList<string> columns)
-        => SqlDialectDefaults.BuildOnDuplicateKeyUpdate(columns);
-    
-    // ======================================================================
     // String Escaping
     // ======================================================================
     

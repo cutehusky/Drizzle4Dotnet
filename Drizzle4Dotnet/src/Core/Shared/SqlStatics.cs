@@ -44,14 +44,30 @@ public static class SqlStatics
         if (setValues.Count == 0) return;
 
         sqlBuilder.Append(" SET ");
-        bool firstSet = true;
-        foreach (var kv in setValues)
+        BuildSetValues<TDialect>(sqlBuilder, setValues);
+    }
+
+    /// <summary>
+    /// Builds SET column = value pairs from a dictionary of column → value/expression.
+    /// Shared by both PgSql (ON CONFLICT DO UPDATE SET) and MySql (ON DUPLICATE KEY UPDATE).
+    /// Values can be raw scalars (added as parameters) or IGenericSql expressions (rendered inline).
+    /// No prefix or separator header is added — the caller prepends the appropriate clause keyword.
+    /// </summary>
+    public static void BuildSetValues<TDialect>(
+        ISqlBuilder sqlBuilder,
+        Dictionary<string, object?> updates)
+        where TDialect : ISqlDialect
+    {
+        if (updates.Count == 0) return;
+
+        bool first = true;
+        foreach (var kv in updates)
         {
-            if (!firstSet) sqlBuilder.Append(", ");
+            if (!first) sqlBuilder.Append(", ");
+            else first = false;
 
             sqlBuilder.Append(TDialect.BuildIdentifier(kv.Key));
             sqlBuilder.Append(" = ");
-
             if (kv.Value is IGenericSql op)
             {
                 sqlBuilder.Append('(');
@@ -62,7 +78,6 @@ public static class SqlStatics
             {
                 sqlBuilder.Append(sqlBuilder.AddParameter(kv.Value));
             }
-            firstSet = false;
         }
     }
 
@@ -114,7 +129,16 @@ public static class SqlStatics
 
                 if (row.TryGetValue(allColumns[colIndex], out var val))
                 {
-                    sqlBuilder.Append(sqlBuilder.AddParameter(val));
+                    if (val is IGenericSql op)
+                    {
+                        sqlBuilder.Append('(');
+                        op.BuildSql(sqlBuilder);
+                        sqlBuilder.Append(')');
+                    }
+                    else
+                    {
+                        sqlBuilder.Append(sqlBuilder.AddParameter(val));
+                    }
                 }
                 else
                 {

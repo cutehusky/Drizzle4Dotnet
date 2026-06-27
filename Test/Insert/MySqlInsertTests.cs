@@ -97,7 +97,7 @@ public class MySqlInsertTests
     {
         var query = _db.Insert(users)
             .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
-            .OnDuplicateKeyUpdate("Name", "Age");
+            .OnDuplicateKeyUpdateValues(UsersTable.Name, UsersTable.Email);
 
         var (sql, parameters) = query.Build();
         Print("MySQL INSERT ON DUPLICATE KEY UPDATE", sql, parameters);
@@ -108,7 +108,7 @@ public class MySqlInsertTests
     {
         var query = _db.Insert(users)
             .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
-            .OnDuplicateKeyUpdateAll();
+            .OnDuplicateKeyUpdateValues(UsersTable.Name, UsersTable.Email, UsersTable.Age, UsersTable.IsActive, UsersTable.DepartmentId, UsersTable.RoleId);
 
         var (sql, parameters) = query.Build();
         Print("MySQL INSERT ON DUPLICATE KEY UPDATE ALL", sql, parameters);
@@ -191,7 +191,7 @@ public class MySqlInsertTests
         var query = _db.Insert(users)
             .With(cte)
             .Value(new UsersTable.InsertRecord { Name = "John", Email = "john@example.com", Age = 30, IsActive = true, DepartmentId = 1, RoleId = 1 })
-            .OnDuplicateKeyUpdate("Name", "Email");
+            .OnDuplicateKeyUpdateValues(UsersTable.Name, UsersTable.Email);
 
         var (sql, parameters) = query.Build();
         Print("MySQL INSERT with CTE + ON DUPLICATE KEY UPDATE", sql, parameters);

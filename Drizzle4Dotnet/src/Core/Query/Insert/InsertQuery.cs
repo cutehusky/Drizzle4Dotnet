@@ -13,8 +13,8 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
 {
     protected readonly TTable Table;
     protected readonly List<Dictionary<string, object?>> NewValues = new();
-    protected bool UseDefaultValues;
     protected IGenericSql? FromQuery; // must be IReturning<TReturn, TDialect, TVirtualTable> but C# doesn't allow generic constraints on method parameters
+    protected bool UseDefaultValues;
 
     public InsertQuery(TTable table, IQueryExecutor<TDialect> executor) : base(executor)
     {
@@ -84,26 +84,22 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
         FromQuery = selectQuery;
         return (TSelf)this;
     }
-
-    /// <summary>
-    /// INSERT DEFAULT VALUES — inserts a row with all default values.
-    /// </summary>
-    public TSelf DefaultValues()
-    {
-        UseDefaultValues = true;
-        return (TSelf)this;
-    }
     
+    /// <summary>
+    /// Builds the INSERT statement without the VALUES clause.
+    /// Produces: INSERT INTO table (col1, col2, ...)
+    /// Subclasses can override BuildInsertValues to customize the VALUES / DEFAULT VALUES / FROM clause.
+    /// </summary>
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (NewValues.Count == 0 && !UseDefaultValues && FromQuery == null)
+        if (NewValues.Count == 0 && FromQuery == null && !UseDefaultValues)
             throw new InvalidOperationException("No values provided for insert. Use Value(s), DefaultValues(), or From().");
 
         var allColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
         
         SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
-        sqlBuilder.Append("INSERT INTO ");
+        BuildInsertKeywords(sqlBuilder);
         Table.BuildRefSql(sqlBuilder);
 
         // Column list
@@ -112,15 +108,19 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
         if (UseDefaultValues)
         {
             sqlBuilder.Append(" DEFAULT VALUES");
-        }
-        else if (FromQuery != null)
+        } else if (FromQuery != null)
         {
             sqlBuilder.Append(' ');
             FromQuery.BuildSql(sqlBuilder);
         }
-        else
+        else if (NewValues.Count > 0)
         {
             SqlStatics.BuildInsertRowValues(sqlBuilder, NewValues, allColumns);
         }
+    }
+    
+    protected virtual void BuildInsertKeywords(ISqlBuilder sqlBuilder)
+    {
+        sqlBuilder.Append("INSERT INTO ");
     }
 }

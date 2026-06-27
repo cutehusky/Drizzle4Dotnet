@@ -112,17 +112,6 @@ public class MySqlSqlDialectImpl : ISqlDialect
     public static bool SupportsFilteredAggregates => false;
     
     // ======================================================================
-    // Upsert
-    // ======================================================================
-    
-    /// <summary>
-    /// Builds ON DUPLICATE KEY UPDATE clause for MySQL.
-    /// Uses the default implementation from SqlDialectDefaults.
-    /// </summary>
-    public static string BuildOnDuplicateKeyUpdate(IReadOnlyList<string> columns)
-        => SqlDialectDefaults.BuildOnDuplicateKeyUpdate(columns);
-    
-    // ======================================================================
     // String Escaping
     // ======================================================================
     

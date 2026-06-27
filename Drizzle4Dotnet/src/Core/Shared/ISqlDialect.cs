@@ -37,12 +37,6 @@ public interface ISqlDialect
     static abstract bool SupportsFilteredAggregates { get; }
     
     // ======================================================================
-    // Upsert
-    // ======================================================================
-    
-    static abstract string BuildOnDuplicateKeyUpdate(IReadOnlyList<string> columns);
-    
-    // ======================================================================
     // String Escaping
     // ======================================================================
     

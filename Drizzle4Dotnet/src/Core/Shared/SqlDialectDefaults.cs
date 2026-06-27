@@ -28,25 +28,6 @@ public static class SqlDialectDefaults
     public static string BuildReturning() => "";
 
     /// <summary>
-    /// Default ON DUPLICATE KEY UPDATE — returns empty.
-    /// Override in MySQL dialect.
-    /// </summary>
-    public static string BuildOnDuplicateKeyUpdate(IReadOnlyList<string> columns)
-    {
-        if (columns == null || columns.Count == 0)
-            return "";
-        
-        var sb = new System.Text.StringBuilder();
-        sb.Append(" ON DUPLICATE KEY UPDATE ");
-        for (int i = 0; i < columns.Count; i++)
-        {
-            if (i > 0) sb.Append(", ");
-            sb.Append('`').Append(columns[i]).Append("` = VALUES(`").Append(columns[i]).Append("`)");
-        }
-        return sb.ToString();
-    }
-
-    /// <summary>
     /// Default string escaping — replaces single quotes with two single quotes.
     /// </summary>
     public static string EscapeString(string value)

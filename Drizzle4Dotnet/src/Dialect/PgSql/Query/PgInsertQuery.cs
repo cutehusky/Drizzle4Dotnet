@@ -1,10 +1,8 @@
-using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
-using Drizzle4Dotnet.PgSql.Nodes;
 
 namespace Drizzle4Dotnet.PgSql;
 
@@ -25,7 +23,7 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl, Pg
     private readonly Dictionary<string, object?> _conflictUpdates = new();
     private IGenericSql? _conflictTargetWhere;
     private IGenericSql? _conflictSetWhere;
-
+    
     public PgInsertQuery(TTable table, IQueryExecutor<PgSqlSqlDialectImpl> executor) 
         : base(table, executor)
     {
@@ -116,9 +114,12 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl, Pg
     /// Convenience for: SetOnConflict(column, PgSqlStatics.Excluded(column))
     /// Generates: "name" = EXCLUDED."name"
     /// </summary>
-    public PgInsertQuery<TTable> SetOnConflictExcluded<T>(DbColumn<T, TTable, PgSqlSqlDialectImpl> column)
+    public PgInsertQuery<TTable> SetOnConflictExcluded<T>(params DbColumn<T, TTable, PgSqlSqlDialectImpl>[] columns)
     {
-        _conflictUpdates[column.Identifier] = new PgExcludedNode<T>(column.Identifier);
+        foreach (var column in columns)
+        {
+            _conflictUpdates[column.Identifier] = PgSqlStatics.Excluded(column);
+        }
         return this;
     }
 
@@ -159,6 +160,20 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl, Pg
     public PgInsertQuery<TTable> WhereOnConflictSet(IGenericSql condition)
     {
         _conflictSetWhere = condition;
+        return this;
+    }
+
+    // ======================================================================
+    // DEFAULT VALUES (PostgreSQL-specific — not in base InsertQuery)
+    // ======================================================================
+
+    /// <summary>
+    /// INSERT DEFAULT VALUES — inserts a row with all default values.
+    /// PostgreSQL-specific: only available in the PgSql dialect.
+    /// </summary>
+    public PgInsertQuery<TTable> DefaultValues()
+    {
+        UseDefaultValues = true;
         return this;
     }
 
@@ -239,29 +254,7 @@ internal static class PgConflictHelper
         if (conflictUpdates.Count > 0)
         {
             sqlBuilder.Append(' ');
-            bool first = true;
-            foreach (var kv in conflictUpdates)
-            {
-                if (!first) sqlBuilder.Append(", ");
-                else first = false;
-
-                sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(kv.Key));
-                sqlBuilder.Append(" = ");
-                if (kv.Value is IGenericSql op)
-                {
-                    op.BuildSql(sqlBuilder);
-                }
-                else if (kv.Value is string s && s == "EXCLUDED")
-                {
-                    // Legacy magic string "EXCLUDED" → EXCLUDED."column"
-                    sqlBuilder.Append("EXCLUDED.");
-                    sqlBuilder.Append(PgSqlSqlDialectImpl.BuildIdentifier(kv.Key));
-                }
-                else
-                {
-                    sqlBuilder.Append(sqlBuilder.AddParameter(kv.Value));
-                }
-            }
+            SqlStatics.BuildSetValues<PgSqlSqlDialectImpl>(sqlBuilder, conflictUpdates);
         }
 
         // WHERE on SET (for DO UPDATE)
