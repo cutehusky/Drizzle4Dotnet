@@ -1,4 +1,3 @@
-using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Core.Shared.Operators;
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
@@ -13,43 +12,46 @@ public static class MySqlOperators
     // ======================================================================
     // Null-Safe Equality: <=> (MySQL equivalent of IS NOT DISTINCT FROM)
     // ======================================================================
-    const string _operatorNullSafeEqual = " <=> ";
+    internal const string OpsNullSafeEqual = " <=> ";
     
     public static BinaryNode<T1, T2, bool> NullSafeEqual<T1, T2>(ISql<T1> c1, ISql<T2> c2)
-        => new(c1, c2, _operatorNullSafeEqual);
+        => new(c1, c2, OpsNullSafeEqual);
     public static BinaryNode<T, T, bool> NullSafeEqual<T>(ISql<T> c1, T value)
-        => new(c1, new SqlValueNode<T>(value), _operatorNullSafeEqual);
-    public static BinaryNode<T1, T2, bool> NullSafeEqual<T1, T2, TDialect>(
-        this IColumnOfDialect<T1, TDialect> c1, IColumnOfDialect<T2, TDialect> c2)
-        where TDialect : ISqlDialect
-        => new(c1, c2, _operatorNullSafeEqual);
-    public static BinaryNode<T, T, bool> NullSafeEqual<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, T value)
-        where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<T>(value), _operatorNullSafeEqual);
+        => new(c1, new SqlValueNode<T>(value), OpsNullSafeEqual);
     
     
     // ======================================================================
     // Regular Expression Operators
     // ======================================================================
-    const string _operatorRegexp = " REGEXP ";
-    const string _operatorNotRegexp = " NOT REGEXP ";
+    internal const string OpsRegexp = " REGEXP ";
+    internal const string OpsNotRegexp = " NOT REGEXP ";
     
     public static BinaryNode<string, string, bool> Regexp(ISql<string> c1, ISql<string> pattern)
-        => new(c1, pattern, _operatorRegexp);
+        => new(c1, pattern, OpsRegexp);
     public static BinaryNode<string, string, bool> Regexp(ISql<string> c1, string pattern)
-        => new(c1, new SqlValueNode<string>(pattern), _operatorRegexp);
+        => new(c1, new SqlValueNode<string>(pattern), OpsRegexp);
     public static BinaryNode<string, string, bool> NotRegexp(ISql<string> c1, ISql<string> pattern)
-        => new(c1, pattern, _operatorNotRegexp);
+        => new(c1, pattern, OpsNotRegexp);
     public static BinaryNode<string, string, bool> NotRegexp(ISql<string> c1, string pattern)
-        => new(c1, new SqlValueNode<string>(pattern), _operatorNotRegexp);
+        => new(c1, new SqlValueNode<string>(pattern), OpsNotRegexp);
+}
+
+/// <summary>
+/// Extension methods for MySQL-specific operators.
+/// </summary>
+public static class MySqlOperatorsExtensions
+{
+    public static BinaryNode<T1, T2, bool> NullSafeEqual<T1, T2>(
+        this ISql<T1> c1, ISql<T2> c2)
+        => new(c1, c2, MySqlOperators.OpsNullSafeEqual);
+    public static BinaryNode<T, T, bool> NullSafeEqual<T>(
+        this ISql<T> c1, T value)
+        => new(c1, new SqlValueNode<T>(value), MySqlOperators.OpsNullSafeEqual);
     
-    public static BinaryNode<string, string, bool> Regexp<TDialect>(
-        this IColumnOfDialect<string, TDialect> c1, string pattern)
-        where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<string>(pattern), _operatorRegexp);
-    public static BinaryNode<string, string, bool> NotRegexp<TDialect>(
-        this IColumnOfDialect<string, TDialect> c1, string pattern)
-        where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<string>(pattern), _operatorNotRegexp);
+    public static BinaryNode<string, string, bool> Regexp(
+        this ISql<string> c1, string pattern)
+        => new(c1, new SqlValueNode<string>(pattern), MySqlOperators.OpsRegexp);
+    public static BinaryNode<string, string, bool> NotRegexp(
+        this ISql<string> c1, string pattern)
+        => new(c1, new SqlValueNode<string>(pattern), MySqlOperators.OpsNotRegexp);
 }

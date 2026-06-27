@@ -4,7 +4,7 @@ namespace Drizzle4Dotnet.Core.Shared.Operators;
 
 /// <summary>
 /// Standard SQL operators organized into partial class files by category.
-/// Extension methods on IColumnOfDialect provide `column.Eq(value)` syntax.
+/// Extension methods on ISql provide `column.Eq(value)` syntax.
 /// Static methods on ISql provide `Operators.Eq(column, value)` syntax.
 /// For PostgreSQL-specific operators, see <see cref="PgSql.PgOperators"/>.
 /// </summary>

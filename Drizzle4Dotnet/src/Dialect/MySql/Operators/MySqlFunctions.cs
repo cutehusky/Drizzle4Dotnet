@@ -1,4 +1,3 @@
-using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Core.Shared.Operators;
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
@@ -56,12 +55,6 @@ public static class MySqlFunctions
     public static FunctionCallNode<T, long> CharLength<T>(ISql<T> c1) 
         => new("CHAR_LENGTH", c1);
     
-    /// <summary>
-    /// Extension method version of CHAR_LENGTH.
-    /// </summary>
-    public static FunctionCallNode<T, long> CharLength<T, TDialect>(this IColumnOfDialect<T, TDialect> c1)
-        where TDialect : ISqlDialect
-        => new("CHAR_LENGTH", c1);
     
     /// <summary>
     /// MySQL LOCATE(substr, str) — returns position of first occurrence.
@@ -94,22 +87,10 @@ public static class MySqlFunctions
     public static MySqlPositionNode Position(ISql<string> c1, string substring)
         => new(new SqlValueNode<string>(substring), c1);
     
-    /// <summary>
-    /// Extension method version of POSITION.
-    /// </summary>
-    public static MySqlPositionNode Position<TDialect>(this IColumnOfDialect<string, TDialect> c1, string substring) 
-        where TDialect : ISqlDialect
-        => new(new SqlValueNode<string>(substring), c1);
-    
     
     // ======================================================================
     // Date/Time Functions (MySQL-specific)
     // ======================================================================
-    
-    /// <summary>
-    /// MySQL NOW() — same as standard SQL, available via Functions.Now().
-    /// Included here for completeness.
-    /// </summary>
     
     /// <summary>
     /// MySQL CURDATE() — returns current date.
@@ -310,4 +291,22 @@ public static class MySqlFunctions
     /// </summary>
     public static FunctionCallNode<long> FoundRows()
         => new("FOUND_ROWS");
+}
+
+/// <summary>
+/// Extension methods for MySQL-specific functions.
+/// </summary>
+public static class MySqlFunctionsExtensions
+{
+    /// <summary>
+    /// Extension method version of CHAR_LENGTH.
+    /// </summary>
+    public static FunctionCallNode<T, long> CharLength<T>(this ISql<T> c1)
+        => new("CHAR_LENGTH", c1);
+    
+    /// <summary>
+    /// Extension method version of POSITION.
+    /// </summary>
+    public static MySqlPositionNode Position(this ISql<string> c1, string substring) 
+        => new(new SqlValueNode<string>(substring), c1);
 }

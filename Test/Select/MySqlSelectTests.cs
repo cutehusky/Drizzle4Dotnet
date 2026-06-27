@@ -1,6 +1,7 @@
 using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Core.Shared.Operators;
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 using Drizzle4Dotnet.Dialect;
 using Drizzle4Dotnet.MySql;

@@ -13,7 +13,7 @@ public interface ISqlBuilder
     public ISqlBuilder Append(char sql);
 }
 
-public struct SqlBuilder<TDialect>: ISqlBuilder where TDialect : ISqlDialect
+public class SqlBuilder<TDialect>: ISqlBuilder where TDialect : ISqlDialect
 {
     private readonly StringBuilder _sb = new();
     private readonly Dictionary<string, object?> _parameters = new();

@@ -1,4 +1,3 @@
-using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Core.Shared.Operators;
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
@@ -19,9 +18,6 @@ public static class PgFunctions
     // Uses custom PositionNode to handle the IN keyword (not comma-separated args)
     public static PositionNode Position(IGenericSql substring, ISql<string> c1) => new(substring, c1);
     public static PositionNode Position(ISql<string> c1, string substring) =>
-        new(new SqlValueNode<string>(substring), c1);
-    public static PositionNode Position<TDialect>(this IColumnOfDialect<string, TDialect> c1, string substring)
-        where TDialect : ISqlDialect =>
         new(new SqlValueNode<string>(substring), c1);
     
     // ======================================================================
@@ -75,9 +71,6 @@ public static class PgFunctions
     
     // JsonAgg(col) -> JSON_AGG(col)
     public static FunctionCallNode<T, T> JsonAgg<T>(ISql<T> c1) => new("JSON_AGG", c1);
-    public static FunctionCallNode<T, T> JsonAgg<T, TDialect>(this IColumnOfDialect<T, TDialect> c1)
-        where TDialect : ISqlDialect =>
-        new("JSON_AGG", c1);
     
     // JsonBuildObject(key1, val1, key2, val2, ...)
     public static FunctionCallNode<string> JsonBuildObject(params IGenericSql[] keyValuePairs) =>
@@ -85,9 +78,6 @@ public static class PgFunctions
     
     // JsonArrayLength(col) -> JSON_ARRAY_LENGTH(col)
     public static FunctionCallNode<T, int> JsonArrayLength<T>(ISql<T> c1) => new("JSON_ARRAY_LENGTH", c1);
-    public static FunctionCallNode<T, int> JsonArrayLength<T, TDialect>(this IColumnOfDialect<T, TDialect> c1)
-        where TDialect : ISqlDialect =>
-        new("JSON_ARRAY_LENGTH", c1);
     
     // ToJson(col) -> TO_JSON(col)
     public static FunctionCallNode<T, T> ToJson<T>(ISql<T> c1) => new("TO_JSON", c1);
@@ -102,15 +92,9 @@ public static class PgFunctions
     
     // ArrayAgg(col) -> ARRAY_AGG(col)
     public static FunctionCallNode<T, T> ArrayAgg<T>(ISql<T> c1) => new("ARRAY_AGG", c1);
-    public static FunctionCallNode<T, T> ArrayAgg<T, TDialect>(this IColumnOfDialect<T, TDialect> c1)
-        where TDialect : ISqlDialect =>
-        new("ARRAY_AGG", c1);
     
     // Unnest(col) -> UNNEST(col)
     public static FunctionCallNode<T, T> Unnest<T>(ISql<T> c1) => new("UNNEST", c1);
-    public static FunctionCallNode<T, T> Unnest<T, TDialect>(this IColumnOfDialect<T, TDialect> c1)
-        where TDialect : ISqlDialect =>
-        new("UNNEST", c1);
     
     // ArrayLength(col, dimension) -> ARRAY_LENGTH(col, 1)
     public static FunctionCallNode<int> ArrayLength(IGenericSql c1, int dimension = 1) =>
@@ -215,4 +199,25 @@ public static class PgFunctions
     /// </summary>
     public static FunctionCallNode<T, int, T> NthValue<T>(ISql<T> c1, int n)
         => new("NTH_VALUE", c1, new SqlValueNode<int>(n));
+}
+
+/// <summary>
+/// Extension methods for PostgreSQL-specific functions.
+/// </summary>
+public static class PgFunctionsExtensions
+{
+    public static PositionNode Position(this ISql<string> c1, string substring) =>
+        new(new SqlValueNode<string>(substring), c1);
+
+    public static FunctionCallNode<T, T> JsonAgg<T>(this ISql<T> c1) =>
+        new("JSON_AGG", c1);
+
+    public static FunctionCallNode<T, int> JsonArrayLength<T>(this ISql<T> c1) =>
+        new("JSON_ARRAY_LENGTH", c1);
+
+    public static FunctionCallNode<T, T> ArrayAgg<T>(this ISql<T> c1) =>
+        new("ARRAY_AGG", c1);
+
+    public static FunctionCallNode<T, T> Unnest<T>(this ISql<T> c1) =>
+        new("UNNEST", c1);
 }
