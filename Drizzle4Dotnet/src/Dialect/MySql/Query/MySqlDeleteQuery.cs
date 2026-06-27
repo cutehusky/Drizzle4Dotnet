@@ -79,7 +79,14 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
         {
             // MySQL DELETE with JOIN syntax: DELETE t1 FROM t1 JOIN t2 ON ... WHERE ...
             sqlBuilder.Append("DELETE ");
-            Table.BuildRefSql(sqlBuilder);
+            if (Table is IMySqlTableAlias alias)
+            {
+                sqlBuilder.Append(alias.Alias);
+            }
+            else
+            {
+                Table.BuildRefSql(sqlBuilder);
+            }
             sqlBuilder.Append(" FROM ");
             Table.BuildRefSql(sqlBuilder);
             SqlStatics.BuildSqlJoins(sqlBuilder, _joins);

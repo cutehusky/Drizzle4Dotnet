@@ -187,7 +187,7 @@ public class TableGenerator : IIncrementalGenerator
             var tableProperties = table.TableType == ETableType.DbTable
                 ? $@"   public static string TableName {{ get => ""{table.DbTableName!}""; }}
     public static string SchemaName {{ get => ""{table.DbSchemaName!}""; }}" 
-                : $@"   public static string Alias {{ get => ""{table.AliasName!}""; }}";
+                : $@"   public string Alias {{ get => ""{table.AliasName!}""; }}";
             var selectSqlFragments = string.Join(", ", table.Columns!.Select(p => $"{{{p.PropName}.Sql}}"));
             var columnType = dialect.ColumnType;
             
@@ -199,8 +199,6 @@ public class TableGenerator : IIncrementalGenerator
         public static string TableRefName {{ get => ""{refName}""; }}
 
         private static readonly string _sql;
-
-        public void BuildSql(ISqlBuilder sqlBuilder) => throw new NotImplementedException(""This method should not be called directly. Use BuildRefSql instead."");
 
         public void BuildRefSql(ISqlBuilder sqlBuilder) =>  sqlBuilder.Append(_sql);
 ");
