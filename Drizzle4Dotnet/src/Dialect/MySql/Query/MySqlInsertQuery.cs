@@ -21,7 +21,6 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
     private List<string>? _onDuplicateKeyUpdateColumns;
     private bool _onDuplicateKeyUpdateAll;
     private bool _ignore;
-    private readonly Dictionary<string, object?> _setValues = new();
 
     public MySqlInsertQuery(TTable table, IQueryExecutor<MySqlSqlDialectImpl> executor) 
         : base(table, executor)
@@ -57,51 +56,18 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
         return this;
     }
 
-    /// <summary>
-    /// MySQL INSERT ... SET col = value syntax.
-    /// Alternative to the standard VALUES syntax.
-    /// </summary>
-    public MySqlInsertQuery<TTable> Set<T>(DbColumn<T, TTable, MySqlSqlDialectImpl> column, T value)
-    {
-        _setValues[column.Identifier] = value;
-        return this;
-    }
-
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        BuildSqlCte(sqlBuilder);
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
-        // INSERT IGNORE or INSERT ... SET syntax
-        if (_setValues.Count > 0)
-        {
-            // INSERT ... SET col=value syntax
-            sqlBuilder.Append("INSERT");
-            if (_ignore) sqlBuilder.Append(" IGNORE");
-            sqlBuilder.Append(" INTO ");
-            Table.BuildRefSql(sqlBuilder);
-            sqlBuilder.Append(" SET ");
-
-            bool first = true;
-            foreach (var kv in _setValues)
-            {
-                if (!first) sqlBuilder.Append(", ");
-                first = false;
-                sqlBuilder.Append(MySqlSqlDialectImpl.BuildIdentifier(kv.Key));
-                sqlBuilder.Append(" = ");
-                sqlBuilder.Append(sqlBuilder.AddParameter(kv.Value));
-            }
-            return;
-        }
-
-        // Standard INSERT with optional IGNORE
+        // INSERT IGNORE — needs full manual rebuild
         if (_ignore)
         {
-            // Need to rebuild with INSERT IGNORE
             BuildInsertIgnore(sqlBuilder);
             return;
         }
 
-        // Standard INSERT
+        // Standard INSERT (delegates to base)
         base.BuildSql(sqlBuilder);
 
         // Append ON DUPLICATE KEY UPDATE if configured
@@ -110,41 +76,30 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
 
     private void BuildInsertIgnore(ISqlBuilder sqlBuilder)
     {
-        if (NewValues.Count == 0)
-            throw new InvalidOperationException("No values provided for insert.");
+        // Validate: must have values, default values, or a select source
+        if (NewValues.Count == 0 && !UseDefaultValues && FromQuery == null)
+            throw new InvalidOperationException("No values provided for insert. Use Value(s), DefaultValues(), or From().");
 
         var allColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
 
         sqlBuilder.Append("INSERT IGNORE INTO ");
         Table.BuildRefSql(sqlBuilder);
-        sqlBuilder.Append(" (");
 
-        for (int i = 0; i < allColumns.Count; i++)
+        if (allColumns.Count > 0)
+            SqlStatics.BuildInsertColumnList<MySqlSqlDialectImpl>(sqlBuilder, allColumns);
+
+        if (UseDefaultValues)
         {
-            if (i > 0) sqlBuilder.Append(", ");
-            sqlBuilder.Append(MySqlSqlDialectImpl.BuildIdentifier(allColumns[i]));
+            sqlBuilder.Append(" DEFAULT VALUES");
         }
-        sqlBuilder.Append(") VALUES ");
-
-        for (int rowIndex = 0; rowIndex < NewValues.Count; rowIndex++)
+        else if (FromQuery != null)
         {
-            if (rowIndex > 0) sqlBuilder.Append(", ");
-            sqlBuilder.Append('(');
-            var row = NewValues[rowIndex];
-
-            for (int colIndex = 0; colIndex < allColumns.Count; colIndex++)
-            {
-                if (colIndex > 0) sqlBuilder.Append(", ");
-                if (row.TryGetValue(allColumns[colIndex], out var val))
-                {
-                    sqlBuilder.Append(sqlBuilder.AddParameter(val));
-                }
-                else
-                {
-                    sqlBuilder.Append("NULL");
-                }
-            }
-            sqlBuilder.Append(')');
+            sqlBuilder.Append(' ');
+            FromQuery.BuildSql(sqlBuilder);
+        }
+        else
+        {
+            SqlStatics.BuildInsertRowValues(sqlBuilder, NewValues, allColumns);
         }
     }
 

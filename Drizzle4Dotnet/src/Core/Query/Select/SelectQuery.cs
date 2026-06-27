@@ -6,7 +6,7 @@ namespace Drizzle4Dotnet.Core.Query.Select;
 public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn, TDialect, TVirtualTable>,
     ISupportWhere<TSelf>,
     ISupportOrderBy<TSelf>,
-    ISupportLimit<TSelf>,
+    ISupportOffsetLimit<TSelf>,
     ISupportDistinct<TSelf>,
     ISupportCte<TSelf, TDialect>,
     IJoin<TSelf, TDialect>
@@ -47,7 +47,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        BuildSqlCte(sqlBuilder);
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
         
         sqlBuilder.Append("SELECT ");
         BuildSqlDistinct(sqlBuilder);
@@ -67,19 +67,19 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
             _from.BuildRefSql(sqlBuilder);
         }
 
-        BuildSqlJoins(sqlBuilder);
+        SqlStatics.BuildSqlJoins(sqlBuilder, _joins);
 
         // WHERE
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
 
         // GROUP BY
-        AppendClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
+        SqlStatics.BuildClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
 
         // HAVING
-        AppendClause(sqlBuilder, " HAVING ", " AND ", _havings, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " HAVING ", " AND ", _havings, wrapInParentheses: true);
 
         // ORDER BY
-        BuildSqlOrderBy(sqlBuilder);
+        SqlStatics.BuildSqlOrderBy(sqlBuilder, _orderBys);
 
         // LIMIT & OFFSET
         if (_limit.HasValue || _offset.HasValue)
@@ -88,23 +88,6 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
         BuildSqlLock(sqlBuilder);
     }
     
-    protected void BuildSqlJoins(ISqlBuilder sqlBuilder)
-    {
-        if (_joins.Count > 0)
-        {
-            foreach (var (table, type, on) in _joins)
-            {
-                sqlBuilder.Append(' ').Append(type).Append(" JOIN ");
-                table.BuildRefSql(sqlBuilder);
-                if (on != null)
-                {
-                    sqlBuilder.Append(" ON (");
-                    on.BuildSql(sqlBuilder);
-                    sqlBuilder.Append(')');
-                }
-            }
-        }
-    }
     
     protected virtual void BuildSqlOrderBy(ISqlBuilder sqlBuilder)
     {

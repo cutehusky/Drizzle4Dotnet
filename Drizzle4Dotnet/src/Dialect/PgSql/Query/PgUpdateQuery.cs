@@ -39,7 +39,7 @@ public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, Pg
             throw new InvalidOperationException("No columns set for update.");
         }
 
-        BuildSqlCte(sqlBuilder);
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         sqlBuilder.Append("UPDATE ");
         Table.BuildRefSql(sqlBuilder);
@@ -55,9 +55,9 @@ public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, Pg
             }
         }
 
-        BuildSqlSet(sqlBuilder, SetValues);
+        SqlStatics.BuildSqlSet<PgSqlSqlDialectImpl>(sqlBuilder, SetValues);
 
         // WHERE clause (includes join conditions if combined)
-        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
     }
 }

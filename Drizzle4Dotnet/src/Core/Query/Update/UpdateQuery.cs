@@ -5,6 +5,7 @@ using Drizzle4Dotnet.Core.Shared;
 namespace Drizzle4Dotnet.Core.Query.Update;
 
 public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>,
+    ISupportUpdateSet<TSelf, TTable, TDialect>,
     ISupportWhere<TSelf>,
     ISupportCte<TSelf, TDialect>
     where TSelf : UpdateQuery<TTable, TDialect, TSelf>
@@ -75,41 +76,12 @@ public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>,
             throw new InvalidOperationException("No columns set for update.");
         }
         
-        BuildSqlCte(sqlBuilder);
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         sqlBuilder.Append("UPDATE ");
         Table.BuildRefSql(sqlBuilder);
-        BuildSqlSet(sqlBuilder, SetValues);
+        SqlStatics.BuildSqlSet<TDialect>(sqlBuilder, SetValues);
 
-        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
-    }
-    
-    /// <summary>
-    /// Builds the SET clause for UPDATE queries from a dictionary of column → value pairs.
-    /// Values can be raw scalars (added as parameters) or IGenericSql expressions (rendered inline).
-    /// </summary>
-    protected void BuildSqlSet(ISqlBuilder sqlBuilder, Dictionary<string, object?> setValues)
-    {
-        sqlBuilder.Append(" SET ");
-        bool firstSet = true;
-        foreach (var kv in setValues)
-        {
-            if (!firstSet) sqlBuilder.Append(", ");
-
-            sqlBuilder.Append(TDialect.BuildIdentifier(kv.Key));
-            sqlBuilder.Append(" = ");
-
-            if (kv.Value is IGenericSql op)
-            {
-                sqlBuilder.Append('(');
-                op.BuildSql(sqlBuilder);
-                sqlBuilder.Append(')');
-            }
-            else
-            {
-                sqlBuilder.Append(sqlBuilder.AddParameter(kv.Value));
-            }
-            firstSet = false;
-        }
+        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
     }
 }

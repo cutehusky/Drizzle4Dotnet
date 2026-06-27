@@ -115,30 +115,6 @@ public class MySqlInsertTests
     }
 
     [Test]
-    public void Insert_SetSyntax()
-    {
-        var query = _db.Insert(users)
-            .Set(UsersTable.Name, "John")
-            .Set(UsersTable.Email, "john@example.com")
-            .Set(UsersTable.Age, 30);
-
-        var (sql, parameters) = query.Build();
-        Print("MySQL INSERT SET syntax", sql, parameters);
-    }
-
-    [Test]
-    public void Insert_IgnoreWithSet()
-    {
-        var query = _db.Insert(users)
-            .Ignore()
-            .Set(UsersTable.Name, "John")
-            .Set(UsersTable.Email, "john@example.com");
-
-        var (sql, parameters) = query.Build();
-        Print("MySQL INSERT IGNORE with SET", sql, parameters);
-    }
-
-    [Test]
     public void Insert_SelectFrom()
     {
         var selectQuery = _db

@@ -28,40 +28,12 @@ public class MySqlReplaceQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl
 
         var allColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
 
-        BuildSqlCte(sqlBuilder);
+        SqlStatics.BuildSqlCte<MySqlSqlDialectImpl>(sqlBuilder, CteTables, Recursive);
 
         sqlBuilder.Append("REPLACE INTO ");
         Table.BuildRefSql(sqlBuilder);
-        sqlBuilder.Append(" (");
 
-        for (int i = 0; i < allColumns.Count; i++)
-        {
-            if (i > 0) sqlBuilder.Append(", ");
-            sqlBuilder.Append(MySqlSqlDialectImpl.BuildIdentifier(allColumns[i]));
-        }
-        sqlBuilder.Append(") VALUES ");
-
-        for (int rowIndex = 0; rowIndex < NewValues.Count; rowIndex++)
-        {
-            if (rowIndex > 0) sqlBuilder.Append(", ");
-
-            sqlBuilder.Append('(');
-            var row = NewValues[rowIndex];
-
-            for (int colIndex = 0; colIndex < allColumns.Count; colIndex++)
-            {
-                if (colIndex > 0) sqlBuilder.Append(", ");
-
-                if (row.TryGetValue(allColumns[colIndex], out var val))
-                {
-                    sqlBuilder.Append(sqlBuilder.AddParameter(val));
-                }
-                else
-                {
-                    sqlBuilder.Append("DEFAULT");
-                }
-            }
-            sqlBuilder.Append(')');
-        }
+        SqlStatics.BuildInsertColumnList<MySqlSqlDialectImpl>(sqlBuilder, allColumns);
+        SqlStatics.BuildInsertRowValues(sqlBuilder, NewValues, allColumns, defaultValue: "DEFAULT");
     }
 }

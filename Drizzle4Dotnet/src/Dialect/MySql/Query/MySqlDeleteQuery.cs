@@ -1,4 +1,3 @@
-using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
@@ -13,8 +12,9 @@ namespace Drizzle4Dotnet.MySql;
 /// - LIMIT and ORDER BY on DELETE
 /// MySQL does not support RETURNING — use MySqlFunctions.RowCount() instead.
 /// </summary>
+/// TODO: Support multi-table DELETE syntax: DELETE t1, t2 FROM t1 JOIN t2 ON ... WHERE ...
 public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl, MySqlDeleteQuery<TTable>>,
-    ISupportLimit<MySqlDeleteQuery<TTable>>,
+    ISupportOffsetLimit<MySqlDeleteQuery<TTable>>,
     ISupportOrderBy<MySqlDeleteQuery<TTable>>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
@@ -73,50 +73,49 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        BuildSqlCte(sqlBuilder);
-
-        // MySQL DELETE with JOIN syntax: DELETE t1 FROM t1 JOIN t2 ON ... WHERE ...
-        sqlBuilder.Append("DELETE ");
-        Table.BuildRefSql(sqlBuilder);
-        sqlBuilder.Append(" FROM ");
-        Table.BuildRefSql(sqlBuilder);
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         if (_joins.Count > 0)
         {
-            foreach (var (table, type, on) in _joins)
-            {
-                sqlBuilder.Append(' ').Append(type).Append(" JOIN ");
-                table.BuildRefSql(sqlBuilder);
-                if (on != null)
-                {
-                    sqlBuilder.Append(" ON (");
-                    on.BuildSql(sqlBuilder);
-                    sqlBuilder.Append(')');
-                }
-            }
+            // MySQL DELETE with JOIN syntax: DELETE t1 FROM t1 JOIN t2 ON ... WHERE ...
+            sqlBuilder.Append("DELETE ");
+            Table.BuildRefSql(sqlBuilder);
+            sqlBuilder.Append(" FROM ");
+            Table.BuildRefSql(sqlBuilder);
+            SqlStatics.BuildSqlJoins(sqlBuilder, _joins);
+        }
+        else
+        {
+            // Standard DELETE: DELETE FROM t WHERE ...
+            sqlBuilder.Append("DELETE FROM ");
+            Table.BuildRefSql(sqlBuilder);
         }
 
-        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
 
         // ORDER BY (MySQL-specific on DELETE)
-        if (_orderBys.Count > 0)
+        SqlStatics.BuildSqlOrderBy(sqlBuilder, _orderBys);
+
+        if (_offset.HasValue && !_limit.HasValue)
         {
-            sqlBuilder.Append(" ORDER BY ");
-            for (int i = 0; i < _orderBys.Count; i++)
+            throw new InvalidOperationException("OFFSET cannot be used without LIMIT in MySQL DELETE.");
+        }
+        
+        // LIMIT limit or LIMIT offset, limit (MySQL-specific on DELETE)
+        if (_limit.HasValue)
+        {
+            if (_offset.HasValue)
             {
-                if (i > 0) sqlBuilder.Append(", ");
-                var (expr, isAsc) = _orderBys[i];
-                expr.BuildSql(sqlBuilder);
-                sqlBuilder.Append(isAsc ? " ASC" : " DESC");
+                sqlBuilder.Append(" LIMIT ");
+                sqlBuilder.Append(sqlBuilder.AddParameter(_offset.Value));
+                sqlBuilder.Append(", ");
+                sqlBuilder.Append(sqlBuilder.AddParameter(_limit.Value));
+            }
+            else
+            {
+                sqlBuilder.Append(" LIMIT ");
+                sqlBuilder.Append(sqlBuilder.AddParameter(_limit.Value));
             }
         }
-
-        // LIMIT (MySQL-specific on DELETE)
-        if (_limit.HasValue)
-            sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
-
-        // OFFSET (MySQL-specific on DELETE)
-        if (_offset.HasValue)
-            sqlBuilder.Append(" OFFSET ").Append(sqlBuilder.AddParameter(_offset.Value));
     }
 }

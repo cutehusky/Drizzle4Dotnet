@@ -5,6 +5,7 @@ using Drizzle4Dotnet.Core.Shared;
 namespace Drizzle4Dotnet.Core.Query.Insert;
 
 public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
+    ISupportInsertValue<TSelf, TTable, TDialect>,
     ISupportCte<TSelf, TDialect>
     where TSelf : InsertQuery<TTable, TDialect, TSelf>
     where TTable : ITable<TDialect>
@@ -12,8 +13,8 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
 {
     protected readonly TTable Table;
     protected readonly List<Dictionary<string, object?>> NewValues = new();
-    private bool _useDefaultValues;
-    private IGenericSql? _fromQuery;
+    protected bool UseDefaultValues;
+    protected IGenericSql? FromQuery; // must be IReturning<TReturn, TDialect, TVirtualTable> but C# doesn't allow generic constraints on method parameters
 
     public InsertQuery(TTable table, IQueryExecutor<TDialect> executor) : base(executor)
     {
@@ -78,9 +79,9 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
     /// INSERT ... SELECT — inserts rows from a subquery.
     /// Usage: _db.Insert(table).From(_db.Select(...).From(otherTable).Where(...))
     /// </summary>
-    public TSelf From(IGenericSql selectQuery)
+    public TSelf From<TReturn, TVirtualTable>(IReturning<TReturn, TDialect, TVirtualTable> selectQuery) where TVirtualTable : IVirtualTable<TDialect>
     {
-        _fromQuery = selectQuery;
+        FromQuery = selectQuery;
         return (TSelf)this;
     }
 
@@ -89,68 +90,37 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
     /// </summary>
     public TSelf DefaultValues()
     {
-        _useDefaultValues = true;
+        UseDefaultValues = true;
         return (TSelf)this;
     }
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (NewValues.Count == 0 && !_useDefaultValues && _fromQuery == null)
+        if (NewValues.Count == 0 && !UseDefaultValues && FromQuery == null)
             throw new InvalidOperationException("No values provided for insert. Use Value(s), DefaultValues(), or From().");
 
         var allColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
         
-        BuildSqlCte(sqlBuilder);
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         sqlBuilder.Append("INSERT INTO ");
         Table.BuildRefSql(sqlBuilder);
 
         // Column list
-        if (allColumns.Count > 0)
-        {
-            sqlBuilder.Append(" (");
-            for (int i = 0; i < allColumns.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                sqlBuilder.Append(TDialect.BuildIdentifier(allColumns[i]));
-            }
-            sqlBuilder.Append(')');
-        }
+        SqlStatics.BuildInsertColumnList<TDialect>(sqlBuilder, allColumns);
 
-        if (_useDefaultValues)
+        if (UseDefaultValues)
         {
             sqlBuilder.Append(" DEFAULT VALUES");
         }
-        else if (_fromQuery != null)
+        else if (FromQuery != null)
         {
             sqlBuilder.Append(' ');
-            _fromQuery.BuildSql(sqlBuilder);
+            FromQuery.BuildSql(sqlBuilder);
         }
         else
         {
-            sqlBuilder.Append(" VALUES ");
-            for (int rowIndex = 0; rowIndex < NewValues.Count; rowIndex++)
-            {
-                if (rowIndex > 0) sqlBuilder.Append(", ");
-            
-                sqlBuilder.Append('(');
-                var row = NewValues[rowIndex];
-            
-                for (int colIndex = 0; colIndex < allColumns.Count; colIndex++)
-                {
-                    if (colIndex > 0) sqlBuilder.Append(", ");
-                
-                    if (row.TryGetValue(allColumns[colIndex], out var val))
-                    {
-                        sqlBuilder.Append(sqlBuilder.AddParameter(val));
-                    }
-                    else
-                    {
-                        sqlBuilder.Append("NULL");
-                    }
-                }
-                sqlBuilder.Append(')');
-            }
+            SqlStatics.BuildInsertRowValues(sqlBuilder, NewValues, allColumns);
         }
     }
 }

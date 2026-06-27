@@ -1,4 +1,7 @@
+using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
+using Drizzle4Dotnet.Core.Query.Insert;
+using Drizzle4Dotnet.Core.Query.Update;
 
 namespace Drizzle4Dotnet.Core.Shared;
 
@@ -33,7 +36,7 @@ public interface ISupportOrderBy<TQuery>
 /// <summary>
 /// Marks a query as supporting LIMIT clause.
 /// </summary>
-public interface ISupportLimit<TQuery>
+public interface ISupportOffsetLimit<TQuery>
 {
     /// <summary>
     /// Limits the number of rows returned.
@@ -115,4 +118,62 @@ public interface ILateralJoin<TQuery, TDialect> where TDialect : ISqlDialect
 
     /// <summary>CROSS LATERAL JOIN (no ON condition).</summary>
     TQuery CrossLateralJoin(IGenericTable<TDialect> table);
+}
+
+/// <summary>
+/// Marks a query as supporting setting values for INSERT operations.
+/// Provides methods for specifying rows/values to insert.
+/// </summary>
+public interface ISupportInsertValue<TQuery, TTable, TDialect>
+    where TTable : ITable<TDialect>
+    where TDialect : ISqlDialect
+{
+    /// <summary>
+    /// Adds a single insert row from a typed record.
+    /// </summary>
+    TQuery Value(IInsertRecord<TTable, TDialect> record);
+
+    /// <summary>
+    /// Adds multiple insert rows from typed records.
+    /// </summary>
+    TQuery Values(params IInsertRecord<TTable, TDialect>[] records);
+
+    /// <summary>
+    /// Adds a single insert row from a column-value dictionary.
+    /// </summary>
+    TQuery Value(Dictionary<IColumnOfTable<TTable>, object?> columnValuePairs);
+
+    /// <summary>
+    /// Adds multiple insert rows from column-value dictionaries.
+    /// </summary>
+    TQuery Values(params Dictionary<IColumnOfTable<TTable>, object?>[] columnValuePairsArray);
+}
+
+/// <summary>
+/// Marks a query as supporting SET clauses for UPDATE operations.
+/// Provides methods for specifying column-value pairs to update.
+/// </summary>
+public interface ISupportUpdateSet<TQuery, TTable, TDialect>
+    where TTable : ITable<TDialect>
+    where TDialect : ISqlDialect
+{
+    /// <summary>
+    /// Sets a column to a scalar value.
+    /// </summary>
+    TQuery Set<T>(DbColumn<T, TTable, TDialect> column, T value);
+
+    /// <summary>
+    /// Sets multiple columns from a typed record.
+    /// </summary>
+    TQuery Set(IUpdateRecord<TTable, TDialect> record);
+
+    /// <summary>
+    /// Sets a column to a dynamic SQL expression value.
+    /// </summary>
+    TQuery Set<T>(DbColumn<T, TTable, TDialect> column, ISql<T> value);
+
+    /// <summary>
+    /// Sets multiple columns from a column-value dictionary.
+    /// </summary>
+    TQuery Set(Dictionary<IColumnOfTable<TTable>, object> columnValuePairs);
 }

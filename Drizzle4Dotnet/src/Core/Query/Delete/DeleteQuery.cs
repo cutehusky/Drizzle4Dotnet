@@ -39,10 +39,10 @@ public class DeleteQuery<TTable, TDialect, TSelf> : Query<TDialect>,
     
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        BuildSqlCte(sqlBuilder);
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         sqlBuilder.Append("DELETE FROM ");
         Table.BuildRefSql(sqlBuilder);
-        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
     }
 }

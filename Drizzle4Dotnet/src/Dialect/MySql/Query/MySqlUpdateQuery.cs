@@ -15,7 +15,7 @@ namespace Drizzle4Dotnet.MySql;
 /// MySQL does not support RETURNING — use MySqlFunctions.RowCount() instead.
 /// </summary>
 public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl, MySqlUpdateQuery<TTable>>,
-    ISupportLimit<MySqlUpdateQuery<TTable>>,
+    ISupportOffsetLimit<MySqlUpdateQuery<TTable>>,
     ISupportOrderBy<MySqlUpdateQuery<TTable>>
     where TTable : ITable<MySqlSqlDialectImpl>
 {
@@ -82,50 +82,41 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
             throw new InvalidOperationException("No columns set for update.");
         }
 
-        BuildSqlCte(sqlBuilder);
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         sqlBuilder.Append("UPDATE ");
         Table.BuildRefSql(sqlBuilder);
 
         // MySQL UPDATE JOIN syntax
-        if (_joins.Count > 0)
-        {
-            foreach (var (table, type, on) in _joins)
-            {
-                sqlBuilder.Append(' ').Append(type).Append(" JOIN ");
-                table.BuildRefSql(sqlBuilder);
-                if (on != null)
-                {
-                    sqlBuilder.Append(" ON (");
-                    on.BuildSql(sqlBuilder);
-                    sqlBuilder.Append(')');
-                }
-            }
-        }
+        SqlStatics.BuildSqlJoins<MySqlSqlDialectImpl>(sqlBuilder, _joins);
 
-        BuildSqlSet(sqlBuilder, SetValues);
+        SqlStatics.BuildSqlSet<MySqlSqlDialectImpl>(sqlBuilder, SetValues);
 
-        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
 
         // ORDER BY (MySQL-specific on UPDATE)
-        if (_orderBys.Count > 0)
+        SqlStatics.BuildSqlOrderBy(sqlBuilder, _orderBys);
+        
+        if (_offset.HasValue && !_limit.HasValue)
         {
-            sqlBuilder.Append(" ORDER BY ");
-            for (int i = 0; i < _orderBys.Count; i++)
+            throw new InvalidOperationException("OFFSET cannot be used without LIMIT in MySQL DELETE.");
+        }
+        
+        // LIMIT limit or LIMIT offset, limit (MySQL-specific on DELETE)
+        if (_limit.HasValue)
+        {
+            if (_offset.HasValue)
             {
-                if (i > 0) sqlBuilder.Append(", ");
-                var (expr, isAsc) = _orderBys[i];
-                expr.BuildSql(sqlBuilder);
-                sqlBuilder.Append(isAsc ? " ASC" : " DESC");
+                sqlBuilder.Append(" LIMIT ");
+                sqlBuilder.Append(sqlBuilder.AddParameter(_offset.Value));
+                sqlBuilder.Append(", ");
+                sqlBuilder.Append(sqlBuilder.AddParameter(_limit.Value));
+            }
+            else
+            {
+                sqlBuilder.Append(" LIMIT ");
+                sqlBuilder.Append(sqlBuilder.AddParameter(_limit.Value));
             }
         }
-
-        // LIMIT (MySQL-specific on UPDATE)
-        if (_limit.HasValue)
-            sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
-
-        // OFFSET (MySQL-specific on UPDATE)
-        if (_offset.HasValue)
-            sqlBuilder.Append(" OFFSET ").Append(sqlBuilder.AddParameter(_offset.Value));
     }
 }

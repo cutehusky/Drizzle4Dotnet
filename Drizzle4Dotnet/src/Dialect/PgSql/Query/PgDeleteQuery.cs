@@ -1,4 +1,3 @@
-using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
@@ -15,7 +14,7 @@ namespace Drizzle4Dotnet.PgSql;
 public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl, PgDeleteQuery<TTable>>
     where TTable : ITable<PgSqlSqlDialectImpl>
 {
-    private readonly List<(IGenericTable<PgSqlSqlDialectImpl>, IGenericSql?)> _usingTables = new();
+    private readonly List<IGenericTable<PgSqlSqlDialectImpl>> _usingTables = new();
 
     public PgDeleteQuery(TTable table, IQueryExecutor<PgSqlSqlDialectImpl> executor) 
         : base(table, executor)
@@ -26,15 +25,18 @@ public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl, Pg
     /// Adds a USING clause for DELETE ... USING joins.
     /// PostgreSQL syntax: DELETE FROM t USING other_t WHERE condition
     /// </summary>
-    public PgDeleteQuery<TTable> Using(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql? joinCondition = null)
+    public PgDeleteQuery<TTable> Using(params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        _usingTables.Add((table, joinCondition));
+        foreach (var table in tables)
+        {
+            _usingTables.Add(table);
+        }
         return this;
     }
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        BuildSqlCte(sqlBuilder);
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         sqlBuilder.Append("DELETE FROM ");
         Table.BuildRefSql(sqlBuilder);
@@ -46,10 +48,10 @@ public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl, Pg
             for (int i = 0; i < _usingTables.Count; i++)
             {
                 if (i > 0) sqlBuilder.Append(", ");
-                _usingTables[i].Item1.BuildRefSql(sqlBuilder);
+                _usingTables[i].BuildRefSql(sqlBuilder);
             }
         }
 
-        AppendClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
     }
 }
