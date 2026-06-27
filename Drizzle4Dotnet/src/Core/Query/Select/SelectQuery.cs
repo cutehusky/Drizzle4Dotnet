@@ -7,6 +7,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     ISupportWhere<TSelf>,
     ISupportOrderBy<TSelf>,
     ISupportLimit<TSelf>,
+    ISupportDistinct<TSelf>,
     ISupportCte<TSelf, TDialect>,
     IJoin<TSelf, TDialect>
     where TSelf : SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>
@@ -49,7 +50,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
         BuildSqlCte(sqlBuilder);
         
         sqlBuilder.Append("SELECT ");
-        if (_distinct) sqlBuilder.Append("DISTINCT ");
+        BuildSqlDistinct(sqlBuilder);
         SelectedColumns.BuildSql(sqlBuilder);
 
         // INTO (SELECT ... INTO table_name)
@@ -232,5 +233,14 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     {
         _distinct = true;
         return (TSelf)this;
+    }
+
+    /// <summary>
+    /// Hook for dialect-specific DISTINCT rendering (e.g., DISTINCT ON for PostgreSQL).
+    /// Default implementation appends "DISTINCT " if _distinct is true.
+    /// </summary>
+    protected virtual void BuildSqlDistinct(ISqlBuilder sqlBuilder)
+    {
+        if (_distinct) sqlBuilder.Append("DISTINCT ");
     }
 }

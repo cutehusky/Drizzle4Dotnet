@@ -34,10 +34,12 @@ public readonly struct PgLockSpec
 /// PostgreSQL-specific SELECT query builder with virtual table support.
 /// </summary>
 public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlSqlDialectImpl, TVirtualTable, PgSelectQuery<TReturn, TVirtualTable>>,
-    ILateralJoin<PgSelectQuery<TReturn, TVirtualTable>, PgSqlSqlDialectImpl>
+    ILateralJoin<PgSelectQuery<TReturn, TVirtualTable>, PgSqlSqlDialectImpl>,
+    ISupportDistinctOn<PgSelectQuery<TReturn, TVirtualTable>>
     where TVirtualTable : IVirtualTable<PgSqlSqlDialectImpl>
 {
     protected readonly List<PgLockSpec> LockClauses = new();
+    protected readonly List<IGenericSql> _distinctOnColumns = new();
 
     public PgSelectQuery(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl, TVirtualTable> selectedColumns,
@@ -112,6 +114,37 @@ public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlS
     {
         LockClauses.Add(new PgLockSpec("FOR KEY SHARE", tables, nowait, skipLocked));
         return this;
+    }
+
+    // ====== PostgreSQL DISTINCT ON (column-level distinct) ======
+
+    /// <summary>
+    /// Adds DISTINCT ON (columns) to the SELECT clause.
+    /// PostgreSQL-specific: only the columns specified determine uniqueness for deduplication.
+    /// Typically used with ORDER BY to control which row is returned per group.
+    /// </summary>
+    public PgSelectQuery<TReturn, TVirtualTable> DistinctOn(params IGenericSql[] columns)
+    {
+        _distinctOnColumns.AddRange(columns);
+        return this;
+    }
+
+    protected override void BuildSqlDistinct(ISqlBuilder sqlBuilder)
+    {
+        if (_distinctOnColumns.Count > 0)
+        {
+            sqlBuilder.Append("DISTINCT ON (");
+            for (int i = 0; i < _distinctOnColumns.Count; i++)
+            {
+                if (i > 0) sqlBuilder.Append(", ");
+                _distinctOnColumns[i].BuildSql(sqlBuilder);
+            }
+            sqlBuilder.Append(") ");
+        }
+        else if (_distinct)
+        {
+            sqlBuilder.Append("DISTINCT ");
+        }
     }
 
     protected override void BuildSqlLock(ISqlBuilder sqlBuilder)

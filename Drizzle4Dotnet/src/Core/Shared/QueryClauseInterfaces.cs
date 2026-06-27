@@ -79,6 +79,30 @@ public interface IJoin<TQuery, TDialect> where TDialect : ISqlDialect
 }
 
 /// <summary>
+/// Marks a query as supporting PostgreSQL-style DISTINCT ON (column-level distinct).
+/// Only applicable to PostgreSQL; renders as DISTINCT ON (col1, col2, ...).
+/// </summary>
+public interface ISupportDistinctOn<TQuery>
+{
+    /// <summary>
+    /// Adds DISTINCT ON (columns) to the SELECT clause.
+    /// Only the first column(s) specified determine uniqueness; ORDER BY is typically needed.
+    /// </summary>
+    TQuery DistinctOn(params IGenericSql[] columns);
+}
+
+/// <summary>
+/// Marks a query as supporting DISTINCT (deduplication of result rows).
+/// </summary>
+public interface ISupportDistinct<TQuery>
+{
+    /// <summary>
+    /// Adds DISTINCT to the SELECT clause to eliminate duplicate rows.
+    /// </summary>
+    TQuery Distinct();
+}
+
+/// <summary>
 /// Marks a query as supporting PostgreSQL-style LATERAL joins.
 /// </summary>
 public interface ILateralJoin<TQuery, TDialect> where TDialect : ISqlDialect
