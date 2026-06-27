@@ -2,8 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
-using Drizzle4Dotnet.Core.Schema.Columns;
-using System.Data.Common;
 using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Query.Select;

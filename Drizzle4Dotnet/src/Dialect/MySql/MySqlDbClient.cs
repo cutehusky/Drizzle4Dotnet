@@ -1,3 +1,5 @@
+using System.Data.Common;
+using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
@@ -5,56 +7,68 @@ using Drizzle4Dotnet.Dialect;
 namespace Drizzle4Dotnet.MySql;
 
 /// <summary>
-/// MySQL-specific query builder for building SQL without a database connection.
-/// Returns MySQL-specific query types for testing and query composition.
+/// MySQL-specific database client.
+/// Returns MySQL-specific query types (MySqlSelectQuery, MySqlInsertQuery, etc.)
+/// that support MySQL-specific features like ON DUPLICATE KEY UPDATE, INSERT IGNORE,
+/// DELETE/UPDATE with JOIN, LIMIT/ORDER BY on DELETE/UPDATE.
 /// </summary>
-public class MySqlQueryBuilder
+public class MySqlDbClient : DbClientWithTransaction<MySqlDbClient, MySqlSqlDialectImpl>
 {
+    public MySqlDbClient(DbConnection conn, DbTransaction? transaction = null)
+        : base(conn, transaction)
+    {
+    }
+
     public MySqlSelectQuery<TReturn> Select<TReturn>(
         ISelectedColumns<TReturn, MySqlSqlDialectImpl> selectedColumns)
     {
-        return new MySqlSelectQuery<TReturn>(selectedColumns, null);
+        return new MySqlSelectQuery<TReturn>(selectedColumns, this);
     }
 
     public MySqlSelectQuery<TReturn> SelectDistinct<TReturn>(
         ISelectedColumns<TReturn, MySqlSqlDialectImpl> selectedColumns)
     {
-        return new MySqlSelectQuery<TReturn>(selectedColumns, null).Distinct() as MySqlSelectQuery<TReturn>;
+        return new MySqlSelectQuery<TReturn>(selectedColumns, this).Distinct();
     }
 
     public MySqlSelectQuery<TReturn, TVirtualTable> Select<TReturn, TVirtualTable>(
         ISelectedColumns<TReturn, MySqlSqlDialectImpl, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<MySqlSqlDialectImpl>
     {
-        return new MySqlSelectQuery<TReturn, TVirtualTable>(selectedColumns, null);
+        return new MySqlSelectQuery<TReturn, TVirtualTable>(selectedColumns, this);
     }
 
     public MySqlSelectQuery<TReturn, TVirtualTable> SelectDistinct<TReturn, TVirtualTable>(
         ISelectedColumns<TReturn, MySqlSqlDialectImpl, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<MySqlSqlDialectImpl>
     {
-        return new MySqlSelectQuery<TReturn, TVirtualTable>(selectedColumns, null).Distinct() as MySqlSelectQuery<TReturn, TVirtualTable>;
+        return new MySqlSelectQuery<TReturn, TVirtualTable>(selectedColumns, this).Distinct();
     }
 
     public MySqlInsertQuery<TTable> Insert<TTable>(TTable table)
         where TTable : ITable<MySqlSqlDialectImpl>
     {
-        return new MySqlInsertQuery<TTable>(table, null);
+        return new MySqlInsertQuery<TTable>(table, this);
     }
 
     public MySqlUpdateQuery<TTable> Update<TTable>(TTable table)
         where TTable : ITable<MySqlSqlDialectImpl>
     {
-        return new MySqlUpdateQuery<TTable>(table, null);
+        return new MySqlUpdateQuery<TTable>(table, this);
     }
 
     public MySqlDeleteQuery<TTable> Delete<TTable>(TTable table)
         where TTable : ITable<MySqlSqlDialectImpl>
     {
-        return new MySqlDeleteQuery<TTable>(table, null);
+        return new MySqlDeleteQuery<TTable>(table, this);
     }
 
     public MySqlReplaceQuery<TTable> Replace<TTable>(TTable table)
         where TTable : ITable<MySqlSqlDialectImpl>
     {
-        return new MySqlReplaceQuery<TTable>(table, null);
+        return new MySqlReplaceQuery<TTable>(table, this);
+    }
+
+    protected override MySqlDbClient CreateInstance(DbConnection conn, DbTransaction? transaction)
+    {
+        return new MySqlDbClient(conn, transaction);
     }
 }

@@ -1,5 +1,4 @@
 using System.Data.Common;
-using Drizzle4Dotnet.Core.Schema.Migration;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 

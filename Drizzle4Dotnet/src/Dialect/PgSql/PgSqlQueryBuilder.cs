@@ -1,5 +1,4 @@
-using System.Data.Common;
-using Drizzle4Dotnet.Core;
+
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
@@ -7,64 +6,53 @@ using Drizzle4Dotnet.Dialect;
 namespace Drizzle4Dotnet.PgSql;
 
 /// <summary>
-/// PostgreSQL-specific database client.
-/// Returns PostgreSQL-specific query types (PgSelectQuery, PgInsertQuery, etc.)
-/// that support PostgreSQL-specific features like LATERAL joins, RETURNING,
-/// ON CONFLICT (upsert), and advanced lock types.
+/// PostgreSQL-specific query builder for building SQL without a database connection.
+/// Returns PostgreSQL-specific query types for testing and query composition.
 /// </summary>
-public class PgSqlDbClient : DbClientWithTransaction<PgSqlDbClient, PgSqlSqlDialectImpl>
+public class PgSqlQueryBuilder
 {
-    public PgSqlDbClient(DbConnection conn, DbTransaction? transaction = null)
-        : base(conn, transaction)
-    {
-    }
+    // SQL-only builder — no executor needed (queries support Build() without execution)
+    private static readonly IQueryExecutor<PgSqlSqlDialectImpl>? _nullExecutor = null;
 
     public PgSelectQuery<TReturn> Select<TReturn>(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl> selectedColumns)
     {
-        return new PgSelectQuery<TReturn>(selectedColumns, this);
+        return new PgSelectQuery<TReturn>(selectedColumns, _nullExecutor!);
     }
 
     public PgSelectQuery<TReturn> SelectDistinct<TReturn>(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl> selectedColumns)
     {
-        return (new PgSelectQuery<TReturn>(selectedColumns, this).Distinct() as PgSelectQuery<TReturn>)!;
+        return new PgSelectQuery<TReturn>(selectedColumns, _nullExecutor!).Distinct();
     }
 
     public PgSelectQuery<TReturn, TVirtualTable> Select<TReturn, TVirtualTable>(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<PgSqlSqlDialectImpl>
     {
-        return new PgSelectQuery<TReturn, TVirtualTable>(selectedColumns, this);
+        return new PgSelectQuery<TReturn, TVirtualTable>(selectedColumns, _nullExecutor!);
     }
 
     public PgSelectQuery<TReturn, TVirtualTable> SelectDistinct<TReturn, TVirtualTable>(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<PgSqlSqlDialectImpl>
     {
-        return (new PgSelectQuery<TReturn, TVirtualTable>(selectedColumns, this).Distinct() as
-            PgSelectQuery<TReturn, TVirtualTable>)!;
+        return new PgSelectQuery<TReturn, TVirtualTable>(selectedColumns, _nullExecutor!).Distinct();
     }
 
     public PgInsertQuery<TTable> Insert<TTable>(TTable table)
         where TTable : ITable<PgSqlSqlDialectImpl>
     {
-        return new PgInsertQuery<TTable>(table, this);
+        return new PgInsertQuery<TTable>(table, _nullExecutor!);
     }
 
     public PgUpdateQuery<TTable> Update<TTable>(TTable table)
         where TTable : ITable<PgSqlSqlDialectImpl>
     {
-        return new PgUpdateQuery<TTable>(table, this);
+        return new PgUpdateQuery<TTable>(table, _nullExecutor!);
     }
 
     public PgDeleteQuery<TTable> Delete<TTable>(TTable table)
         where TTable : ITable<PgSqlSqlDialectImpl>
     {
-        return new PgDeleteQuery<TTable>(table, this);
-    }
-
-
-    protected override PgSqlDbClient CreateInstance(DbConnection conn, DbTransaction? transaction)
-    {
-        return new PgSqlDbClient(conn, transaction);
+        return new PgDeleteQuery<TTable>(table, _nullExecutor!);
     }
 }

@@ -1,279 +1,39 @@
-using Drizzle4Dotnet.Core.Schema.Columns;
-using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
 namespace Drizzle4Dotnet.Core.Shared.Operators;
-public static class Operators
+
+/// <summary>
+/// Standard SQL operators organized into partial class files by category.
+/// Extension methods on IColumnOfDialect provide `column.Eq(value)` syntax.
+/// Static methods on ISql provide `Operators.Eq(column, value)` syntax.
+/// For PostgreSQL-specific operators, see <see cref="PgSql.PgOperators"/>.
+/// </summary>
+public static partial class Operators
 {
-    const string _operatorEq = "=";
-    const string _operatorLt = "<";
-    const string _operatorGt = ">";
-    const string _operatorLtEq = "<=";
-    const string _operatorGtEq = ">=";
-    const string _operatorNe = "<>";
-    const string _operatorAnd = " AND ";
-    const string _operatorOr = " OR ";
-    const string _operatorXor = " XOR ";
-    const string _operatorLike = " LIKE ";
-    const string _operatorNotLike = " NOT LIKE ";
-    
-    const string _operatorIn = " IN ";
-    const string _operatorNotIn = " NOT IN ";
-    const string _operatorIsNull = " IS NULL ";
-    const string _operatorIsNotNull = " IS NOT NULL ";
-    const string _operatorBetween = " BETWEEN ";
-    const string _operatorNotBetween = " NOT BETWEEN ";
-    const string _operatorNot = " NOT ";
-    const string _operatorConcat = " || ";
-    const  string _operatorAdd = " + ";
-    const string _operatorSub = " - ";
-    const string _operatorMul = " * ";
-    const string _operatorDiv = " / ";
-    const string  _operatorMod = " % ";
-    const string _operatorExists = " EXISTS ";
-    
-    public static BinaryNode<T, T, bool> Eq<T>(ISql<T> c1, T value) => new(c1, new SqlValueNode<T>(value), _operatorEq);
-    public static BinaryNode<T, T, bool> Lt<T>(ISql<T> c1, T value) => new(c1, new SqlValueNode<T>(value), _operatorLt);
-    public static BinaryNode<T, T, bool> Gt<T>(ISql<T> c1, T value) => new(c1, new SqlValueNode<T>(value), _operatorGt);
-    public static BinaryNode<T, T, bool> Ltq<T>(ISql<T> c1, T value) => new(c1, new SqlValueNode<T>(value), _operatorLtEq);
-    public static BinaryNode<T, T, bool> Gtq<T>(ISql<T> c1, T value) => new(c1, new SqlValueNode<T>(value), _operatorGtEq);
-    public static BinaryNode<T, T, bool> Ne<T>(ISql<T> c1, T value) => new(c1, new SqlValueNode<T>(value), _operatorNe);
-    
-    
-    
-    public static BinaryNode<T, T, bool> Eq<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, T value)  where TDialect : ISqlDialect => new(c1, new SqlValueNode<T>(value), _operatorEq);
-    public static BinaryNode<T, T, bool> Lt<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, T value) where TDialect : ISqlDialect  => new(c1, new SqlValueNode<T>(value), _operatorLt);
-    public static BinaryNode<T, T, bool> Gt<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, T value) where TDialect : ISqlDialect  => new(c1, new SqlValueNode<T>(value), _operatorGt);
-    public static BinaryNode<T, T, bool> Ltq<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, T value)  where TDialect : ISqlDialect => new(c1, new SqlValueNode<T>(value), _operatorLtEq);
-    public static BinaryNode<T, T, bool> Gtq<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, T value) where TDialect : ISqlDialect  => new(c1, new SqlValueNode<T>(value), _operatorGtEq);
-    public static BinaryNode<T, T, bool> Ne<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, T value)  where TDialect : ISqlDialect => new(c1, new SqlValueNode<T>(value), _operatorNe);
-
-    
-    
-    public static BinaryNode<T1, T2, bool> Eq<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorEq);
-    public static BinaryNode<T1, T2, bool> Lt<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorLt);
-    public static BinaryNode<T1, T2, bool> Gt<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorGt);
-    public static BinaryNode<T1, T2, bool> Ltq<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorLtEq);
-    public static BinaryNode<T1, T2, bool> Gtq<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorGtEq);
-    public static BinaryNode<T1, T2, bool> Ne<T1, T2>(ISql<T1> c1, ISql<T2> c2) => new(c1, c2, _operatorNe);
-    
-    
-    
-    public static BinaryNode<T1, T2, bool> Eq<T1, T2, TDialect>(this IColumnOfDialect<T1, TDialect> c1, IColumnOfDialect<T2, TDialect> c2)  where TDialect : ISqlDialect  => new(c1, c2, _operatorEq);
-    public static BinaryNode<T1, T2, bool> Lt<T1, T2, TDialect>(this IColumnOfDialect<T1, TDialect> c1, IColumnOfDialect<T2, TDialect> c2)  where TDialect : ISqlDialect  => new(c1, c2, _operatorLt);
-    public static BinaryNode<T1, T2, bool> Gt<T1, T2, TDialect>(this IColumnOfDialect<T1, TDialect> c1, IColumnOfDialect<T2, TDialect> c2)  where TDialect : ISqlDialect  => new(c1, c2, _operatorGt);
-    public static BinaryNode<T1, T2, bool> Ltq<T1, T2, TDialect>(this IColumnOfDialect<T1, TDialect> c1, IColumnOfDialect<T2, TDialect> c2)  where TDialect : ISqlDialect  => new(c1, c2, _operatorLtEq);
-    public static BinaryNode<T1, T2, bool> Gtq<T1, T2, TDialect>(this IColumnOfDialect<T1, TDialect> c1, IColumnOfDialect<T2, TDialect> c2)  where TDialect : ISqlDialect  => new(c1, c2, _operatorGtEq);
-    public static BinaryNode<T1, T2, bool> Ne<T1, T2, TDialect>(this IColumnOfDialect<T1, TDialect> c1, IColumnOfDialect<T2, TDialect> c2)  where TDialect : ISqlDialect  => new(c1, c2, _operatorNe);
-
-    
-    
-    public static BinaryNode<bool> And(ISql<bool> c1, ISql<bool> c2) => new(c1, c2, _operatorAnd);
-    public static BinaryNode<bool> Or(ISql<bool> c1, ISql<bool> c2) => new(c1, c2, _operatorOr);
-    public static BinaryNode<bool> Xor(ISql<bool> c1, ISql<bool> c2) => new(c1, c2, _operatorXor);
-    public static NnaryNode<bool, bool> And(params ISql<bool>[] conditions) => new(conditions,  _operatorAnd);
-    public static NnaryNode<bool, bool> Or(params ISql<bool>[] conditions) => new(conditions, _operatorOr);
-    public static NnaryNode<bool, bool> Xor(params ISql<bool>[] conditions) => new(conditions, _operatorXor);
-    
-    
-    
-    public static BinaryNode<string, string, bool> Like(ISql<string> c1, string value) => new(c1, new SqlValueNode<string>(value), _operatorLike);
-    public static BinaryNode<string, string, bool> NotLike(ISql<string> c1, string value) => new(c1, new SqlValueNode<string>(value), _operatorNotLike);
-    public static BinaryNode<string, string, bool> Like(ISql<string> c1, ISql<string> value) => new(c1, value, _operatorLike);
-    public static BinaryNode<string, string, bool> NotLike(ISql<string> c1, ISql<string> value) => new(c1, value, _operatorNotLike);
-    public static BinaryNode<string, string, bool> Contains(ISql<string> c1, string value) 
-        => new(c1, new SqlValueNode<string>($"%{value}%"), _operatorLike);
-    public static BinaryNode<string, string, bool> StartsWith(ISql<string> c1, string value) 
-        => new(c1, new SqlValueNode<string>($"{value}%"), _operatorLike);
-    public static BinaryNode<string, string, bool> EndsWith(ISql<string> c1, string value) 
-        => new(c1, new SqlValueNode<string>($"%{value}"), _operatorLike);
-    
-    
-    
-    public static BinaryNode<string, string, bool> Like< TDialect>(this IColumnOfDialect<string,  TDialect> c1, string value)  where TDialect : ISqlDialect => new(c1, new SqlValueNode<string>(value), _operatorLike);
-    public static BinaryNode<string, string, bool> NotLike< TDialect>(this IColumnOfDialect<string,  TDialect> c1, string value)  where TDialect : ISqlDialect => new(c1, new SqlValueNode<string>(value), _operatorNotLike);
-    public static BinaryNode<string, string, bool> Like< TDialect>(this IColumnOfDialect<string,  TDialect> c1, ISql<string> value) where TDialect : ISqlDialect  => new(c1, value, _operatorLike);
-    public static BinaryNode<string, string, bool> NotLike< TDialect>(this IColumnOfDialect<string,  TDialect> c1, ISql<string> value)  where TDialect : ISqlDialect => new(c1, value, _operatorNotLike);
-    public static BinaryNode<string, string, string> Contains< TDialect>(this IColumnOfDialect<string,  TDialect> c1, string value)  where TDialect : ISqlDialect => new(c1, new SqlValueNode<string>($"%{value}%"), _operatorLike);
-    public static BinaryNode<string, string, bool> StartsWith< TDialect>(this IColumnOfDialect<string,  TDialect> c1, string value) where TDialect : ISqlDialect  => new(c1, new SqlValueNode<string>($"{value}%"), _operatorLike);
-    public static BinaryNode<string, string, bool> EndsWith< TDialect>(this IColumnOfDialect<string,  TDialect> c1, string value)  where TDialect : ISqlDialect => new(c1, new SqlValueNode<string>($"%{value}"), _operatorLike);
-
-    
-    
-    public static UnaryNode<T, bool> IsNull<T>(ISql<T> c1) => new(c1, _operatorIsNull);
-    public static UnaryNode<T, bool> IsNotNull<T>(ISql<T> c1) => new(c1, _operatorIsNotNull);
-    
-    
-    
-    public static UnaryNode<T, bool> IsNull<T, TDialect>(this IColumnOfDialect<T, TDialect> c1)  where TDialect : ISqlDialect => new(c1, _operatorIsNull);
-    public static UnaryNode<T, bool> IsNotNull<T, TDialect>(this IColumnOfDialect<T, TDialect> c1)  where TDialect : ISqlDialect => new(c1, _operatorIsNotNull);
-    
-    
-    
-    public static BinarySqlListValueNode<T, bool> In<T>(ISql<T> c1, IEnumerable<T> values) => new(c1, values, _operatorIn);
-    public static BinarySqlListValueNode<T, bool> NotIn<T>(ISql<T> c1, IEnumerable<T> values) => new(c1, values, _operatorNotIn);
-    public static BinaryNode<T, T, bool> In<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, _operatorIn, true);
-    public static BinaryNode<T, T, bool> NotIn<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, _operatorNotIn, true);
-    public static NnaryAnyNode<T, bool, TDialect> In<T, TDialect>(ISql<T> c1, params SqlValue<T, TDialect>[] node) where TDialect : ISqlDialect => new(c1, node, _operatorIn);
-    public static NnaryAnyNode<T, bool, TDialect> NotIn<T, TDialect>(ISql<T> c1, params SqlValue<T, TDialect>[] node) where TDialect : ISqlDialect => new(c1, node, _operatorNotIn);
-    
-    
-    
-    public static BinarySqlListValueNode<T, bool> In<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, IEnumerable<T> values)
-         where TDialect : ISqlDialect
-        => new(c1, values, _operatorIn);
-    public static BinarySqlListValueNode<T, bool> NotIn<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, IEnumerable<T> values)
-         where TDialect : ISqlDialect
-        => new(c1, values, _operatorNotIn);
-    public static BinaryNode<T, T, bool> In<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, ISql<T> c2)
-         where TDialect : ISqlDialect
-        => new(c1, c2, _operatorIn, true);
-    public static BinaryNode<T, T, bool> NotIn<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, ISql<T> c2)
-         where TDialect : ISqlDialect
-        => new(c1, c2, _operatorNotIn, true);
-    public static NnaryAnyNode<T, bool, TDialect> In<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, params SqlValue<T, TDialect>[] node)
-         where TDialect : ISqlDialect
-        => new(c1, node, _operatorIn);
-    public static NnaryAnyNode<T, bool, TDialect> NotIn<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, params SqlValue<T, TDialect>[] node)
-         where TDialect : ISqlDialect
-        => new(c1, node, _operatorNotIn);
-    
-    
-    
-    public static UnaryNode<bool> Not(ISql<bool> condition) => new(condition, _operatorNot, prefix: true);
-    
-    
-    
-    public static BinaryNode<T> Add<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, _operatorAdd);
-    public static BinaryNode<T> Sub<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, _operatorSub);
-    public static BinaryNode<T> Mul<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, _operatorMul);
-    public static BinaryNode<T> Div<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, _operatorDiv);
-    public static BinaryNode<T> Mod<T>(ISql<T> c1, ISql<T> c2) => new(c1, c2, _operatorMod);
-    
-    
-    
-    public static BinaryNode<T> Add<T>(ISql<T> c1, T c2) => new(c1, new SqlValueNode<T>(c2), _operatorAdd);
-    public static BinaryNode<T> Sub<T>(ISql<T> c1, T c2) => new(c1, new SqlValueNode<T>(c2), _operatorSub);
-    public static BinaryNode<T> Mul<T>(ISql<T> c1, T c2) => new(c1, new SqlValueNode<T>(c2), _operatorMul);
-    public static BinaryNode<T> Div<T>(ISql<T> c1, T c2) => new(c1, new SqlValueNode<T>(c2), _operatorDiv);
-    public static BinaryNode<T> Mod<T>(ISql<T> c1, T c2) => new(c1, new SqlValueNode<T>(c2), _operatorMod);
-    
-    
-    
-    public static BinaryNode<T> Add<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, ISql<T> c2)
-     where TDialect : ISqlDialect
-    => new(c1, c2, _operatorAdd);
-    public static BinaryNode<T> Sub<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, ISql<T> c2)
-         where TDialect : ISqlDialect
-        => new(c1, c2, _operatorSub);
-    public static BinaryNode<T> Mul<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, ISql<T> c2)
-         where TDialect : ISqlDialect
-        => new(c1, c2, _operatorMul);
-    public static BinaryNode<T> Div<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, ISql<T> c2)
-         where TDialect : ISqlDialect
-        => new(c1, c2, _operatorDiv);
-    public static BinaryNode<T> Mod<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, ISql<T> c2)
-         where TDialect : ISqlDialect
-        => new(c1, c2, _operatorMod);
-
-    
-    
-    
-    public static BinaryNode<T> Add<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, T c2)
-         where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<T>(c2), _operatorAdd);
-    public static BinaryNode<T> Sub<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, T c2)
-         where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<T>(c2), _operatorSub);
-    public static BinaryNode<T> Mul<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, T c2)
-         where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<T>(c2), _operatorMul);
-    public static BinaryNode<T> Div<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, T c2)
-         where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<T>(c2), _operatorDiv);
-    public static BinaryNode<T> Mod<T, TDialect>(this IColumnOfDialect<T, TDialect> c1, T c2)
-         where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<T>(c2), _operatorMod);
-    
-    
-    public static BinaryNode<string> Concat(ISql<string> c1, ISql<string> c2) => new(c1, c2, _operatorConcat);
-    public static BinaryNode<string, string, string> Concat(ISql<string> c1, string value) => new(c1, new SqlValueNode<string>(value), _operatorConcat);
-    
-    
-    public static BinaryNode<string> Concat< TDialect>(
-        this IColumnOfDialect<string,  TDialect> c1, 
-        ISql<string> c2)
-         
-        where TDialect : ISqlDialect
-        => new(c1, c2, _operatorConcat);
-    public static BinaryNode<string, string, string> Concat< TDialect>(
-        this IColumnOfDialect<string,  TDialect> c1, 
-        string value)
-         
-        where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<string>(value), _operatorConcat);
-    
-    public static UnaryNode<T, bool> Exists<T>(ISql<T> subquery)  => new(subquery, _operatorExists, prefix: true);
-    
-    
-    
-    public static TrinaryNode<T, bool> Between<T>(ISql<T> c1, ISql<T> lower, ISql<T> upper) => new(c1, lower, upper, _operatorBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> Between<T>(ISql<T> c1, T lower, ISql<T> upper) => new(c1, new SqlValueNode<T>(lower), upper, _operatorBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> Between<T>(ISql<T> c1, ISql<T> lower, T upper) => new(c1, lower, new SqlValueNode<T>(upper), _operatorBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> Between<T>(ISql<T> c1, T lower, T upper) => new(c1, new SqlValueNode<T>(lower), new SqlValueNode<T>(upper), _operatorBetween, _operatorAnd);
-     
-    
-    
-    public static TrinaryNode<T, bool> NotBetween<T>(ISql<T> c1, ISql<T> lower, ISql<T> upper) => new(c1, lower, upper, _operatorNotBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> NotBetween<T>(ISql<T> c1, T lower, ISql<T> upper) => new(c1, new SqlValueNode<T>(lower), upper, _operatorNotBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> NotBetween<T>(ISql<T> c1, ISql<T> lower, T upper) => new(c1, lower, new SqlValueNode<T>(upper), _operatorNotBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> NotBetween<T>(ISql<T> c1, T lower, T upper) => new(c1, new SqlValueNode<T>(lower), new SqlValueNode<T>(upper), _operatorNotBetween, _operatorAnd);
-    
-    
-    
-    public static TrinaryNode<T, bool> Between<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, ISql<T> lower, ISql<T> upper)
-         where TDialect : ISqlDialect
-        => new(c1, lower, upper, _operatorBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> Between<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, T lower, ISql<T> upper)
-         where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<T>(lower), upper, _operatorBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> Between<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, ISql<T> lower, T upper)
-         where TDialect : ISqlDialect
-        => new(c1, lower, new SqlValueNode<T>(upper), _operatorBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> Between<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, T lower, T upper)
-         where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<T>(lower), new SqlValueNode<T>(upper), _operatorBetween, _operatorAnd);
-    
-    
-    
-    public static TrinaryNode<T, bool> NotBetween<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, ISql<T> lower, ISql<T> upper)
-         where TDialect : ISqlDialect
-        => new(c1, lower, upper, _operatorNotBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> NotBetween<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, T lower, ISql<T> upper)
-         where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<T>(lower), upper, _operatorNotBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> NotBetween<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, ISql<T> lower, T upper)
-         where TDialect : ISqlDialect
-        => new(c1, lower, new SqlValueNode<T>(upper), _operatorNotBetween, _operatorAnd);
-    public static TrinaryNode<T, bool> NotBetween<T, TDialect>(
-        this IColumnOfDialect<T, TDialect> c1, T lower, T upper)
-         where TDialect : ISqlDialect
-        => new(c1, new SqlValueNode<T>(lower), new SqlValueNode<T>(upper), _operatorNotBetween, _operatorAnd);
-    
-    
-    // For PostgreSQL-specific operators (IS DISTINCT FROM, ALL/ANY/SOME),
-    // use PgOperators from Drizzle4Dotnet.PgSql namespace.
+    // Operator string constants — shared across all partial files
+    internal const string EqOp = "=";
+    internal const string LtOp = "<";
+    internal const string GtOp = ">";
+    internal const string LtEqOp = "<=";
+    internal const string GtEqOp = ">=";
+    internal const string NeOp = "<>";
+    internal const string AndOp = " AND ";
+    internal const string OrOp = " OR ";
+    internal const string XorOp = " XOR ";
+    internal const string LikeOp = " LIKE ";
+    internal const string NotLikeOp = " NOT LIKE ";
+    internal const string InOp = " IN ";
+    internal const string NotInOp = " NOT IN ";
+    internal const string IsNullOp = " IS NULL ";
+    internal const string IsNotNullOp = " IS NOT NULL ";
+    internal const string BetweenOp = " BETWEEN ";
+    internal const string NotBetweenOp = " NOT BETWEEN ";
+    internal const string NotOp = " NOT ";
+    internal const string ConcatOp = " || ";
+    internal const string AddOp = " + ";
+    internal const string SubOp = " - ";
+    internal const string MulOp = " * ";
+    internal const string DivOp = " / ";
+    internal const string ModOp = " % ";
+    internal const string ExistsOp = " EXISTS ";
 }
