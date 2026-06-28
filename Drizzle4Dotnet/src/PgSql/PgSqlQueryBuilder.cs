@@ -2,6 +2,7 @@
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
+using Drizzle4Dotnet.PgSql.Query;
 
 namespace Drizzle4Dotnet.PgSql;
 
@@ -42,5 +43,11 @@ public class PgSqlQueryBuilder
         where TTable : ITable<PgSqlSqlDialectImpl>
     {
         return new PgDeleteQuery<TTable>(table, _nullExecutor!);
+    }
+
+    public PgMergeQuery<TTable> Merge<TTable>(TTable table)
+        where TTable : ITable<PgSqlSqlDialectImpl>
+    {
+        return new PgMergeQuery<TTable>(table, _nullExecutor!);
     }
 }

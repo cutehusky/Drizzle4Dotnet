@@ -3,6 +3,7 @@ using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
+using Drizzle4Dotnet.PgSql.Query;
 
 namespace Drizzle4Dotnet.PgSql;
 
@@ -49,6 +50,11 @@ public class PgSqlDbClient : DbClientWithTransaction<PgSqlDbClient, PgSqlSqlDial
         return new PgDeleteQuery<TTable>(table, this);
     }
 
+    public PgMergeQuery<TTable> Merge<TTable>(TTable table)
+        where TTable : ITable<PgSqlSqlDialectImpl>
+    {
+        return new PgMergeQuery<TTable>(table, this);
+    }
 
     protected override PgSqlDbClient CreateInstance(DbConnection conn, DbTransaction? transaction)
     {
