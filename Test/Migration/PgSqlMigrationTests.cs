@@ -1,4 +1,5 @@
 using Drizzle4Dotnet.Core.Schema.Migration;
+using Drizzle4Dotnet.Core.Schema.Migration.Query;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.MySql;
 using Drizzle4Dotnet.PgSql;
@@ -766,7 +767,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_ColumnTypes_PgSql()
     {
-        var tableDef = OrmSchemaExporter.GetTableDefinition<PgSql.UsersTable, PgSqlSqlDialectImpl>(PgSqlSqlDialectImpl.ClrToSqlTypeMap);
+        var tableDef = OrmSchemaExporter.GetTableDefinition<PgSql.UsersTable, PgSqlSqlDialectImpl>();
 
         var idCol = tableDef.Columns.First(c => c.Name == "Id");
         Assert.That(idCol.DataType, Is.EqualTo("BIGINT"));
@@ -787,7 +788,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_ColumnTypes_MySql()
     {
-        var tableDef = OrmSchemaExporter.GetTableDefinition<MySql.UsersTable, MySqlSqlDialectImpl>(MySqlSqlDialectImpl.ClrToSqlTypeMap);
+        var tableDef = OrmSchemaExporter.GetTableDefinition<MySql.UsersTable, MySqlSqlDialectImpl>();
 
         var idCol = tableDef.Columns.First(c => c.Name == "Id");
         Assert.That(idCol.DataType, Is.EqualTo("BIGINT"));
@@ -833,7 +834,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_CreateTableFromOrm()
     {
-        var createTable = OrmSchemaExporter.CreateTable<PgSql.UsersTable, PgSqlSqlDialectImpl>(PgSqlSqlDialectImpl.ClrToSqlTypeMap);
+        var createTable = OrmSchemaExporter.CreateTable<PgSql.UsersTable, PgSqlSqlDialectImpl>();
         var (sql, _) = Build(createTable);
         Print("CREATE TABLE from ORM schema", sql);
 

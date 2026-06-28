@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Drizzle4Dotnet.Core.Schema.Migration.Query;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.PgSql;
 

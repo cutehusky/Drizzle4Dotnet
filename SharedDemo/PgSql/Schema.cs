@@ -5,7 +5,8 @@ using Drizzle4Dotnet.PgSql;
 namespace SharedDemo.PgSql
 {
     [Table("Users", "public", Dialect = typeof(PgSqlSqlDialectImpl),
-        Constraints = new[] {
+        Constraints = new[]
+        {
             "CONSTRAINT \"FK_Users_Departments\" FOREIGN KEY (\"DepartmentId\") REFERENCES \"Departments\"(\"Id\")",
             "CONSTRAINT \"FK_Users_Roles\" FOREIGN KEY (\"RoleId\") REFERENCES \"Roles\"(\"Id\")",
             "CONSTRAINT \"FK_Users_Manager\" FOREIGN KEY (\"ManagerId\") REFERENCES \"Users\"(\"Id\")"
@@ -54,7 +55,7 @@ namespace SharedDemo.PgSql
             public static DateTime? UpdatedAt { get; set; }
         }
     }
-    
+
     [Alias(typeof(UsersTable), "Manager", Dialect = typeof(PgSqlSqlDialectImpl))]
     public partial class ManagersTable
     {

@@ -253,6 +253,7 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
             }
 
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Migration;");
+            sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Migration.Query;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Shared;");
             sb.AppendLine($"using {dialect.DialectNamespace};");
             sb.AppendLine($"using {dialect.DialectNamespace}.Schema;");

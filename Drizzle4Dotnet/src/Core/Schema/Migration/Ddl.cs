@@ -1,3 +1,5 @@
+using Drizzle4Dotnet.Core.Schema.Migration.Query;
+
 namespace Drizzle4Dotnet.Core.Schema.Migration;
 
 /// <summary>
