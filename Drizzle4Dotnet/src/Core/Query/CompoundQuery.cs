@@ -1,6 +1,5 @@
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Core.Shared.Operators;
 
 namespace Drizzle4Dotnet.Core.Query;
 
@@ -9,14 +8,34 @@ namespace Drizzle4Dotnet.Core.Query;
 /// Represents a compound query combining two select queries with UNION, INTERSECT, or EXCEPT,
 /// with virtual table support.
 /// </summary>
-public class CompoundQuery<TReturn, TDialect, TVirtualTable> : QueryBase<TDialect>, IReturning<TReturn, TDialect, TVirtualTable>
-    where TDialect : ISqlDialect
+public class CompoundQuery<TReturn, TDialect, TVirtualTable> : 
+    QueryBase<TDialect>, IReturning<TReturn, TDialect, TVirtualTable>,
+    ISupportCte<CompoundQuery<TReturn, TDialect, TVirtualTable> , TDialect>,
+    ISupportOffsetLimit<CompoundQuery<TReturn, TDialect, TVirtualTable>>,
+    ISupportOrderBy<CompoundQuery<TReturn, TDialect, TVirtualTable>> where TDialect : ISqlDialect
     where TVirtualTable : IVirtualTable<TDialect>
 {
     private readonly IReturning<TReturn, TDialect, TVirtualTable> _left;
     private readonly IReturning<TReturn, TDialect, TVirtualTable> _right;
     private readonly string _operation;
+    private readonly List<(IGenericSql,bool)> _orderBy = new();
+    private int? _limit;
+    private int? _offset;
 
+    public CompoundQuery<TReturn, TDialect, TVirtualTable> With(params ICteTable<TDialect>[] cteTables)
+    {
+        Recursive = false;
+        CteTables.AddRange(cteTables);
+        return this;
+    }
+    
+    public CompoundQuery<TReturn, TDialect, TVirtualTable> WithRecursive(params ICteTable<TDialect>[] cteTables)
+    {
+        Recursive = true;
+        CteTables.AddRange(cteTables);
+        return this;
+    }
+    
     public ISelectedColumns<TReturn, TDialect, TVirtualTable> SelectedColumns { get; }
 
     public CompoundQuery(
@@ -34,6 +53,8 @@ public class CompoundQuery<TReturn, TDialect, TVirtualTable> : QueryBase<TDialec
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        ValidateQuery();
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
         sqlBuilder.Append('(');
         _left.BuildSql(sqlBuilder);
         sqlBuilder.Append(')');
@@ -41,11 +62,38 @@ public class CompoundQuery<TReturn, TDialect, TVirtualTable> : QueryBase<TDialec
         sqlBuilder.Append('(');
         _right.BuildSql(sqlBuilder);
         sqlBuilder.Append(')');
+        SqlStatics.BuildSqlOrderBy(sqlBuilder, _orderBy);
+        TDialect.BuildLimitOffset(sqlBuilder, _limit, _offset);
     }
 
     public TVirtualTable AsSubQuery(string alias)
     {
         return (TVirtualTable)TVirtualTable.Create(this, alias, SelectedColumns);
+    }
+
+    public CompoundQuery<TReturn, TDialect, TVirtualTable> Limit(int limit)
+    {
+        _limit = limit;
+        return this;
+    }
+
+    public CompoundQuery<TReturn, TDialect, TVirtualTable> Offset(int offset)
+    {
+        _offset = offset;
+        return this;
+    }
+
+    public CompoundQuery<TReturn, TDialect, TVirtualTable> OrderBy(IGenericSql col, bool asc = true)
+    {
+        _orderBy.Add((col, asc));
+        return this;
+    }
+    
+    public CompoundQuery<TReturn, TDialect, TVirtualTable> OrderBy(
+        params (IGenericSql col, bool asc)[] columns)
+    {
+        _orderBy.AddRange(columns);
+        return this;
     }
 }
 
@@ -82,6 +130,28 @@ public static class CompoundQueryExtensions
         where TVirtualTable : IVirtualTable<TDialect>
         => new(left, right, "EXCEPT", left.Executor);
 
+    /// <summary>
+    /// Combines two SELECT queries with INTERSECT ALL (supported by PostgreSQL).
+    /// Returns rows that appear in both result sets, including duplicates.
+    /// </summary>
+    public static CompoundQuery<TReturn, TDialect, TVirtualTable> IntersectAll<TReturn, TDialect, TVirtualTable>(
+        this ReturningQuery<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
+        where TDialect : ISqlDialect
+        where TVirtualTable : IVirtualTable<TDialect>
+        => new(left, right, "INTERSECT ALL", left.Executor);
+
+    /// <summary>
+    /// Combines two SELECT queries with EXCEPT ALL (supported by PostgreSQL).
+    /// Returns rows from the left query that are not in the right query, including duplicates.
+    /// </summary>
+    public static CompoundQuery<TReturn, TDialect, TVirtualTable> ExceptAll<TReturn, TDialect, TVirtualTable>(
+        this ReturningQuery<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
+        where TDialect : ISqlDialect
+        where TVirtualTable : IVirtualTable<TDialect>
+        => new(left, right, "EXCEPT ALL", left.Executor);
+
     public static CompoundQuery<TReturn, TDialect, TVirtualTable> Union<TReturn, TDialect, TVirtualTable>(
         this Query<TReturn, TDialect, TVirtualTable> left,
         IReturning<TReturn, TDialect, TVirtualTable> right)
@@ -109,6 +179,28 @@ public static class CompoundQueryExtensions
         where TDialect : ISqlDialect
         where TVirtualTable : IVirtualTable<TDialect>
         => new(left, right, "EXCEPT", left.Executor);
+
+    /// <summary>
+    /// Combines two SELECT queries with INTERSECT ALL (supported by PostgreSQL).
+    /// Returns rows that appear in both result sets, including duplicates.
+    /// </summary>
+    public static CompoundQuery<TReturn, TDialect, TVirtualTable> IntersectAll<TReturn, TDialect, TVirtualTable>(
+        this Query<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
+        where TDialect : ISqlDialect
+        where TVirtualTable : IVirtualTable<TDialect>
+        => new(left, right, "INTERSECT ALL", left.Executor);
+
+    /// <summary>
+    /// Combines two SELECT queries with EXCEPT ALL (supported by PostgreSQL).
+    /// Returns rows from the left query that are not in the right query, including duplicates.
+    /// </summary>
+    public static CompoundQuery<TReturn, TDialect, TVirtualTable> ExceptAll<TReturn, TDialect, TVirtualTable>(
+        this Query<TReturn, TDialect, TVirtualTable> left,
+        IReturning<TReturn, TDialect, TVirtualTable> right)
+        where TDialect : ISqlDialect
+        where TVirtualTable : IVirtualTable<TDialect>
+        => new(left, right, "EXCEPT ALL", left.Executor);
 
     // ====== AsRecursiveCte — wrap compound query as a recursive CTE table ======
 

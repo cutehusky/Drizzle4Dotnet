@@ -7,25 +7,29 @@ namespace Drizzle4Dotnet.Core.Shared;
 public static class SqlDialectDefaults
 {
     /// <summary>
-    /// Builds a standard LIMIT/OFFSET clause.
-    /// Produces: LIMIT {limit} OFFSET {offset}, LIMIT {limit}, or empty string.
+    /// Builds a standard LIMIT/OFFSET clause directly to the SQL builder.
+    /// Produces: LIMIT {limit} OFFSET {offset}, LIMIT {limit}, OFFSET {offset}, or nothing.
     /// </summary>
-    public static string BuildLimitOffset(int? limit, int? offset)
+    public static void BuildLimitOffset(ISqlBuilder sqlBuilder, int? limit, int? offset)
     {
         if (limit.HasValue && offset.HasValue)
-            return $" LIMIT {limit} OFFSET {offset}";
-        if (limit.HasValue)
-            return $" LIMIT {limit}";
-        if (offset.HasValue)
-            return $" OFFSET {offset}";
-        return "";
+        {
+            sqlBuilder.Append(" LIMIT ");
+            sqlBuilder.Append(sqlBuilder.AddParameter(limit.Value));
+            sqlBuilder.Append(" OFFSET ");
+            sqlBuilder.Append(sqlBuilder.AddParameter(offset.Value));
+        }
+        else if (limit.HasValue)
+        {
+            sqlBuilder.Append(" LIMIT ");
+            sqlBuilder.Append(sqlBuilder.AddParameter(limit.Value));
+        }
+        else if (offset.HasValue)
+        {
+            sqlBuilder.Append(" OFFSET ");
+            sqlBuilder.Append(sqlBuilder.AddParameter(offset.Value));
+        }
     }
-
-    /// <summary>
-    /// Default RETURNING clause — empty string (not supported).
-    /// Override in PostgreSQL dialect which supports RETURNING.
-    /// </summary>
-    public static string BuildReturning() => "";
 
     /// <summary>
     /// Default string escaping — replaces single quotes with two single quotes.
@@ -52,4 +56,5 @@ public static class SqlDialectDefaults
     public static bool SupportsNaturalJoin => false;
     public static bool SupportsLateralJoin => false;
     public static bool SupportsApplyJoin => false;
+    public static bool UseLimitPairMode => false;
 }

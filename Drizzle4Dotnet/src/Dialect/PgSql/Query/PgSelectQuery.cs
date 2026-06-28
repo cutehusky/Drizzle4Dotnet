@@ -1,4 +1,3 @@
-using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
@@ -149,7 +148,45 @@ public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlS
     public PgSelectQuery<TReturn, TVirtualTable> DistinctOn(params IGenericSql[] columns)
     {
         _distinctOnColumns.AddRange(columns);
+        IsDistinct = false; // DISTINCT ON overrides standard DISTINCT
         return this;
+    }
+
+    public override PgSelectQuery<TReturn, TVirtualTable> Distinct()
+    {
+        _distinctOnColumns.Clear(); // Clear DISTINCT ON if standard DISTINCT is used
+        return base.Distinct();
+    }
+
+    // ====== PostgreSQL-specific validation ======
+
+    protected override void ValidateQuery()
+    {
+        base.ValidateQuery();
+
+        // DISTINCT ON requires ORDER BY in PostgreSQL
+        if (_distinctOnColumns.Count > 0 && OrderBys.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "DISTINCT ON requires ORDER BY to determine which row is returned per group.");
+        }
+        
+        if (_lockClauses.Count > 0 && FromTable == null)
+        {
+            throw new InvalidOperationException(
+                "Cannot use LOCK clauses without a FROM table. Call From() first.");
+        }
+
+        // Validate lock clauses
+        foreach (var clause in _lockClauses)
+        {
+            if (clause.NoWait && clause.SkipLocked)
+            {
+                throw new InvalidOperationException(
+                    "NOWAIT and SKIP LOCKED cannot be combined in a single lock clause. " +
+                    $"Conflict in '{clause.LockType}' clause.");
+            }
+        }
     }
 
     protected override void BuildSqlDistinct(ISqlBuilder sqlBuilder)

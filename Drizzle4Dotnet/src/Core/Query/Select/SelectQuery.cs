@@ -3,6 +3,7 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query.Select;
 
+// TODO: handle offset limit of various dialects (e.g., SQL Server uses OFFSET ... FETCH NEXT)
 public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn, TDialect, TVirtualTable>,
     ISupportWhere<TSelf>,
     ISupportOrderBy<TSelf>,
@@ -31,16 +32,17 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     {
     }
     
-    public TSelf With(ICteTable<TDialect> cteTable)
+    public TSelf With(params ICteTable<TDialect>[] cteTables)
     {
-        CteTables.Add(cteTable);
+        Recursive = false;
+        CteTables.AddRange(cteTables);
         return (TSelf)this;
     }
     
     public TSelf WithRecursive(params ICteTable<TDialect>[] cteTables)
     {
         Recursive = true;
-        foreach (var t in cteTables) CteTables.Add(t);
+        CteTables.AddRange(cteTables);
         return (TSelf)this;
     }
     
@@ -48,8 +50,12 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     /// Validates the query state before building SQL.
     /// Override in dialect-specific subclasses to add custom validation.
     /// </summary>
-    protected virtual void ValidateQuery()
+    protected override void ValidateQuery()
     {
+        if (Joins.Count > 0 && FromTable == null)
+        {
+            throw new InvalidOperationException("Cannot use JOIN without a FROM table. Call From() first.");
+        }
     }
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
@@ -84,8 +90,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
         SqlStatics.BuildSqlOrderBy(sqlBuilder, OrderBys);
 
         // LIMIT & OFFSET
-        if (LimitValue.HasValue || OffsetValue.HasValue)
-            sqlBuilder.Append(TDialect.BuildLimitOffset(LimitValue, OffsetValue));
+        TDialect.BuildLimitOffset(sqlBuilder, LimitValue, OffsetValue);
         
         BuildSqlLock(sqlBuilder);
     }
@@ -190,7 +195,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     public TSelf CrossJoin(IGenericTable<TDialect> table)
         => JoinInternal(table, null, "CROSS");
 
-    public TSelf Distinct()
+    public virtual TSelf Distinct()
     {
         IsDistinct = true;
         return (TSelf)this;

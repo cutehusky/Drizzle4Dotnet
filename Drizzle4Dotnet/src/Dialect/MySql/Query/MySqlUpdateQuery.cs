@@ -16,7 +16,8 @@ namespace Drizzle4Dotnet.MySql;
 /// </summary>
 public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl, MySqlUpdateQuery<TTable>>,
     ISupportOffsetLimit<MySqlUpdateQuery<TTable>>,
-    ISupportOrderBy<MySqlUpdateQuery<TTable>>
+    ISupportOrderBy<MySqlUpdateQuery<TTable>>,
+    IJoin<MySqlUpdateQuery<TTable>, MySqlSqlDialectImpl> 
     where TTable : ITable<MySqlSqlDialectImpl>
 {
     private readonly List<(IGenericTable<MySqlSqlDialectImpl>, string, IGenericSql?)> _joins = new();
@@ -33,7 +34,7 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
     
     private MySqlUpdateQuery<TTable> JoinInternal(
         IGenericTable<MySqlSqlDialectImpl> table,
-        IGenericSql on,
+        IGenericSql? on,
         string type)
     {
         _joins.Add((table, type, on));
@@ -50,10 +51,7 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
         => JoinInternal(table, on, "RIGHT");
 
     public MySqlUpdateQuery<TTable> CrossJoin(IGenericTable<MySqlSqlDialectImpl> table)
-    {
-        _joins.Add((table, "CROSS", null));
-        return this;
-    }
+        => JoinInternal(table, null, "CROSS");
 
     // ====== MySQL LIMIT and ORDER BY on UPDATE ======
 
@@ -75,6 +73,12 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
         return this;
     }
 
+    public MySqlUpdateQuery<TTable> OrderBy(params (IGenericSql col, bool asc)[] columns)
+    {
+        _orderBys.AddRange(columns);
+        return this;
+    }
+
     // ====== MySQL-specific validation ======
 
     protected override void ValidateQuery()
@@ -83,6 +87,14 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
         if (_offset.HasValue && !_limit.HasValue)
         {
             throw new InvalidOperationException("OFFSET cannot be used without LIMIT in MySQL UPDATE.");
+        }
+        if (_offset is < 0)
+        {
+            throw new InvalidOperationException("OFFSET cannot be negative in MySQL UPDATE.");
+        }
+        if (_limit is <= 0)
+        {
+            throw new InvalidOperationException("LIMIT must be greater than zero in MySQL UPDATE.");
         }
     }
 
@@ -105,21 +117,7 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
         // ORDER BY (MySQL-specific on UPDATE)
         SqlStatics.BuildSqlOrderBy(sqlBuilder, _orderBys);
         
-        // LIMIT limit or LIMIT offset, limit (MySQL-specific on UPDATE)
-        if (_limit.HasValue)
-        {
-            if (_offset.HasValue)
-            {
-                sqlBuilder.Append(" LIMIT ");
-                sqlBuilder.Append(sqlBuilder.AddParameter(_offset.Value));
-                sqlBuilder.Append(", ");
-                sqlBuilder.Append(sqlBuilder.AddParameter(_limit.Value));
-            }
-            else
-            {
-                sqlBuilder.Append(" LIMIT ");
-                sqlBuilder.Append(sqlBuilder.AddParameter(_limit.Value));
-            }
-        }
+        // LIMIT & OFFSET (MySQL-specific syntax via dialect)
+        MySqlSqlDialectImpl.BuildLimitOffsetForUpdateDelete(sqlBuilder, _limit, _offset);
     }
 }

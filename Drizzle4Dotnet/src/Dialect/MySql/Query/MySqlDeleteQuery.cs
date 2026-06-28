@@ -60,6 +60,14 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
         {
             throw new InvalidOperationException("OFFSET cannot be used without LIMIT in MySQL DELETE.");
         }
+        if (_offset is < 0)
+        {
+            throw new InvalidOperationException("OFFSET cannot be negative in MySQL DELETE.");
+        }
+        if (_limit is <= 0)
+        {
+            throw new InvalidOperationException("LIMIT must be greater than zero in MySQL DELETE.");
+        }
     }
 
     // ====== MySQL LIMIT and ORDER BY on DELETE ======
@@ -82,8 +90,16 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
         return this;
     }
 
+    public MySqlDeleteQuery<TTable> OrderBy(params (IGenericSql col, bool asc)[] columns)
+    {
+        _orderBys.AddRange(columns);
+        return this;
+    }
+
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        ValidateQuery();
+
         SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         if (_joins.Count > 0)
@@ -114,21 +130,7 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
         // ORDER BY (MySQL-specific on DELETE)
         SqlStatics.BuildSqlOrderBy(sqlBuilder, _orderBys);
         
-        // LIMIT limit or LIMIT offset, limit (MySQL-specific on DELETE)
-        if (_limit.HasValue)
-        {
-            if (_offset.HasValue)
-            {
-                sqlBuilder.Append(" LIMIT ");
-                sqlBuilder.Append(sqlBuilder.AddParameter(_offset.Value));
-                sqlBuilder.Append(", ");
-                sqlBuilder.Append(sqlBuilder.AddParameter(_limit.Value));
-            }
-            else
-            {
-                sqlBuilder.Append(" LIMIT ");
-                sqlBuilder.Append(sqlBuilder.AddParameter(_limit.Value));
-            }
-        }
+        // LIMIT & OFFSET (MySQL-specific syntax via dialect)
+        MySqlSqlDialectImpl.BuildLimitOffsetForUpdateDelete(sqlBuilder, _limit, _offset);
     }
 }

@@ -57,10 +57,32 @@ public class MySqlSqlDialectImpl : ISqlDialect
     /// <summary>
     /// Builds LIMIT/OFFSET clause.
     /// MySQL supports both syntaxes: LIMIT {limit} OFFSET {offset} or LIMIT {offset}, {limit}
-    /// We use the standard LIMIT ... OFFSET ... form.
+    /// When both offset and limit are set, uses LIMIT {offset}, {limit} form.
     /// </summary>
-    public static string BuildLimitOffset(int? limit, int? offset)
-        => SqlDialectDefaults.BuildLimitOffset(limit, offset);
+    public static void BuildLimitOffset(ISqlBuilder sqlBuilder, int? limit, int? offset)
+        => SqlDialectDefaults.BuildLimitOffset(sqlBuilder, limit, offset);
+    
+    public static void BuildLimitOffsetForUpdateDelete(ISqlBuilder sqlBuilder, int? limit, int? offset)
+    {
+        if (limit.HasValue && offset.HasValue)
+        {
+            // Use pair mode: LIMIT {offset}, {limit}
+            sqlBuilder.Append(" LIMIT ");
+            sqlBuilder.Append(sqlBuilder.AddParameter(offset.Value));
+            sqlBuilder.Append(", ");
+            sqlBuilder.Append(sqlBuilder.AddParameter(limit.Value));
+        }
+        else if (limit.HasValue)
+        {
+            sqlBuilder.Append(" LIMIT ");
+            sqlBuilder.Append(sqlBuilder.AddParameter(limit.Value));
+        }
+        else if (offset.HasValue)
+        {
+            // MySQL does not support OFFSET without LIMIT, so we can throw an exception or ignore it.
+            throw new NotSupportedException("MySQL does not support OFFSET without LIMIT.");
+        }
+    }
     
     // ======================================================================
     // Feature Flags
@@ -130,6 +152,11 @@ public class MySqlSqlDialectImpl : ISqlDialect
     /// MySQL does not support CROSS/OUTER APPLY.
     /// </summary>
     public static bool SupportsApplyJoin => false;
+    
+    /// <summary>
+    /// MySQL uses LIMIT {offset}, {limit} syntax (pair mode) when both are specified.
+    /// </summary>
+    public static bool UseLimitPairMode => true;
     
     // ======================================================================
     // String Escaping

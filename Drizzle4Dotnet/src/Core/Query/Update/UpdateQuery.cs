@@ -30,9 +30,17 @@ public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>,
         return (TSelf)this;
     }
     
-    public TSelf With(ICteTable<TDialect> cteTable)
+    public TSelf With(params ICteTable<TDialect>[] cteTables)
     {
-        CteTables.Add(cteTable);
+        Recursive = false;
+        CteTables.AddRange(cteTables);
+        return (TSelf)this;
+    }
+    
+    public TSelf WithRecursive(params ICteTable<TDialect>[] cteTables)
+    {
+        Recursive = true;
+        CteTables.AddRange(cteTables);
         return (TSelf)this;
     }
     
@@ -73,7 +81,7 @@ public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>,
     /// Validates the query state before building SQL.
     /// Override in dialect-specific subclasses to add custom validation.
     /// </summary>
-    protected virtual void ValidateQuery()
+    protected override void ValidateQuery()
     {
         if (SetValues.Count == 0)
         {

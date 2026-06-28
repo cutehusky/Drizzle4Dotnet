@@ -1,6 +1,4 @@
-using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query.Insert;
-using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
@@ -20,7 +18,16 @@ public class MySqlReplaceQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl
         : base(table, executor)
     {
     }
-    
+
+    protected override void ValidateQuery()
+    {
+        base.ValidateQuery();
+        if (Recursive || CteTables.Count > 0)
+        {
+            throw new InvalidOperationException("REPLACE query does not support CTEs.");
+        }
+    }
+
     protected override void BuildInsertKeywords(ISqlBuilder sqlBuilder)
     {
         sqlBuilder.Append("REPLACE INTO ");

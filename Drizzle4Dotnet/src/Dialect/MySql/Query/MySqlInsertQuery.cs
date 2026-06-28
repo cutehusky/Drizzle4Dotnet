@@ -98,6 +98,31 @@ public class MySqlInsertQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl,
     }
 
     // ======================================================================
+    // MySQL-specific validation
+    // ======================================================================
+
+    protected override void ValidateQuery()
+    {
+        base.ValidateQuery();
+
+        var hasOnDuplicate = _onDuplicateKeyUpdates.Count > 0;
+        var hasFromQuery = FromQuery != null;
+        var useDefaults = UseDefaultValues;
+
+        if (hasOnDuplicate && hasFromQuery)
+        {
+            throw new InvalidOperationException(
+                "ON DUPLICATE KEY UPDATE cannot be combined with INSERT ... SELECT (From()).");
+        }
+
+        if (hasOnDuplicate && useDefaults)
+        {
+            throw new InvalidOperationException(
+                "ON DUPLICATE KEY UPDATE cannot be combined with DEFAULT VALUES.");
+        }
+    }
+
+    // ======================================================================
     // BuildSql
     // ======================================================================
 

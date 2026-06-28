@@ -21,9 +21,17 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
         Table = table;
     }
     
-    public TSelf With(ICteTable<TDialect> cteTable)
+    public TSelf With(params ICteTable<TDialect>[] cteTables)
     {
-        CteTables.Add(cteTable);
+        Recursive = false;
+        CteTables.AddRange(cteTables);
+        return (TSelf)this;
+    }
+    
+    public TSelf WithRecursive(params ICteTable<TDialect>[] cteTables)
+    {
+        Recursive = true;
+        CteTables.AddRange(cteTables);
         return (TSelf)this;
     }
     
@@ -100,7 +108,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
     /// Validates the query state before building SQL.
     /// Override in dialect-specific subclasses to add custom validation.
     /// </summary>
-    protected virtual void ValidateQuery()
+    protected override void ValidateQuery()
     {
         var hasValues = ValuesToInsert.Count > 0;
         var hasFrom = FromQuery != null;

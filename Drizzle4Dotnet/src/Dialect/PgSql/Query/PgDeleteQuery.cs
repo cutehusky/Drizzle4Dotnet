@@ -30,9 +30,11 @@ public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl, Pg
         _usingTables.AddRange(tables);
         return this;
     }
-
+    
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        ValidateQuery();
+
         SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         sqlBuilder.Append("DELETE FROM ");

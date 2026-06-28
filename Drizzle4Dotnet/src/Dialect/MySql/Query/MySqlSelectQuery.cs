@@ -14,9 +14,9 @@ public class MySqlSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, MyS
     INaturalJoin<MySqlSelectQuery<TReturn, TVirtualTable>, MySqlSqlDialectImpl>
     where TVirtualTable : IVirtualTable<MySqlSqlDialectImpl>
 {
-    protected string? _lockClause;
-    protected bool _nowait;
-    protected bool _skipLocked;
+    private string? _lockClause;
+    private bool _nowait;
+    private bool _skipLocked;
 
     public MySqlSelectQuery(
         ISelectedColumns<TReturn, MySqlSqlDialectImpl, TVirtualTable> selectedColumns,
@@ -76,6 +76,19 @@ public class MySqlSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, MyS
         _nowait = nowait;
         _skipLocked = skipLocked;
         return this;
+    }
+
+    // ====== MySQL-specific validation ======
+
+    protected override void ValidateQuery()
+    {
+        base.ValidateQuery();
+
+        if (_lockClause != null && _nowait && _skipLocked)
+        {
+            throw new InvalidOperationException(
+                "NOWAIT and SKIP LOCKED cannot be combined. Use one or the other.");
+        }
     }
 
     protected override void BuildSqlLock(ISqlBuilder sqlBuilder)

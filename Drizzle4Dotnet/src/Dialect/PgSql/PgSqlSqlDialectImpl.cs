@@ -37,8 +37,11 @@ public class PgSqlSqlDialectImpl: ISqlDialect
     // Limit / Offset
     // ======================================================================
     
-    public static string BuildLimitOffset(int? limit, int? offset)
-        => SqlDialectDefaults.BuildLimitOffset(limit, offset);
+    public static void BuildLimitOffset(ISqlBuilder sqlBuilder, int? limit, int? offset)
+        => SqlDialectDefaults.BuildLimitOffset(sqlBuilder, limit, offset);
+    
+    public static void BuildLimitOffsetForUpdateDelete(ISqlBuilder sqlBuilder, int? limit, int? offset)
+        => throw new NotSupportedException("PostgreSQL does not support LIMIT/OFFSET for UPDATE/DELETE statements.");
     
     // ======================================================================
     // Feature Flags
@@ -57,6 +60,7 @@ public class PgSqlSqlDialectImpl: ISqlDialect
     public static bool SupportsNaturalJoin => true;
     public static bool SupportsLateralJoin => true;
     public static bool SupportsApplyJoin => false;
+    public static bool UseLimitPairMode => false;
     
     // ======================================================================
     // String Escaping

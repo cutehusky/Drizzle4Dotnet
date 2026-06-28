@@ -20,7 +20,8 @@ public interface ISqlDialect
     // Limit / Offset
     // ======================================================================
     
-    static abstract string BuildLimitOffset(int? limit, int? offset);
+    static abstract void BuildLimitOffset(ISqlBuilder sqlBuilder, int? limit, int? offset);
+    static abstract void BuildLimitOffsetForUpdateDelete(ISqlBuilder sqlBuilder, int? limit, int? offset);
     
     // ======================================================================
     // Feature Flags

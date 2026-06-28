@@ -13,14 +13,7 @@ public abstract class QueryBase<TDialect>: IGenericSql where TDialect : ISqlDial
     public readonly IQueryExecutor<TDialect> Executor;
     protected readonly List<ICteTable<TDialect>> CteTables = new();
     protected bool Recursive;
-
-    /// <summary>
-    /// Convenience accessor for backward compatibility.
-    /// Returns the Executor as DbClient if applicable, otherwise null.
-    /// </summary>
-    [Obsolete("Use Executor instead of DbClient. This property will be removed in a future version.")]
-    public DbClient<TDialect>? DbClient => Executor as DbClient<TDialect>;
-
+    
     public QueryBase(IQueryExecutor<TDialect> executor)
     {
         Executor = executor;
@@ -34,5 +27,14 @@ public abstract class QueryBase<TDialect>: IGenericSql where TDialect : ISqlDial
         BuildSql(builder);
         return builder.Build();
     }
-
+    
+    /// <summary>
+    /// Validates the query state before building SQL.
+    /// Override in dialect-specific subclasses to add custom validation.
+    /// </summary>
+    protected virtual void ValidateQuery()
+    {
+        if (Recursive && CteTables.Count == 0)
+            throw new InvalidOperationException("Recursive CTE tables must be provided for a recursive compound query.");
+    }
 }

@@ -31,6 +31,8 @@ public interface ISupportOrderBy<TQuery>
     /// Adds an ORDER BY column with optional direction.
     /// </summary>
     TQuery OrderBy(IGenericSql col, bool asc = true);
+    
+    TQuery OrderBy(params (IGenericSql col, bool asc)[] columns);
 }
 
 /// <summary>
@@ -57,7 +59,9 @@ public interface ISupportCte<TQuery, TDialect> where TDialect : ISqlDialect
     /// <summary>
     /// Attaches a CTE table to this query.
     /// </summary>
-    TQuery With(ICteTable<TDialect> cteTable);
+    TQuery With(params ICteTable<TDialect>[] cteTables);
+    
+    TQuery WithRecursive(params ICteTable<TDialect>[] cteTables);
 }
 
 /// <summary>
