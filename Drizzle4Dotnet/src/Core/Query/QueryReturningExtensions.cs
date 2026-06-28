@@ -6,7 +6,7 @@ namespace Drizzle4Dotnet.Core.Query;
 /// Extension methods providing typed .Returning() support on DML queries (INSERT/UPDATE/DELETE),
 /// matching the pattern used by .Select() with TypedTupleSelectedColumns.
 /// </summary>
-public static class ReturningExtensions
+public static class QueryReturningExtensions
 {
     // ====== 1 column ======
 

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
@@ -12,6 +13,7 @@ public class CompoundQuery<TReturn, TDialect, TVirtualTable> :
     QueryBase<TDialect>, IReturning<TReturn, TDialect, TVirtualTable>,
     ISupportCte<CompoundQuery<TReturn, TDialect, TVirtualTable> , TDialect>,
     ISupportOffsetLimit<CompoundQuery<TReturn, TDialect, TVirtualTable>>,
+    IAwaitableQuery<List<TReturn>>,
     ISupportOrderBy<CompoundQuery<TReturn, TDialect, TVirtualTable>> where TDialect : ISqlDialect
     where TVirtualTable : IVirtualTable<TDialect>
 {
@@ -94,6 +96,11 @@ public class CompoundQuery<TReturn, TDialect, TVirtualTable> :
     {
         _orderBy.AddRange(columns);
         return this;
+    }
+    
+    public TaskAwaiter<List<TReturn>> GetAwaiter()
+    {
+        return Executor.ExecuteGetListAsync(this).GetAwaiter();
     }
 }
 

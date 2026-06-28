@@ -4,7 +4,11 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query;
 
-public class ReturningQuery<TReturn, TDialect, TVirtualTable> : QueryBase<TDialect>, IReturning<TReturn, TDialect, TVirtualTable> where  TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
+public class ReturningQuery<TReturn, TDialect, TVirtualTable> : 
+    QueryBase<TDialect>, 
+    IReturning<TReturn, TDialect, TVirtualTable>,
+    IAwaitableQuery<List<TReturn>>
+    where  TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
 {
     private readonly Query<TDialect> _baseQuery;
     public ISelectedColumns<TReturn, TDialect, TVirtualTable> SelectedColumns { get; }

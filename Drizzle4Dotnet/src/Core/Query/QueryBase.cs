@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
@@ -37,4 +38,14 @@ public abstract class QueryBase<TDialect>: IGenericSql where TDialect : ISqlDial
         if (Recursive && CteTables.Count == 0)
             throw new InvalidOperationException("Recursive CTE tables must be provided for a recursive compound query.");
     }
+}
+
+public interface IAwaitableQuery<TReturn>
+{
+    TaskAwaiter<TReturn> GetAwaiter();
+}
+
+public interface IAwaitableQuery
+{
+    TaskAwaiter GetAwaiter();
 }
