@@ -97,6 +97,26 @@ public static SchemaSnapshot Deserialize(string json)
         return new SchemaDiff(tableChanges);
     }
 
+    /// <summary>
+    /// Creates a diff where all tables are marked as Removed (used for rollback/down of initial migration).
+    /// This is the inverse of <see cref="CreateNew"/>.
+    /// </summary>
+    public SchemaDiff CreateRollback()
+    {
+        var tableChanges = Tables.Select(table =>
+        {
+            var key = (table.SchemaName, table.TableName);
+            return new TableChange(
+                TableChangeType.Removed,
+                key.TableName,
+                key.SchemaName,
+                oldTable: ToTableDef(table),
+                newTable: null
+            );
+        }).ToList();
+        return new SchemaDiff(tableChanges);
+    }
+
     public SchemaDiff Compare(SchemaSnapshot newerSnapshot)
     {
         var currentTables = Tables.ToDictionary(t => (t.SchemaName, t.TableName));

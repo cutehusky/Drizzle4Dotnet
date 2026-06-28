@@ -84,7 +84,8 @@ public static class GenerateCommand
             {
                 Console.WriteLine($"✅ Migration generated successfully!");
                 Console.WriteLine();
-                Console.WriteLine($"  SQL Script:   {result.SqlFilePath}");
+                Console.WriteLine($"  Up SQL:       {result.SqlFilePath}");
+                Console.WriteLine($"  Down SQL:     {result.DownSqlFilePath}");
                 Console.WriteLine($"  Snapshot:     {result.SnapshotFilePath}");
                 Console.WriteLine($"  Checksum:     {result.Checksum}");
                 Console.WriteLine();

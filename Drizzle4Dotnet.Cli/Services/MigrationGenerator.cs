@@ -34,6 +34,8 @@ public record MigrationGenerationResult(
     string MigrationName,
     string SqlScript,
     string SqlFilePath,
+    string DownSqlScript,
+    string DownSqlFilePath,
     string SnapshotJson,
     string SnapshotFilePath,
     string Checksum,
@@ -139,6 +141,8 @@ public class MigrationGenerator
                 migrationName,
                 "-- No schema changes detected.",
                 "",
+                "-- No schema changes detected.",
+                "",
                 targetSnapshot.Serialize(),
                 "",
                 ComputeChecksum(""),
@@ -151,21 +155,27 @@ public class MigrationGenerator
         var journal = MigrationJournal.Load(journalPath);
         journal.Provider = ProviderName;
 
-        // Generate SQL script
+        // Generate SQL script (up)
         var sqlScript = GenerateSqlScript(plan);
         var checksum = ComputeChecksum(sqlScript);
+
+        // Generate down SQL script (rollback) by reversing the diff
+        var downSqlScript = GenerateDownSqlScript(currentSnapshot, targetSnapshot, migrationName);
 
         // Generate safe filename with incremental ID
         var safeName = SanitizeFileName(migrationName);
         var incrementalId = GetNextIncrementalId(journal);
         var sqlFileName = $"{incrementalId}-{safeName}-up.sql";
+        var downSqlFileName = $"{incrementalId}-{safeName}-down.sql";
         var snapshotFileName = $"{incrementalId}-snapshot-{safeName}.json";
 
         var sqlFilePath = Path.Combine(outputDir, sqlFileName);
+        var downSqlFilePath = Path.Combine(outputDir, downSqlFileName);
         var snapshotFilePath = Path.Combine(outputDir, snapshotFileName);
 
-        // Write SQL file
+        // Write SQL files
         File.WriteAllText(sqlFilePath, sqlScript);
+        File.WriteAllText(downSqlFilePath, downSqlScript);
 
         // Write snapshot file
         var snapshotJson = targetSnapshot.Serialize();
@@ -179,6 +189,7 @@ public class MigrationGenerator
             entry.GeneratedAt = DateTime.UtcNow;
             entry.Checksum = checksum;
             entry.SqlFileName = sqlFileName;
+            entry.DownSqlFileName = downSqlFileName;
             entry.SnapshotFileName = snapshotFileName;
             entry.Description = description;
         }
@@ -190,6 +201,7 @@ public class MigrationGenerator
                 GeneratedAt = DateTime.UtcNow,
                 Checksum = checksum,
                 SqlFileName = sqlFileName,
+                DownSqlFileName = downSqlFileName,
                 SnapshotFileName = snapshotFileName,
                 Description = description,
                 IncrementalId = incrementalId
@@ -202,6 +214,8 @@ public class MigrationGenerator
             migrationName,
             sqlScript,
             sqlFilePath,
+            downSqlScript,
+            downSqlFilePath,
             snapshotJson,
             snapshotFilePath,
             checksum,
@@ -316,8 +330,35 @@ public class MigrationGenerator
     }
 
     /// <summary>
-    /// Creates a SchemaSnapshot from the given table type names.
+    /// Generates the down (rollback) SQL script by comparing snapshots in reverse order.
+    /// The down SQL reverses the migration: from target snapshot back to current snapshot.
     /// </summary>
+    private string GenerateDownSqlScript(SchemaSnapshot? currentSnapshot, SchemaSnapshot targetSnapshot, string migrationName)
+    {
+        SchemaDiff? reverseDiff;
+
+        if (currentSnapshot == null)
+        {
+            // First migration (no prior state): rollback means dropping all created tables
+            reverseDiff = targetSnapshot.CreateRollback();
+        }
+        else
+        {
+            // Generate the reverse diff: target → current (undo the migration)
+            reverseDiff = targetSnapshot.Compare(currentSnapshot);
+        }
+
+        if (reverseDiff == null || !reverseDiff.HasChanges)
+        {
+            return $"-- Down migration: {migrationName}\n" +
+                   $"-- Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC\n" +
+                   "-- No rollback steps required.\n";
+        }
+
+        var reversePlan = reverseDiff.ToMigrationPlan($"{migrationName}_down");
+        return GenerateSqlScript(reversePlan);
+    }
+    
     private SchemaSnapshot CreateSnapshotFromTypes(
         string snapshotName,
         IReadOnlyList<string> tableTypes,

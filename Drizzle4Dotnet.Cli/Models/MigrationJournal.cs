@@ -31,6 +31,9 @@ public class MigrationJournalEntry
     /// Used in file naming to ensure uniqueness and ordering.
     /// </summary>
     public string IncrementalId { get; set; } = "";
+
+    /// <summary>The filename of the rollback (down) SQL migration script.</summary>
+    public string DownSqlFileName { get; set; } = "";
 }
 
 /// <summary>
