@@ -2,7 +2,7 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Schema.Columns;
 
-public class VirtualColumn<T, TDialect>: IColumnOfDialect<T, TDialect> where TDialect : ISqlDialect
+public class VirtualColumn<T, TDialect>: IColumn<T> where TDialect : ISqlDialect
 {
     private readonly string _sql;
     private readonly string _identifier;

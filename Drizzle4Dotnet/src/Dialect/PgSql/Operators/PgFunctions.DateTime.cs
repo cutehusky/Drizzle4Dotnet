@@ -10,14 +10,14 @@ public static partial class PgFunctions
     // Date/Time Functions (PostgreSQL-specific)
     // ======================================================================
     
-    public static FunctionCallNode<double> Extract(IGenericSql field, ISql c1) =>
+    public static FunctionCallNode<double> Extract(IGenericSql field, ISql<DateTime> c1) =>
         new("EXTRACT", field, new RawSql<double>("FROM "), c1);
-    public static FunctionCallNode<double> Extract(string field, ISql c1)
+    public static FunctionCallNode<double> Extract(string field, ISql<DateTime> c1)
         => new("EXTRACT", new SqlValueNode<string>(field), new RawSql<double>("FROM "), c1);
     
-    public static FunctionCallNode<DateTime> DateTrunc(IGenericSql precision, ISql c1) =>
+    public static FunctionCallNode<DateTime> DateTrunc(IGenericSql precision, ISql<DateTime> c1) =>
         new("DATE_TRUNC", precision, c1);
-    public static FunctionCallNode<DateTime> DateTrunc(string precision, ISql c1) =>
+    public static FunctionCallNode<DateTime> DateTrunc(string precision, ISql<DateTime> c1) =>
         new("DATE_TRUNC", new SqlValueNode<string>(precision), c1);
     
     public static BinaryNode<DateTime> DateAdd(ISql<DateTime> c1, int amount, string unit)
