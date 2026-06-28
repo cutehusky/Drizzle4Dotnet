@@ -53,7 +53,34 @@ public class TableGenerator : IIncrementalGenerator
             var dialectTypeName = Utils.GetDialectFromAttribute(tableAttr);
             var dialect = DialectInfo.Resolve(dialectTypeName);
 
-            var columns = new List<(string PropName, string DbColumnName, string Type)>();
+            var columns = new List<(string PropName, string DbColumnName, string Type, List<string>? AdditionalAttributes)>();
+
+            // Extract non-Column attributes from syntax tree for each property
+            var propAttributes = new Dictionary<string, List<string>>();
+            var columnsClassDecl = classDecl.DescendantNodes()
+                .OfType<ClassDeclarationSyntax>()
+                .FirstOrDefault(c => c.Identifier.Text == "Columns");
+            if (columnsClassDecl != null)
+            {
+                foreach (var propDecl in columnsClassDecl.Members.OfType<PropertyDeclarationSyntax>())
+                {
+                    var attrs = new List<string>();
+                    foreach (var attrList in propDecl.AttributeLists)
+                    {
+                        foreach (var attr in attrList.Attributes)
+                        {
+                            var attrName = attr.Name.ToString();
+                            // Skip ColumnAttribute and its short name
+                            if (attrName is "Column" or "ColumnAttribute")
+                                continue;
+                            attrs.Add(attr.ToString());
+                        }
+                    }
+                    if (attrs.Count > 0)
+                        propAttributes[propDecl.Identifier.Text] = attrs;
+                }
+            }
+
             foreach (var member in symbol.GetMembers().OfType<INamedTypeSymbol>())
             {
                 if (member == null)
@@ -67,7 +94,8 @@ public class TableGenerator : IIncrementalGenerator
                     {
                         var dbColumnName = colAttr.ConstructorArguments[0].Value?.ToString() ?? subMember.Name;
                         var colType = subMember.Type.ToDisplayString();
-                        columns.Add((subMember.Name, dbColumnName, colType));
+                        propAttributes.TryGetValue(subMember.Name, out var additionalAttrs);
+                        columns.Add((subMember.Name, dbColumnName, colType, additionalAttrs));
                     }
                 }
                 break;
@@ -214,7 +242,17 @@ public class TableGenerator : IIncrementalGenerator
                 GeneratedResultSelection._sql = $""{selectSqlFragments}"";
         }}");
 
-            sb.AppendLine(string.Join("\n        ", table.Columns!.Select(c => $"public static {columnType}<{c.Type}, {table.ClassName}> {c.PropName} {{ get; set; }}")));
+            foreach (var c in table.Columns!)
+            {
+                if (c.AdditionalAttributes != null)
+                {
+                    foreach (var attr in c.AdditionalAttributes)
+                    {
+                        sb.AppendLine($"        [{attr}]");
+                    }
+                }
+                sb.AppendLine($"        public static {columnType}<{c.Type}, {table.ClassName}> {c.PropName} {{ get; set; }}");
+            }
             
             sb.AppendLine(@"
         public static class ColumnNames
@@ -437,7 +475,7 @@ public class TableGenerator : IIncrementalGenerator
         // For Table
         public string? DbTableName { get; set; }
         public string? DbSchemaName { get; set; }
-        public List<(string PropName, string DbColumnName, string Type)>? Columns { get; set; }
+        public List<(string PropName, string DbColumnName, string Type, List<string>? AdditionalAttributes)>? Columns { get; set; }
         
         // For Alias
         public string? AliasName { get; set; }

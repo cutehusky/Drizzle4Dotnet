@@ -93,11 +93,29 @@ public static class OrmSchemaExporter
                 sqlType = MapClrToSql(clrType, typeMap);
             }
 
+            // Read independent column attributes from the generated static property
+            var defaultValueAttr = prop.GetCustomAttribute<DefaultValueAttribute>();
+            var autoIncrementAttr = prop.GetCustomAttribute<AutoIncrementAttribute>();
+            var notNullAttr = prop.GetCustomAttribute<NotNullAttribute>();
+            var nullableAttr = prop.GetCustomAttribute<NullableAttribute>();
+            var primaryKeyAttr = prop.GetCustomAttribute<PrimaryKeyAttribute>();
+            var checkAttr = prop.GetCustomAttribute<CheckAttribute>();
+            var commentAttr = prop.GetCustomAttribute<CommentAttribute>();
+
             var isNullable = IsClrNullable(clrType);
+            if (notNullAttr != null)
+                isNullable = false;
+            if (nullableAttr != null)
+                isNullable = true;
 
             columns.Add(new ColumnDefinition<TDialect>(columnName, sqlType)
             {
-                IsNullable = isNullable
+                IsNullable = isNullable,
+                IsPrimaryKey = primaryKeyAttr != null,
+                IsAutoIncrement = autoIncrementAttr != null,
+                DefaultValue = defaultValueAttr?.Value,
+                CheckExpression = checkAttr?.Expression,
+                Comment = commentAttr?.Comment
             });
         }
 
