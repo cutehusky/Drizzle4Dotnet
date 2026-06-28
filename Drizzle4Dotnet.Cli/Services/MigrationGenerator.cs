@@ -125,35 +125,12 @@ public class MigrationGenerator
             }
         }
 
-        // Generate migration plan
-        MigrationPlan plan;
-        string description;
-        bool hasChanges = true;
-
-        if (currentSnapshot != null)
-        {
-            var diff = currentSnapshot.Compare(targetSnapshot);
-            hasChanges = diff.HasChanges;
-            description = DescribeDiff(diff);
-            plan = diff.ToMigrationPlan(migrationName);
-        }
-        else
-        {
-            // First migration - create all tables
-            var tableDefs = ExtractTableDefinitions(tableTypes, assemblyPath);
-            var steps = tableDefs.Values.Select(t =>
-            {
-                var createQuery = new CreateTableQuery(t);
-                return new MigrationStep(
-                    MigrationStepType.CreateTable,
-                    $"Create table {t.SchemaName}.{t.TableName}",
-                    createQuery
-                );
-            }).ToList();
-
-            plan = new MigrationPlan(migrationName, steps);
-            description = string.Join("; ", steps.Select(s => s.Description));
-        }
+        // Generate migration plan by comparing current and target snapshots
+        // If no current snapshot, Compare(null) treats all tables as added (first migration)
+        var diff = currentSnapshot != null ? currentSnapshot.Compare(targetSnapshot) : targetSnapshot.CreateNew();
+        var hasChanges = diff?.HasChanges ?? false;
+        var description = diff != null ? DescribeDiff(diff) : "No schema changes detected.";
+        var plan = diff?.ToMigrationPlan(migrationName) ?? new MigrationPlan(migrationName, new List<MigrationStep>());
 
         // If no changes detected and we have a previous snapshot, don't generate files
         if (!hasChanges && currentSnapshot != null)
@@ -422,18 +399,60 @@ public class MigrationGenerator
             switch (change.ChangeType)
             {
                 case TableChangeType.Added:
-                    parts.Add($"Create table {change.SchemaName}.{change.TableName}");
+                    var addParts = new List<string> { $"Create table {change.SchemaName}.{change.TableName}" };
+                    if (change.NewTable?.Indexes.Count > 0)
+                    {
+                        foreach (var idx in change.NewTable.Indexes)
+                            addParts.Add($"index {idx.IndexName}({string.Join(",", idx.Columns)})");
+                    }
+                    if (change.NewTable?.TableConstraints.Count > 0)
+                    {
+                        foreach (var c in change.NewTable.TableConstraints)
+                        {
+                            var name = SchemaSnapshot.GetConstraintName(c);
+                            addParts.Add($"constraint {(name ?? c.GetType().Name.Replace("Constraint", "").ToLower())}");
+                        }
+                    }
+                    parts.Add(string.Join(", ", addParts));
                     break;
+
                 case TableChangeType.Removed:
                     parts.Add($"Drop table {change.SchemaName}.{change.TableName}");
                     break;
+
                 case TableChangeType.Modified:
-                    var colChanges = new List<string>();
-                    foreach (var col in change.ColumnChanges)
+                    var modParts = new List<string>
                     {
-                        colChanges.Add($"{col.ChangeType} {col.ColumnName}");
+                        $"Alter table {change.SchemaName}.{change.TableName}"
+                    };
+
+                    // Column changes
+                    foreach (var col in change.ColumnChanges)
+                        modParts.Add($"{col.ChangeType} {col.ColumnName}");
+
+                    // Added constraints
+                    foreach (var c in change.AddedConstraints)
+                    {
+                        var name = SchemaSnapshot.GetConstraintName(c);
+                        modParts.Add($"add constraint {(name ?? c.GetType().Name.Replace("Constraint", "").ToLower())}");
                     }
-                    parts.Add($"Alter table {change.SchemaName}.{change.TableName} ({string.Join(", ", colChanges)})");
+
+                    // Removed constraints
+                    foreach (var c in change.RemovedConstraints)
+                    {
+                        var name = SchemaSnapshot.GetConstraintName(c);
+                        modParts.Add($"drop constraint {(name ?? c.GetType().Name.Replace("Constraint", "").ToLower())}");
+                    }
+
+                    // Added indexes
+                    foreach (var idx in change.AddedIndexes)
+                        modParts.Add($"add index {idx.IndexName}({string.Join(",", idx.Columns)})");
+
+                    // Removed indexes
+                    foreach (var idx in change.RemovedIndexes)
+                        modParts.Add($"drop index {idx.IndexName}");
+
+                    parts.Add(string.Join(", ", modParts));
                     break;
             }
         }
@@ -477,10 +496,56 @@ public class MigrationGenerator
                 and not "NullableContextAttribute"
                 and not "NullableAttribute")
             .ToList();
-        if (tableCustomAttrs.Count > 0)
+
+        // Separate indexes, constraints, and other attributes
+        var indexAttrs = tableCustomAttrs
+            .Where(a => a is IndexAttribute).Cast<IndexAttribute>().ToList();
+        var constraintAttrs = tableCustomAttrs
+            .Where(a => a is ForeignKeyConstraintAttribute
+                     or UniqueConstraintAttribute
+                     or PrimaryKeyTableConstraintAttribute
+                     or CheckTableConstraintAttribute).ToList();
+        var otherAttrs = tableCustomAttrs
+            .Except(indexAttrs).Except(constraintAttrs).ToList();
+
+        // Indexes
+        Console.WriteLine($"     Indexes:       {indexAttrs.Count}");
+        foreach (var idx in indexAttrs)
         {
-            Console.WriteLine($"     Table Attributes: {tableCustomAttrs.Count}");
-            foreach (var attr in tableCustomAttrs)
+            var details = $"\"{idx.IndexName}\" ON ({string.Join(", ", idx.Columns)})";
+            if (idx.IsUnique) details += " UNIQUE";
+            if (idx.IndexType != null) details += $" USING {idx.IndexType}";
+            if (idx.Where != null) details += $" WHERE {idx.Where}";
+            Console.WriteLine($"       [Index] {details}");
+        }
+
+        // Constraints
+        Console.WriteLine($"     Constraints:   {constraintAttrs.Count}");
+        foreach (var attr in constraintAttrs)
+        {
+            switch (attr)
+            {
+                case ForeignKeyConstraintAttribute fk:
+                    var fkName = fk.ConstraintName != null ? $"\"{fk.ConstraintName}\" " : "";
+                    Console.WriteLine($"       [ForeignKey] {fkName}({string.Join(", ", fk.Columns)}) → {fk.ForeignTable.Name}({string.Join(", ", fk.ForeignColumns)})");
+                    break;
+                case UniqueConstraintAttribute uc:
+                    Console.WriteLine($"       [Unique] ({string.Join(", ", uc.Columns)})");
+                    break;
+                case PrimaryKeyTableConstraintAttribute pk:
+                    Console.WriteLine($"       [PrimaryKey] ({string.Join(", ", pk.Columns)})");
+                    break;
+                case CheckTableConstraintAttribute cc:
+                    Console.WriteLine($"       [Check] {cc.Expression}");
+                    break;
+            }
+        }
+
+        // Other custom attributes
+        if (otherAttrs.Count > 0)
+        {
+            Console.WriteLine($"     Table Attributes: {otherAttrs.Count}");
+            foreach (var attr in otherAttrs)
             {
                 var attrName = attr.GetType().Name;
                 var attrDetail = DescribeAttribute(attr);
@@ -568,7 +633,7 @@ public class MigrationGenerator
             }
 
             // Show non-column properties for context
-            if (!isColumn && prop.Name is "TableName" or "SchemaName")
+            if (!isColumn)
             {
                 Console.WriteLine($"         Value:       {prop.GetValue(null) ?? "(null)"}");
             }

@@ -32,13 +32,18 @@ public abstract class TableConstraint
 /// </summary>
 public class RawTableConstraint : TableConstraint
 {
+    /// <summary>Optional constraint name (e.g., "FK_Users_Departments").</summary>
+    public string? ConstraintName { get; }
+
     /// <summary>The raw constraint SQL.</summary>
     public string Sql { get; }
 
     /// <param name="sql">The raw constraint SQL string.</param>
-    public RawTableConstraint(string sql)
+    /// <param name="constraintName">Optional constraint name.</param>
+    public RawTableConstraint(string sql, string? constraintName = null)
     {
         Sql = sql;
+        ConstraintName = constraintName;
     }
 
     /// <inheritdoc />
@@ -101,18 +106,29 @@ public class ForeignKeyConstraint : TableConstraint
 /// </summary>
 public class UniqueConstraint : TableConstraint
 {
+    /// <summary>Optional constraint name (e.g., "UQ_Users_Email").</summary>
+    public string? ConstraintName { get; }
+
     /// <summary>Column names that form the unique constraint.</summary>
     public string[] Columns { get; }
 
     /// <param name="columns">Column names (DB column names).</param>
-    public UniqueConstraint(string[] columns)
+    /// <param name="constraintName">Optional constraint name.</param>
+    public UniqueConstraint(string[] columns, string? constraintName = null)
     {
         Columns = columns;
+        ConstraintName = constraintName;
     }
 
     /// <inheritdoc />
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        if (!string.IsNullOrEmpty(ConstraintName))
+        {
+            sqlBuilder.Append("CONSTRAINT ");
+            sqlBuilder.Append(ConstraintName);
+            sqlBuilder.Append(' ');
+        }
         sqlBuilder.Append("UNIQUE (");
         sqlBuilder.Append(string.Join(", ", Columns.Select(c => $"\"{c}\"")));
         sqlBuilder.Append(')');
@@ -124,18 +140,29 @@ public class UniqueConstraint : TableConstraint
 /// </summary>
 public class PrimaryKeyTableConstraint : TableConstraint
 {
+    /// <summary>Optional constraint name (e.g., "PK_Users").</summary>
+    public string? ConstraintName { get; }
+
     /// <summary>Column names that form the primary key.</summary>
     public string[] Columns { get; }
 
     /// <param name="columns">Column names (DB column names).</param>
-    public PrimaryKeyTableConstraint(string[] columns)
+    /// <param name="constraintName">Optional constraint name.</param>
+    public PrimaryKeyTableConstraint(string[] columns, string? constraintName = null)
     {
         Columns = columns;
+        ConstraintName = constraintName;
     }
 
     /// <inheritdoc />
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        if (!string.IsNullOrEmpty(ConstraintName))
+        {
+            sqlBuilder.Append("CONSTRAINT ");
+            sqlBuilder.Append(ConstraintName);
+            sqlBuilder.Append(' ');
+        }
         sqlBuilder.Append("PRIMARY KEY (");
         sqlBuilder.Append(string.Join(", ", Columns.Select(c => $"\"{c}\"")));
         sqlBuilder.Append(')');
@@ -147,18 +174,29 @@ public class PrimaryKeyTableConstraint : TableConstraint
 /// </summary>
 public class CheckTableConstraint : TableConstraint
 {
+    /// <summary>Optional constraint name (e.g., "CHK_Age_Positive").</summary>
+    public string? ConstraintName { get; }
+
     /// <summary>The CHECK expression (e.g., "value > 0").</summary>
     public string Expression { get; }
 
     /// <param name="expression">The CHECK constraint expression.</param>
-    public CheckTableConstraint(string expression)
+    /// <param name="constraintName">Optional constraint name.</param>
+    public CheckTableConstraint(string expression, string? constraintName = null)
     {
         Expression = expression;
+        ConstraintName = constraintName;
     }
 
     /// <inheritdoc />
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        if (!string.IsNullOrEmpty(ConstraintName))
+        {
+            sqlBuilder.Append("CONSTRAINT ");
+            sqlBuilder.Append(ConstraintName);
+            sqlBuilder.Append(' ');
+        }
         sqlBuilder.Append("CHECK (");
         sqlBuilder.Append(Expression);
         sqlBuilder.Append(')');

@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Drizzle4Dotnet.Core.Schema.Migration.Query;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.PgSql;
 
 namespace Drizzle4Dotnet.Core.Schema.Migration;
 
@@ -28,13 +27,17 @@ public class SchemaSnapshot
     }
 
     /// <summary>
-    /// Deserializes a snapshot from a JSON string.
-    /// </summary>
-    public static SchemaSnapshot Deserialize(string json)
+/// Deserializes a snapshot from a JSON string.
+/// Uses case-insensitive property matching for robustness with manually edited snapshots.
+/// </summary>
+public static SchemaSnapshot Deserialize(string json)
+{
+    return JsonSerializer.Deserialize<SchemaSnapshot>(json, new JsonSerializerOptions
     {
-        return JsonSerializer.Deserialize<SchemaSnapshot>(json) 
-            ?? throw new InvalidOperationException("Failed to deserialize schema snapshot");
-    }
+        PropertyNameCaseInsensitive = true
+    }) 
+        ?? throw new InvalidOperationException("Failed to deserialize schema snapshot");
+}
 
     /// <summary>
     /// Creates a snapshot from a list of <see cref="TableDefinition"/> objects.
@@ -48,8 +51,8 @@ public class SchemaSnapshot
             {
                 SchemaName = table.SchemaName,
                 TableName = table.TableName,
-                Constraints = table.TableConstraints.Select(c => c.ToString()!).ToList(),
-                Indexes = table.Indexes.Select(i => i.ToString()!).ToList()
+                IndexDefinitions = table.Indexes.Select(ToSnapshotIndex).ToList(),
+                ConstraintDefinitions = table.TableConstraints.Select(ToSnapshotConstraint).ToList()
             };
             foreach (var col in table.Columns)
             {
@@ -70,23 +73,54 @@ public class SchemaSnapshot
     }
 
     /// <summary>
-    /// Compares this snapshot with another and returns the differences.
+    /// Compares this snapshot (the OLD/current state) with <paramref name="newerSnapshot"/> (the NEW/target state)
+    /// and returns the differences needed to migrate from this to the new state.
+    /// If <paramref name="newerSnapshot"/> is null, all tables in this snapshot are treated as added (first migration).
     /// </summary>
-    public SchemaDiff Compare(SchemaSnapshot other)
+    /// <param name="newerSnapshot">The newer/target snapshot to compare against. Null means first migration.</param>
+    /// <summary>
+    /// Creates a diff where all tables are marked as Added (used for first migration).
+    /// </summary>
+    public SchemaDiff CreateNew()
     {
+        var tableChanges = Tables.Select(table =>
+        {
+            var key = (table.SchemaName, table.TableName);
+            return new TableChange(
+                TableChangeType.Added,
+                key.TableName,
+                key.SchemaName,
+                oldTable: null,
+                newTable: ToTableDef(table)
+            );
+        }).ToList();
+        return new SchemaDiff(tableChanges);
+    }
+
+    public SchemaDiff Compare(SchemaSnapshot newerSnapshot)
+    {
+        var currentTables = Tables.ToDictionary(t => (t.SchemaName, t.TableName));
+        var newTables = newerSnapshot.Tables.ToDictionary(t => (t.SchemaName, t.TableName));
         var tableChanges = new List<TableChange>();
         
-        var myTables = Tables.ToDictionary(t => (t.SchemaName, t.TableName));
-        var otherTables = other.Tables.ToDictionary(t => (t.SchemaName, t.TableName));
-
         // Find added or modified tables
-        foreach (var (key, otherTable) in otherTables)
+        foreach (var (key, newTable) in newTables)
         {
-            if (myTables.TryGetValue(key, out var myTable))
+            if (currentTables.TryGetValue(key, out var myTable))
             {
-                // Table exists in both - compare columns
-                var columnChanges = CompareColumnSets(myTable, otherTable);
-                if (columnChanges.Count > 0)
+                // Table exists in both - compare columns, constraints, indexes
+                var columnChanges = CompareColumnSets(myTable, newTable);
+
+                // Compare constraints using structured data when available (name-based, robust)
+                var addedConstraints = CompareConstraintSets(myTable, newTable, added: true);
+                var removedConstraints = CompareConstraintSets(myTable, newTable, added: false);
+
+                // Compare indexes using structured data when available (name-based, robust)
+                var addedIndexes = CompareIndexSets(myTable, newTable, added: true);
+                var removedIndexes = CompareIndexSets(myTable, newTable, added: false);
+
+                if (columnChanges.Count > 0 || addedConstraints.Count > 0 || removedConstraints.Count > 0
+                    || addedIndexes.Count > 0 || removedIndexes.Count > 0)
                 {
                     tableChanges.Add(new TableChange(
                         TableChangeType.Modified,
@@ -94,7 +128,11 @@ public class SchemaSnapshot
                         key.SchemaName,
                         columnChanges,
                         ToTableDef(myTable),
-                        ToTableDef(otherTable)
+                        ToTableDef(newTable),
+                        addedConstraints: addedConstraints,
+                        removedConstraints: removedConstraints,
+                        addedIndexes: addedIndexes,
+                        removedIndexes: removedIndexes
                     ));
                 }
             }
@@ -106,15 +144,15 @@ public class SchemaSnapshot
                     key.TableName,
                     key.SchemaName,
                     oldTable: null,
-                    newTable: ToTableDef(otherTable)
+                    newTable: ToTableDef(newTable)
                 ));
             }
         }
 
         // Find removed tables
-        foreach (var (key, myTable) in myTables)
+        foreach (var (key, myTable) in currentTables)
         {
-            if (!otherTables.ContainsKey(key))
+            if (!newTables.ContainsKey(key))
             {
                 tableChanges.Add(new TableChange(
                     TableChangeType.Removed,
@@ -129,6 +167,56 @@ public class SchemaSnapshot
         return new SchemaDiff(tableChanges);
     }
 
+    /// <summary>
+    /// Compares constraint sets between two snapshot tables using structured data.
+    /// Both tables must have <see cref="SnapshotTable.ConstraintDefinitions"/> populated.
+    /// Returns typed <see cref="TableConstraint"/> objects.
+    /// </summary>
+    private static List<TableConstraint> CompareConstraintSets(SnapshotTable oldTable, SnapshotTable newTable, bool added)
+    {
+        var source = added ? newTable : oldTable;
+        var target = added ? oldTable : newTable;
+
+        var targetKeys = target.ConstraintDefinitions
+            .Select(GetConstraintKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return source.ConstraintDefinitions
+            .Where(c => !targetKeys.Contains(GetConstraintKey(c)))
+            .Select(ToConstraint)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Gets a comparison key for a constraint (name if available, otherwise the raw SQL).
+    /// </summary>
+    private static string GetConstraintKey(SnapshotConstraint c)
+    {
+        return c.ConstraintName ?? c.RawSql ?? "";
+    }
+
+    /// <summary>
+    /// Compares index sets between two snapshot tables using structured data.
+    /// Both tables must have <see cref="SnapshotTable.IndexDefinitions"/> populated.
+    /// Returns typed <see cref="TableIndex"/> objects with full properties.
+    /// </summary>
+    private static List<TableIndex> CompareIndexSets(SnapshotTable oldTable, SnapshotTable newTable, bool added)
+    {
+        var source = added ? newTable : oldTable;
+        var target = added ? oldTable : newTable;
+
+        var targetNames = target.IndexDefinitions.Select(i => i.IndexName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return source.IndexDefinitions
+            .Where(i => !targetNames.Contains(i.IndexName))
+            .Select(i => new TableIndex(
+                i.IndexName, i.SchemaName, i.TableName,
+                i.Columns.ToArray(), i.IsUnique, i.IndexType, i.Where
+            ))
+            .ToList();
+    }
+
     private static List<ColumnChange> CompareColumnSets(SnapshotTable oldTable, SnapshotTable newTable)
     {
         var changes = new List<ColumnChange>();
@@ -140,18 +228,26 @@ public class SchemaSnapshot
         {
             if (oldCols.TryGetValue(name, out var oldCol))
             {
-                // Check for changes
+                // Check for changes (use independent ifs, not else-if, to detect ALL changes per column)
                 if (oldCol.RawDataType != newCol.RawDataType)
                 {
                     changes.Add(new ColumnChange(ColumnChangeType.TypeChanged, name, ToColDef(oldCol), ToColDef(newCol)));
                 }
-                else if (oldCol.IsNullable != newCol.IsNullable)
+                if (oldCol.IsNullable != newCol.IsNullable)
                 {
                     changes.Add(new ColumnChange(ColumnChangeType.NullabilityChanged, name, ToColDef(oldCol), ToColDef(newCol)));
                 }
-                else if (oldCol.DefaultValue != newCol.DefaultValue)
+                if (oldCol.DefaultValue != newCol.DefaultValue)
                 {
                     changes.Add(new ColumnChange(ColumnChangeType.DefaultChanged, name, ToColDef(oldCol), ToColDef(newCol)));
+                }
+                if (oldCol.IsPrimaryKey != newCol.IsPrimaryKey)
+                {
+                    changes.Add(new ColumnChange(ColumnChangeType.PrimaryKeyChanged, name, ToColDef(oldCol), ToColDef(newCol)));
+                }
+                if (oldCol.IsAutoIncrement != newCol.IsAutoIncrement)
+                {
+                    changes.Add(new ColumnChange(ColumnChangeType.AutoIncrementChanged, name, ToColDef(oldCol), ToColDef(newCol)));
                 }
             }
             else
@@ -175,7 +271,7 @@ public class SchemaSnapshot
 
     private static IColumnDefinition ToColDef(SnapshotColumn col)
     {
-        return new ColumnDefinition<PgSqlSqlDialectImpl>(col.Name, col.RawDataType)
+        return new RawColumnDefinition(col.Name, col.RawDataType)
         {
             IsNullable = col.IsNullable,
             IsPrimaryKey = col.IsPrimaryKey,
@@ -185,24 +281,205 @@ public class SchemaSnapshot
         };
     }
 
+    /// <summary>
+    /// Converts a <see cref="TableIndex"/> to a serializable <see cref="SnapshotIndex"/>.
+    /// </summary>
+    private static SnapshotIndex ToSnapshotIndex(TableIndex i)
+    {
+        return new SnapshotIndex
+        {
+            IndexName = i.IndexName,
+            SchemaName = i.SchemaName,
+            TableName = i.TableName,
+            Columns = i.Columns.ToList(),
+            IsUnique = i.IsUnique,
+            IndexType = i.IndexType,
+            Where = i.Where
+        };
+    }
+
+    /// <summary>
+    /// Converts a <see cref="TableConstraint"/> to a serializable <see cref="SnapshotConstraint"/>.
+    /// </summary>
+    private static SnapshotConstraint ToSnapshotConstraint(TableConstraint tc)
+    {
+        var sn = new SnapshotConstraint { RawSql = tc.ToString() };
+        switch (tc)
+        {
+            case ForeignKeyConstraint fk:
+                sn.ConstraintType = "FOREIGN KEY";
+                sn.ConstraintName = fk.ConstraintName;
+                sn.Columns = fk.Columns.ToList();
+                sn.ForeignTable = fk.ForeignTable;
+                sn.ForeignColumns = fk.ForeignColumns.ToList();
+                break;
+            case UniqueConstraint uc:
+                sn.ConstraintType = "UNIQUE";
+                sn.Columns = uc.Columns.ToList();
+                break;
+            case PrimaryKeyTableConstraint pk:
+                sn.ConstraintType = "PRIMARY KEY";
+                sn.Columns = pk.Columns.ToList();
+                break;
+            case CheckTableConstraint cc:
+                sn.ConstraintType = "CHECK";
+                sn.Expression = cc.Expression;
+                break;
+            default:
+                sn.ConstraintType = "RAW";
+                break;
+        }
+        return sn;
+    }
+
+    /// <summary>
+    /// Reconstructs a <see cref="TableConstraint"/> from a <see cref="SnapshotConstraint"/>.
+    /// Falls back to <see cref="RawTableConstraint"/> for types that cannot be reconstructed.
+    /// </summary>
+    private static TableConstraint ToConstraint(SnapshotConstraint sc)
+    {
+        if (!string.IsNullOrEmpty(sc.RawSql) && sc.ConstraintType == "RAW")
+            return new RawTableConstraint(sc.RawSql);
+
+        switch (sc.ConstraintType)
+        {
+            case "FOREIGN KEY":
+                return new ForeignKeyConstraint(
+                    sc.ConstraintName,
+                    sc.Columns.ToArray(),
+                    sc.ForeignTable ?? "",
+                    sc.ForeignColumns.ToArray());
+            case "UNIQUE":
+                return new UniqueConstraint(sc.Columns.ToArray());
+            case "PRIMARY KEY":
+                return new PrimaryKeyTableConstraint(sc.Columns.ToArray());
+            case "CHECK":
+                return new CheckTableConstraint(sc.Expression ?? "");
+            default:
+                return new RawTableConstraint(sc.RawSql ?? "");
+        }
+    }
+
     private static TableDefinition ToTableDef(SnapshotTable table)
     {
         var columns = table.Columns.Select(ToColDef).ToList();
-        return new TableDefinition(table.TableName, table.SchemaName, columns);
+        var constraints = table.ConstraintDefinitions.Select(ToConstraint).ToList();
+        var indexes = table.IndexDefinitions.Select(idx => new TableIndex(
+            idx.IndexName, idx.SchemaName, idx.TableName,
+            idx.Columns.ToArray(), idx.IsUnique, idx.IndexType, idx.Where
+        )).ToList();
+        return new TableDefinition(table.TableName, table.SchemaName, columns, constraints, indexes);
+    }
+
+    /// <summary>
+    /// Gets the name of a constraint from the typed <see cref="TableConstraint"/> definition.
+    /// All constraint types support an optional name via their <c>ConstraintName</c> property.
+    /// Returns null for unnamed constraints.
+    /// </summary>
+    public static string? GetConstraintName(TableConstraint constraint)
+    {
+        return constraint switch
+        {
+            ForeignKeyConstraint fk => fk.ConstraintName,
+            UniqueConstraint uc => uc.ConstraintName,
+            PrimaryKeyTableConstraint pk => pk.ConstraintName,
+            CheckTableConstraint cc => cc.ConstraintName,
+            RawTableConstraint rc => rc.ConstraintName,
+            _ => null
+        };
     }
 }
 
 /// <summary>
 /// Serializable representation of a table for snapshot storage.
 /// </summary>
-    public class SnapshotTable
+public class SnapshotTable
+{
+    public string SchemaName { get; set; } = "public";
+    public string TableName { get; set; } = "";
+    public List<SnapshotColumn> Columns { get; set; } = new();
+
+    /// <summary>
+    /// Structured index data for proper reconstruction during migration.
+    /// Populated alongside the string-based <see cref="Indexes"/> list.
+    /// </summary>
+    public List<SnapshotIndex> IndexDefinitions { get; set; } = new();
+
+    /// <summary>
+    /// Structured constraint data for proper reconstruction during migration.
+    /// Populated alongside the string-based <see cref="Constraints"/> list.
+    /// </summary>
+    public List<SnapshotConstraint> ConstraintDefinitions { get; set; } = new();
+}
+
+/// <summary>
+/// Serializable representation of a database index for snapshot storage.
+/// </summary>
+public class SnapshotIndex
+{
+    public string IndexName { get; set; } = "";
+    public string SchemaName { get; set; } = "public";
+    public string TableName { get; set; } = "";
+    public List<string> Columns { get; set; } = new();
+    public bool IsUnique { get; set; }
+    public string? IndexType { get; set; }
+    public string? Where { get; set; }
+}
+
+/// <summary>
+/// Serializable representation of a table constraint for snapshot storage.
+/// Supports FOREIGN KEY, UNIQUE, PRIMARY KEY, CHECK, and a RAW fallback.
+/// </summary>
+public class SnapshotConstraint
+{
+    /// <summary>Optional constraint name (e.g., "fk_orders_users").</summary>
+    public string? ConstraintName { get; set; }
+
+    /// <summary>Constraint type: "FOREIGN KEY", "UNIQUE", "PRIMARY KEY", "CHECK", or "RAW".</summary>
+    public string ConstraintType { get; set; } = "";
+
+    /// <summary>Columns involved (for FK, UNIQUE, PRIMARY KEY).</summary>
+    public List<string> Columns { get; set; } = new();
+
+    /// <summary>Referenced table (for FOREIGN KEY).</summary>
+    public string? ForeignTable { get; set; }
+
+    /// <summary>Referenced columns (for FOREIGN KEY).</summary>
+    public List<string> ForeignColumns { get; set; } = new();
+
+    /// <summary>CHECK expression (for CHECK constraints).</summary>
+    public string? Expression { get; set; }
+
+    /// <summary>
+    /// Raw SQL fallback. Used for any constraint type that cannot be represented structurally,
+    /// and as a backward-compatibility field for deserialized old-format snapshots.
+    /// </summary>
+    public string? RawSql { get; set; }
+}
+
+/// <summary>
+/// A non-generic implementation of <see cref="IColumnDefinition"/> used internally
+/// by <see cref="SchemaSnapshot"/> to avoid coupling the snapshot system to any
+/// specific database dialect's generic type parameter.
+/// </summary>
+internal class RawColumnDefinition : IColumnDefinition
+{
+    public string Name { get; }
+    public ISqlDataType SqlDataType { get; }
+    public string RawDataType => SqlDataType.Sql;
+    public bool IsNullable { get; set; } = true;
+    public bool IsPrimaryKey { get; set; }
+    public bool IsAutoIncrement { get; set; }
+    public string? DefaultValue { get; set; }
+    public string? CheckExpression { get; set; }
+    public string? Comment { get; set; }
+
+    public RawColumnDefinition(string name, string dataType)
     {
-        public string SchemaName { get; set; } = "public";
-        public string TableName { get; set; } = "";
-        public List<SnapshotColumn> Columns { get; set; } = new();
-        public List<string> Constraints { get; set; } = new();
-        public List<string> Indexes { get; set; } = new();
+        Name = name;
+        SqlDataType = new RawSqlDataType(dataType);
     }
+}
 
 /// <summary>
 /// Serializable representation of a column for snapshot storage.
@@ -249,6 +526,32 @@ public class SchemaDiff
                         $"Create table {change.SchemaName}.{change.TableName}",
                         new CreateTableQuery(change.NewTable!)
                     ));
+                    // Add index creation steps for the new table
+                    foreach (var index in change.NewTable!.Indexes)
+                    {
+                        var createIndex = new CreateIndexQuery(index.IndexName, change.TableName, change.SchemaName)
+                            .On(index.Columns);
+                        if (index.IsUnique) createIndex.Unique();
+                        if (index.IndexType != null) createIndex.Using(index.IndexType);
+                        if (index.Where != null) createIndex.Where(index.Where);
+                        steps.Add(new MigrationStep(
+                            MigrationStepType.CreateIndex,
+                            $"Create index {index.IndexName} on {change.SchemaName}.{change.TableName}",
+                            createIndex
+                        ));
+                    }
+                    // Add constraint creation steps for the new table
+                    foreach (var constraintSql in change.NewTable!.TableConstraints)
+                    {
+                        var constraintName = SchemaSnapshot.GetConstraintName(constraintSql);
+                        var addConstraint = new AlterTableQuery(change.TableName, change.SchemaName);
+                        addConstraint.AddConstraint(constraintSql.ToString());
+                        steps.Add(new MigrationStep(
+                            MigrationStepType.AlterTable,
+                            $"Add constraint {constraintName ?? "(unnamed)"} on {change.SchemaName}.{change.TableName}",
+                            addConstraint
+                        ));
+                    }
                     break;
 
                 case TableChangeType.Removed:
@@ -260,39 +563,124 @@ public class SchemaDiff
                     break;
 
                 case TableChangeType.Modified:
-                    var alterQuery = new AlterTableQuery(change.TableName, change.SchemaName);
-                    foreach (var colChange in change.ColumnChanges)
+                    var descriptionParts = new List<string> { $"Alter table {change.SchemaName}.{change.TableName}" };
+
+                    // Column changes -> ALTER TABLE
+                    if (change.ColumnChanges.Count > 0)
                     {
-                        switch (colChange.ChangeType)
+                        var alterQuery = new AlterTableQuery(change.TableName, change.SchemaName);
+                        foreach (var colChange in change.ColumnChanges)
                         {
-                            case ColumnChangeType.Added:
-                                alterQuery.AddColumn(colChange.NewDefinition!);
-                                break;
-                            case ColumnChangeType.Removed:
-                                alterQuery.DropColumn(colChange.ColumnName);
-                                break;
-                            case ColumnChangeType.TypeChanged:
-                                alterQuery.AlterColumnType(colChange.ColumnName, colChange.NewDefinition!.RawDataType);
-                                break;
-                            case ColumnChangeType.NullabilityChanged:
-                                if (colChange.NewDefinition!.IsNullable)
-                                    alterQuery.DropNotNull(colChange.ColumnName);
-                                else
-                                    alterQuery.SetNotNull(colChange.ColumnName);
-                                break;
-                            case ColumnChangeType.DefaultChanged:
-                                if (colChange.NewDefinition?.DefaultValue != null)
-                                    alterQuery.SetDefault(colChange.ColumnName, colChange.NewDefinition.DefaultValue);
-                                else
-                                    alterQuery.DropDefault(colChange.ColumnName);
-                                break;
+                            switch (colChange.ChangeType)
+                            {
+                                case ColumnChangeType.Added:
+                                    alterQuery.AddColumn(colChange.NewDefinition!);
+                                    break;
+                                case ColumnChangeType.Removed:
+                                    alterQuery.DropColumn(colChange.ColumnName);
+                                    break;
+                                case ColumnChangeType.TypeChanged:
+                                    alterQuery.AlterColumnType(colChange.ColumnName, colChange.NewDefinition!.RawDataType);
+                                    break;
+                                case ColumnChangeType.NullabilityChanged:
+                                    if (colChange.NewDefinition!.IsNullable)
+                                        alterQuery.DropNotNull(colChange.ColumnName);
+                                    else
+                                        alterQuery.SetNotNull(colChange.ColumnName);
+                                    break;
+                                case ColumnChangeType.DefaultChanged:
+                                    if (colChange.NewDefinition?.DefaultValue != null)
+                                        alterQuery.SetDefault(colChange.ColumnName, colChange.NewDefinition.DefaultValue);
+                                    else
+                                        alterQuery.DropDefault(colChange.ColumnName);
+                                    break;
+                            }
+                        }
+                        steps.Add(new MigrationStep(
+                            MigrationStepType.AlterTable,
+                            $"Alter table {change.SchemaName}.{change.TableName} (columns)",
+                            alterQuery
+                        ));
+                        descriptionParts.Add($"{change.ColumnChanges.Count} column change(s)");
+                    }
+
+                    // Added constraints -> ALTER TABLE ADD (use typed constraint's ToString)
+                    foreach (var constraint in change.AddedConstraints)
+                    {
+                        var constraintName = SchemaSnapshot.GetConstraintName(constraint);
+                        var addQuery = new AlterTableQuery(change.TableName, change.SchemaName);
+                        addQuery.AddConstraint(constraint.ToString());
+                        steps.Add(new MigrationStep(
+                            MigrationStepType.AlterTable,
+                            $"Add constraint {constraintName ?? "(unnamed)"} on {change.SchemaName}.{change.TableName}",
+                            addQuery
+                        ));
+                    }
+                    if (change.AddedConstraints.Count > 0)
+                        descriptionParts.Add($"{change.AddedConstraints.Count} constraint(s) added");
+
+                    // Removed constraints -> ALTER TABLE DROP CONSTRAINT
+                    // Use typed constraint's name property when available, fall back to SQL extraction
+                    foreach (var constraint in change.RemovedConstraints)
+                    {
+                        var constraintName = SchemaSnapshot.GetConstraintName(constraint);
+                        if (constraintName != null)
+                        {
+                            var dropQuery = new AlterTableQuery(change.TableName, change.SchemaName);
+                            dropQuery.DropConstraint(constraintName);
+                            steps.Add(new MigrationStep(
+                                MigrationStepType.AlterTable,
+                                $"Drop constraint {constraintName} on {change.SchemaName}.{change.TableName}",
+                                dropQuery
+                            ));
                         }
                     }
-                    steps.Add(new MigrationStep(
-                        MigrationStepType.AlterTable,
-                        $"Alter table {change.SchemaName}.{change.TableName}",
-                        alterQuery
-                    ));
+                    if (change.RemovedConstraints.Count > 0)
+                        descriptionParts.Add($"{change.RemovedConstraints.Count} constraint(s) removed");
+
+                    // Added indexes -> CREATE INDEX (using typed TableIndex with full properties)
+                    foreach (var index in change.AddedIndexes)
+                    {
+                        var createIndex = new CreateIndexQuery(index.IndexName, change.TableName, change.SchemaName)
+                            .On(index.Columns);
+                        if (index.IsUnique) createIndex.Unique();
+                        if (index.IndexType != null) createIndex.Using(index.IndexType);
+                        if (index.Where != null) createIndex.Where(index.Where);
+                        steps.Add(new MigrationStep(
+                            MigrationStepType.CreateIndex,
+                            $"Create index {index.IndexName} on {change.SchemaName}.{change.TableName}",
+                            createIndex
+                        ));
+                    }
+                    if (change.AddedIndexes.Count > 0)
+                        descriptionParts.Add($"{change.AddedIndexes.Count} index(es) added");
+                    
+                    // Removed indexes -> DROP INDEX (using typed TableIndex)
+                    foreach (var index in change.RemovedIndexes)
+                    {
+                        if (!string.IsNullOrEmpty(index.IndexName))
+                        {
+                            steps.Add(new MigrationStep(
+                                MigrationStepType.DropIndex,
+                                $"Drop index {index.IndexName} on {change.SchemaName}.{change.TableName}",
+                                new DropIndexQuery(index.IndexName, change.TableName)
+                            ));
+                        }
+                    }
+                    if (change.RemovedIndexes.Count > 0)
+                        descriptionParts.Add($"{change.RemovedIndexes.Count} index(es) removed");
+
+                    // Use column changes description as the main step description if no other changes produced steps
+                    if (change.ColumnChanges.Count == 0 && change.AddedConstraints.Count == 0
+                        && change.RemovedConstraints.Count == 0 && change.AddedIndexes.Count == 0
+                        && change.RemovedIndexes.Count == 0)
+                    {
+                        steps.Add(new MigrationStep(
+                            MigrationStepType.AlterTable,
+                            string.Join(", ", descriptionParts),
+                            new AlterTableQuery(change.TableName, change.SchemaName)
+                        ));
+                    }
                     break;
             }
         }

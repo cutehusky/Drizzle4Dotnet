@@ -145,7 +145,9 @@ public enum ColumnChangeType
     Removed,
     TypeChanged,
     NullabilityChanged,
-    DefaultChanged
+    DefaultChanged,
+    PrimaryKeyChanged,
+    AutoIncrementChanged
 }
 
 /// <summary>
@@ -184,6 +186,10 @@ public enum TableChangeType
 
 /// <summary>
 /// Represents a detected change in a table between two schema snapshots.
+/// Added/Removed constraints and indexes are stored as typed objects
+/// (<see cref="TableConstraint"/> and <see cref="TableIndex"/>) instead of
+/// raw SQL strings, allowing <see cref="SchemaDiff.ToMigrationPlan"/>
+/// to generate complete DDL statements.
 /// </summary>
 public readonly struct TableChange
 {
@@ -191,6 +197,10 @@ public readonly struct TableChange
     public string TableName { get; }
     public string SchemaName { get; }
     public IReadOnlyList<ColumnChange> ColumnChanges { get; }
+    public IReadOnlyList<TableConstraint> AddedConstraints { get; }
+    public IReadOnlyList<TableConstraint> RemovedConstraints { get; }
+    public IReadOnlyList<TableIndex> AddedIndexes { get; }
+    public IReadOnlyList<TableIndex> RemovedIndexes { get; }
     public TableDefinition? OldTable { get; }
     public TableDefinition? NewTable { get; }
 
@@ -200,7 +210,11 @@ public readonly struct TableChange
         string schemaName,
         IReadOnlyList<ColumnChange> columnChanges = null!,
         TableDefinition? oldTable = null,
-        TableDefinition? newTable = null)
+        TableDefinition? newTable = null,
+        IReadOnlyList<TableConstraint>? addedConstraints = null,
+        IReadOnlyList<TableConstraint>? removedConstraints = null,
+        IReadOnlyList<TableIndex>? addedIndexes = null,
+        IReadOnlyList<TableIndex>? removedIndexes = null)
     {
         ChangeType = changeType;
         TableName = tableName;
@@ -208,6 +222,10 @@ public readonly struct TableChange
         ColumnChanges = columnChanges ?? Array.Empty<ColumnChange>();
         OldTable = oldTable;
         NewTable = newTable;
+        AddedConstraints = addedConstraints ?? Array.Empty<TableConstraint>();
+        RemovedConstraints = removedConstraints ?? Array.Empty<TableConstraint>();
+        AddedIndexes = addedIndexes ?? Array.Empty<TableIndex>();
+        RemovedIndexes = removedIndexes ?? Array.Empty<TableIndex>();
     }
 }
 

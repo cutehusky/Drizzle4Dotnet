@@ -6,11 +6,11 @@ using Drizzle4Dotnet.PgSql.Schema;
 namespace SharedDemo.PgSql
 {
     [Table("Users", "public", Dialect = typeof(PgSqlSqlDialectImpl))]
-    [ForeignKeyConstraint("FK_Users_Departments", new[] { "DepartmentId" }, typeof(DepartmentsTable), new[] { "Id" })]
-    [ForeignKeyConstraint("FK_Users_Roles", new[] { "RoleId" }, typeof(RolesTable), new[] { "Id" })]
-    [ForeignKeyConstraint("FK_Users_Manager", new[] { "ManagerId" }, typeof(UsersTable), new[] { "Id" })]
-    [Index("IX_Users_Email", new[] { "Email" }, IsUnique = true)]
-    [Index("IX_Users_Name_Age", new[] { "Name", "Age" })]
+    [ForeignKeyConstraint("FK_Users_Departments", [ColumnNames.Id], typeof(DepartmentsTable), [DepartmentsTable.ColumnNames.Id])]
+    [ForeignKeyConstraint("FK_Users_Roles", [ColumnNames.RoleId], typeof(RolesTable), [RolesTable.ColumnNames.Id])]
+    [ForeignKeyConstraint("FK_Users_Manager", [ColumnNames.ManagerId], typeof(UsersTable), [ColumnNames.Id])]
+    [Index("IX_Users_Email", [ColumnNames.Email], IsUnique = true)]
+    [Index("IX_Users_Name_Age", [ColumnNames.Name, ColumnNames.Age], IsUnique = false)]
     public partial class UsersTable
     {
         public static class Columns

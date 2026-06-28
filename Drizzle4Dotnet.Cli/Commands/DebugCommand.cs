@@ -48,10 +48,10 @@ public static class SchemaDebugPrinter
             Console.WriteLine();
             
             // Print constraints
-            if (table.Constraints.Count > 0)
+            if (table.ConstraintDefinitions.Count > 0)
             {
-                Console.WriteLine($"     Constraints:  {table.Constraints.Count}");
-                foreach (var constraint in table.Constraints)
+                Console.WriteLine($"     Constraints:  {table.ConstraintDefinitions.Count}");
+                foreach (var constraint in table.ConstraintDefinitions)
                 {
                     Console.WriteLine($"       {constraint}");
                 }
@@ -59,10 +59,10 @@ public static class SchemaDebugPrinter
             }
 
             // Print indexes
-            if (table.Indexes.Count > 0)
+            if (table.IndexDefinitions.Count > 0)
             {
-                Console.WriteLine($"     Indexes:      {table.Indexes.Count}");
-                foreach (var index in table.Indexes)
+                Console.WriteLine($"     Indexes:      {table.IndexDefinitions.Count}");
+                foreach (var index in table.IndexDefinitions)
                 {
                     Console.WriteLine($"       {index}");
                 }
