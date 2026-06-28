@@ -9,9 +9,9 @@ using Drizzle4Dotnet.Core.Query.Update;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 using Drizzle4Dotnet.MySql;
 using Drizzle4Dotnet.PgSql;
+using Drizzle4Dotnet.PgSql.Query;
 
 namespace Drizzle4Dotnet.Core;
 

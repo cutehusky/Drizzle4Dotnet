@@ -1,4 +1,4 @@
-namespace Drizzle4Dotnet.Sqlite;
+namespace Drizzle4Dotnet.Sqlite.Operators;
 
 /// <summary>
 /// SQLite-specific SQL functions.

@@ -1,7 +1,6 @@
 using Drizzle4Dotnet.Core.Query.Update;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 
 namespace Drizzle4Dotnet.Oracle.Query;
 

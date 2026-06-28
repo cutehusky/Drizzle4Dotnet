@@ -1,8 +1,7 @@
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.PgSql;
+namespace Drizzle4Dotnet.PgSql.Schema;
 
 /// <summary>
 /// PostgreSQL-specific column type. Alias for DbColumn{T, TTable, PgSqlSqlDialectImpl}.

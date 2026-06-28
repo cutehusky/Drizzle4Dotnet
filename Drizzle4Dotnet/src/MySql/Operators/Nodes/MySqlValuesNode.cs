@@ -1,7 +1,6 @@
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.MySql.Nodes;
+namespace Drizzle4Dotnet.MySql.Operators.Nodes;
 
 /// <summary>
 /// Represents a MySQL VALUES(column) reference for ON DUPLICATE KEY UPDATE.

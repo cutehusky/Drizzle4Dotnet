@@ -2,10 +2,9 @@ using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
-using Drizzle4Dotnet.MySql.Nodes;
+using Drizzle4Dotnet.MySql.Operators.Nodes;
 
-namespace Drizzle4Dotnet.MySql;
+namespace Drizzle4Dotnet.MySql.Query;
 
 /// <summary>
 /// MySQL-specific INSERT query builder.

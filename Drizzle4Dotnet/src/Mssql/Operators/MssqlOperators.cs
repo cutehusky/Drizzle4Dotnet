@@ -1,8 +1,7 @@
-using Drizzle4Dotnet.Core.Operators;
 using Drizzle4Dotnet.Core.Operators.Nodes;
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.Mssql;
+namespace Drizzle4Dotnet.Mssql.Operators;
 
 /// <summary>
 /// MSSQL-specific operators.
@@ -22,5 +21,5 @@ public static class MssqlOperators
     /// MSSQL uses + for concatenation, unlike PostgreSQL's || operator.
     /// </summary>
     public static BinaryNode<T> Concat<T>(ISql<T> left, ISql<T> right)
-        => Operators.Add(left, right);
+        => Core.Operators.Operators.Add(left, right);
 }

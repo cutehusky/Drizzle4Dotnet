@@ -1,6 +1,6 @@
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.Mssql;
+namespace Drizzle4Dotnet.Mssql.Operators;
 
 // ======================================================================
 // MSSQL System/Information Functions

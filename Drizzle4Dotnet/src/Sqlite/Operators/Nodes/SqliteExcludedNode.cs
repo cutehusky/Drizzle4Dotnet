@@ -1,7 +1,6 @@
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.Sqlite.Nodes;
+namespace Drizzle4Dotnet.Sqlite.Operators.Nodes;
 
 /// <summary>
 /// Represents an EXCLUDED column reference for SQLite ON CONFLICT DO UPDATE SET.

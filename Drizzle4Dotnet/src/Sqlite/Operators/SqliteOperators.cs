@@ -1,6 +1,6 @@
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.Sqlite;
+namespace Drizzle4Dotnet.Sqlite.Operators;
 
 /// <summary>
 /// SQLite-specific operators.

@@ -16,96 +16,20 @@ public static class OrmSchemaExporter
     private static readonly ConcurrentDictionary<Type, TableDefinition> _cache = new();
 
     /// <summary>
-    /// Default CLR-to-SQL type mappings used for DDL generation.
-    /// Override by passing a custom map to <see cref="GetTableDefinition{TTable}"/>.
-    /// </summary>
-    public static readonly Dictionary<Type, string> DefaultClrToSqlMap = new()
-    {
-        [typeof(int)] = "INTEGER",
-        [typeof(long)] = "BIGINT",
-        [typeof(short)] = "SMALLINT",
-        [typeof(byte)] = "SMALLINT",
-        [typeof(string)] = "TEXT",
-        [typeof(bool)] = "BOOLEAN",
-        [typeof(decimal)] = "NUMERIC(18,2)",
-        [typeof(float)] = "REAL",
-        [typeof(double)] = "DOUBLE PRECISION",
-        [typeof(DateTime)] = "TIMESTAMP",
-        [typeof(DateOnly)] = "DATE",
-        [typeof(TimeOnly)] = "TIME",
-        [typeof(Guid)] = "UUID",
-        [typeof(byte[])] = "BYTEA",
-        [typeof(char)] = "CHAR(1)",
-    };
-
-    /// <summary>
-    /// PostgreSQL-specific CLR-to-SQL type mappings.
-    /// </summary>
-    public static readonly Dictionary<Type, string> PgSqlTypeMap = new(DefaultClrToSqlMap)
-    {
-        // PostgreSQL uses TEXT for strings, BIGSERIAL for auto-increment
-    };
-
-    /// <summary>
-    /// SQLite-specific CLR-to-SQL type mappings.
-    /// SQLite uses only 5 storage classes: INTEGER, REAL, TEXT, BLOB, NUMERIC.
-    /// </summary>
-    public static readonly Dictionary<Type, string> SqliteTypeMap = new()
-    {
-        [typeof(int)] = "INTEGER",
-        [typeof(long)] = "INTEGER",
-        [typeof(short)] = "INTEGER",
-        [typeof(byte)] = "INTEGER",
-        [typeof(string)] = "TEXT",
-        [typeof(bool)] = "INTEGER",       // 0 or 1
-        [typeof(decimal)] = "NUMERIC",
-        [typeof(float)] = "REAL",
-        [typeof(double)] = "REAL",
-        [typeof(DateTime)] = "TEXT",      // ISO-8601 format
-        [typeof(DateOnly)] = "TEXT",      // 'YYYY-MM-DD'
-        [typeof(TimeOnly)] = "TEXT",      // 'HH:MM:SS'
-        [typeof(Guid)] = "TEXT",          // hex string
-        [typeof(byte[])] = "BLOB",
-        [typeof(char)] = "TEXT",
-    };
-
-    /// <summary>
-    /// MySQL-specific CLR-to-SQL type mappings.
-    /// </summary>
-    public static readonly Dictionary<Type, string> MySqlTypeMap = new()
-    {
-        [typeof(int)] = "INT",
-        [typeof(long)] = "BIGINT",
-        [typeof(short)] = "SMALLINT",
-        [typeof(byte)] = "TINYINT",
-        [typeof(string)] = "VARCHAR(255)",
-        [typeof(bool)] = "TINYINT(1)",
-        [typeof(decimal)] = "DECIMAL(18,2)",
-        [typeof(float)] = "FLOAT",
-        [typeof(double)] = "DOUBLE",
-        [typeof(DateTime)] = "DATETIME(6)",
-        [typeof(DateOnly)] = "DATE",
-        [typeof(TimeOnly)] = "TIME",
-        [typeof(Guid)] = "CHAR(36)",
-        [typeof(byte[])] = "BLOB",
-        [typeof(char)] = "CHAR(1)",
-    };
-
-    /// <summary>
     /// Gets a <see cref="TableDefinition"/> from an ORM table type via reflection.
     /// </summary>
     /// <typeparam name="TTable">The ORM table class (e.g., <c>UsersTable</c>).</typeparam>
     /// <param name="customTypeMap">Optional CLR-to-SQL type mapping overrides.</param>
     /// <param name="useCache">Whether to cache the result.</param>
-    public static TableDefinition GetTableDefinition<TTable>(
-        Dictionary<Type, string>? customTypeMap = null,
-        bool useCache = true) where TTable : class
+    public static TableDefinition GetTableDefinition<TTable, TDialect>(
+        Dictionary<Type, ISqlDataType>? customTypeMap = null,
+        bool useCache = true) where TTable : IDbTable<TDialect> where TDialect : ISqlDialect
     {
         var type = typeof(TTable);
         if (useCache && _cache.TryGetValue(type, out var cached))
             return cached;
 
-        var tableDef = ExtractTableDefinition(type, customTypeMap);
+        var tableDef = ExtractTableDefinition<TDialect>(type, customTypeMap);
 
         if (useCache)
             _cache[type] = tableDef;
@@ -116,53 +40,59 @@ public static class OrmSchemaExporter
     /// <summary>
     /// Gets <see cref="TableDefinition"/> from multiple ORM table types.
     /// </summary>
-    public static List<TableDefinition> GetTableDefinitions(params Type[] tableTypes)
+    public static List<TableDefinition> GetTableDefinitions<TDialect>(params Type[] tableTypes)
+        where TDialect : ISqlDialect
     {
-        return tableTypes.Select(t => ExtractTableDefinition(t, null)).ToList();
+        return tableTypes.Select(t => ExtractTableDefinition<TDialect>(t, null)).ToList();
     }
 
     /// <summary>
     /// Creates a <see cref="SchemaSnapshot"/> from an ORM table type.
     /// </summary>
-    public static SchemaSnapshot CreateSchemaSnapshot<TTable>(string snapshotName)
-        where TTable : class
+    public static SchemaSnapshot CreateSchemaSnapshot<TTable, TDialect>(string snapshotName, Dictionary<Type, ISqlDataType>? customTypeMap = null)
+        where TDialect : ISqlDialect
+        where TTable : IDbTable<TDialect>
     {
-        var tableDef = GetTableDefinition<TTable>();
+        var tableDef = GetTableDefinition<TTable, TDialect>(customTypeMap);
         return SchemaSnapshot.FromTableDefinitions(snapshotName, new[] { tableDef });
     }
 
     /// <summary>
     /// Creates a <see cref="SchemaSnapshot"/> from multiple table types.
     /// </summary>
-    public static SchemaSnapshot CreateSchemaSnapshot(string snapshotName, params Type[] tableTypes)
+    public static SchemaSnapshot CreateSchemaSnapshot<TDialect>(
+        string snapshotName, params Type[] tableTypes)
+        where TDialect : ISqlDialect
     {
-        var defs = tableTypes.Select(t => ExtractTableDefinition(t, null)).ToList();
+        var defs = tableTypes.Select(t => ExtractTableDefinition<TDialect>(t, null)).ToList();
         return SchemaSnapshot.FromTableDefinitions(snapshotName, defs);
     }
 
     /// <summary>
     /// Convenience method: creates a <see cref="CreateTableQuery"/> from an ORM table type.
     /// </summary>
-    public static CreateTableQuery CreateTable<TTable>(
-        Dictionary<Type, string>? customTypeMap = null)
-        where TTable : class
+    public static CreateTableQuery CreateTable<TTable, TDialect>(
+        Dictionary<Type, ISqlDataType>? customTypeMap = null)
+        where TTable : IDbTable<TDialect>
+        where TDialect : ISqlDialect
     {
-        var tableDef = GetTableDefinition<TTable>(customTypeMap);
+        var tableDef = GetTableDefinition<TTable, TDialect>(customTypeMap);
         return new CreateTableQuery(tableDef);
     }
 
-    private static TableDefinition ExtractTableDefinition(
+    private static TableDefinition ExtractTableDefinition<TDialect>(
         Type tableType,
-        Dictionary<Type, string>? customTypeMap)
+        Dictionary<Type, ISqlDataType>? customTypeMap)
+        where TDialect : ISqlDialect
     {
-        var typeMap = customTypeMap ?? DefaultClrToSqlMap;
-
+        var typeMap = customTypeMap ?? TDialect.ClrToSqlTypeMap;
+        
         // Extract table name from static properties generated by TableGenerator
         var tableName = GetStaticPropertyValue<string>(tableType, "TableName") ?? tableType.Name;
         var schemaName = GetStaticPropertyValue<string>(tableType, "SchemaName") ?? "public";
 
         // Extract columns by finding static properties typed as DbColumn<,,> or subclasses
-        var columns = new List<ColumnDefinition>();
+        var columns = new List<IColumnDefinition>();
 
         foreach (var prop in tableType.GetProperties(BindingFlags.Public | BindingFlags.Static))
         {
@@ -178,7 +108,7 @@ public static class OrmSchemaExporter
             var sqlType = MapClrToSql(clrType, typeMap);
             var isNullable = IsClrNullable(clrType);
 
-            columns.Add(new ColumnDefinition(columnName, sqlType)
+            columns.Add(new ColumnDefinition<TDialect>(columnName, sqlType)
             {
                 IsNullable = isNullable
             });
@@ -236,7 +166,7 @@ public static class OrmSchemaExporter
         return typeof(string);
     }
 
-    private static string MapClrToSql(Type clrType, Dictionary<Type, string> typeMap)
+    private static ISqlDataType MapClrToSql(Type clrType, Dictionary<Type, ISqlDataType> typeMap)
     {
         // Handle nullable types (Nullable<T>)
         var underlyingType = Nullable.GetUnderlyingType(clrType);
@@ -254,7 +184,7 @@ public static class OrmSchemaExporter
                 return value;
         }
 
-        return "TEXT";
+        return new RawSqlDataType("TEXT");
     }
 
     private static bool IsClrNullable(Type type)

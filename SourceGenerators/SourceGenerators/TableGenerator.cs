@@ -174,8 +174,8 @@ public class TableGenerator : IIncrementalGenerator
             sb.AppendLine("using Drizzle4Dotnet.Core.Shared;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Columns;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Tables;");
-            sb.AppendLine("using Drizzle4Dotnet.Dialect;");
             sb.AppendLine($"using {dialect.DialectNamespace};");
+            sb.AppendLine($"using {dialect.DialectNamespace}.Schema;");
             sb.AppendLine("using System.Text;");
             sb.AppendLine("using System;");
             sb.AppendLine("using System.Data.Common;");

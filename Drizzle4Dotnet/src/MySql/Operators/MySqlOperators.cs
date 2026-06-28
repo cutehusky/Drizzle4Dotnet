@@ -1,4 +1,4 @@
-namespace Drizzle4Dotnet.MySql;
+namespace Drizzle4Dotnet.MySql.Operators;
 
 public static partial class MySqlOperators
 {

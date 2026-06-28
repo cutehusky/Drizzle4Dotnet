@@ -1,6 +1,6 @@
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.PgSql.Nodes;
+namespace Drizzle4Dotnet.PgSql.Operators.Nodes;
 
 /// <summary>
 /// Represents a window frame unit: ROWS, RANGE, or GROUPS (PostgreSQL).

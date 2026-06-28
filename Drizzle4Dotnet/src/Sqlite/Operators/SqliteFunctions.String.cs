@@ -1,7 +1,7 @@
 using Drizzle4Dotnet.Core.Operators.Nodes;
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.Sqlite;
+namespace Drizzle4Dotnet.Sqlite.Operators;
 
 public static partial class SqliteFunctions
 {

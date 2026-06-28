@@ -1,7 +1,6 @@
 using Drizzle4Dotnet.Core.Schema.Tables;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.Sqlite;
+namespace Drizzle4Dotnet.Sqlite.Schema;
 
 // ======================================================================
 // SQLite-specific table interface aliases

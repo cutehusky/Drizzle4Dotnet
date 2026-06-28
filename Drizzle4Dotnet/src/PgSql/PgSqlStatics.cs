@@ -1,6 +1,6 @@
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.PgSql.Nodes;
+using Drizzle4Dotnet.PgSql.Operators.Nodes;
 
 namespace Drizzle4Dotnet.PgSql;
 

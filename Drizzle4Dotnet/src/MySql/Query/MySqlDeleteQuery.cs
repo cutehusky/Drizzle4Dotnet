@@ -1,9 +1,9 @@
 using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
+using Drizzle4Dotnet.MySql.Schema;
 
-namespace Drizzle4Dotnet.MySql;
+namespace Drizzle4Dotnet.MySql.Query;
 
 /// <summary>
 /// MySQL-specific DELETE query builder.

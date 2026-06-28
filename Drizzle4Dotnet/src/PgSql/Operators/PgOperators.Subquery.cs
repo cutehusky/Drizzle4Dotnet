@@ -1,7 +1,7 @@
 using Drizzle4Dotnet.Core.Operators.Nodes;
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.PgSql;
+namespace Drizzle4Dotnet.PgSql.Operators;
 
 public static partial class PgOperators
 {

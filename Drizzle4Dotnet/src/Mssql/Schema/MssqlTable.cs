@@ -1,7 +1,6 @@
 using Drizzle4Dotnet.Core.Schema.Tables;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.Mssql;
+namespace Drizzle4Dotnet.Mssql.Schema;
 
 // ======================================================================
 // MSSQL-specific table interface aliases

@@ -1,4 +1,4 @@
-namespace Drizzle4Dotnet.Oracle;
+namespace Drizzle4Dotnet.Oracle.Operators;
 
 /// <summary>
 /// Oracle-specific SQL functions.

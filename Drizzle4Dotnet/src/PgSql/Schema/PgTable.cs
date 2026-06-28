@@ -1,9 +1,6 @@
-using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Schema.Tables;
-using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.PgSql;
+namespace Drizzle4Dotnet.PgSql.Schema;
 
 // ======================================================================
 // PostgreSQL-specific table interface aliases

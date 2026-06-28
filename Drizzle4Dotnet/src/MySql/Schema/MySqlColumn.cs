@@ -1,8 +1,7 @@
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.MySql;
+namespace Drizzle4Dotnet.MySql.Schema;
 
 /// <summary>
 /// MySQL-specific column type. Alias for DbColumn{T, TTable, MySqlSqlDialectImpl}.

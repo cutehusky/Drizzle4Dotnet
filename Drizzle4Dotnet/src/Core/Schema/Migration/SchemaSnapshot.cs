@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.PgSql;
 
 namespace Drizzle4Dotnet.Core.Schema.Migration;
 
@@ -169,9 +170,9 @@ public class SchemaSnapshot
         return changes;
     }
 
-    private static ColumnDefinition ToColDef(SnapshotColumn col)
+    private static IColumnDefinition ToColDef(SnapshotColumn col)
     {
-        return new ColumnDefinition(col.Name, col.DataType)
+        return new ColumnDefinition<PgSqlSqlDialectImpl>(col.Name, col.DataType)
         {
             IsNullable = col.IsNullable,
             IsPrimaryKey = col.IsPrimaryKey,

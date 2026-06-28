@@ -1,3 +1,5 @@
+using Drizzle4Dotnet.Core.Schema.Migration;
+
 namespace Drizzle4Dotnet.Core.Shared;
 
 public interface ISqlDialect
@@ -46,4 +48,14 @@ public interface ISqlDialect
     // ======================================================================
     
     static abstract string EscapeString(string value);
+    
+    // ======================================================================
+    // Data Type Mapping
+    // ======================================================================
+    
+    /// <summary>
+    /// Maps CLR types to dialect-specific <see cref="ISqlDataType"/> instances.
+    /// Used by <see cref="Schema.Migration.OrmSchemaExporter"/> for automatic type mapping.
+    /// </summary>
+    static abstract Dictionary<Type, ISqlDataType> ClrToSqlTypeMap { get; }
 }

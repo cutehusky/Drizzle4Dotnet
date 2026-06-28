@@ -1,6 +1,8 @@
+using Drizzle4Dotnet.Core.Schema.Migration;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Sqlite.Schema;
 
-namespace Drizzle4Dotnet.Dialect;
+namespace Drizzle4Dotnet.Sqlite;
 
 /// <summary>
 /// SQLite dialect implementation.
@@ -115,4 +117,23 @@ public class SqliteSqlDialectImpl : ISqlDialect
     /// </summary>
     public static string EscapeString(string value)
         => SqlDialectDefaults.EscapeString(value);
+    
+    public static Dictionary<Type, ISqlDataType> ClrToSqlTypeMap =>  new()
+    {
+        [typeof(int)] = SqliteDataType.Integer,
+        [typeof(long)] = SqliteDataType.Integer,
+        [typeof(short)] = SqliteDataType.Integer,
+        [typeof(byte)] = SqliteDataType.Integer,
+        [typeof(string)] = SqliteDataType.Text,
+        [typeof(bool)] = SqliteDataType.Boolean,
+        [typeof(decimal)] = SqliteDataType.Numeric,
+        [typeof(float)] = SqliteDataType.Real,
+        [typeof(double)] = SqliteDataType.Real,
+        [typeof(DateTime)] = SqliteDataType.Timestamp,
+        [typeof(DateOnly)] = SqliteDataType.Date,
+        [typeof(TimeOnly)] = SqliteDataType.Time,
+        [typeof(Guid)] = SqliteDataType.Uuid,
+        [typeof(byte[])] = SqliteDataType.Blob,
+        [typeof(char)] = SqliteDataType.Char,
+    };
 }

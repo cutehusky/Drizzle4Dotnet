@@ -1,6 +1,8 @@
+using Drizzle4Dotnet.Core.Schema.Migration;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Mssql.Schema;
 
-namespace Drizzle4Dotnet.Dialect;
+namespace Drizzle4Dotnet.Mssql;
 
 /// <summary>
 /// MSSQL (T-SQL) dialect implementation.
@@ -143,4 +145,23 @@ public class MssqlSqlDialectImpl : ISqlDialect
     /// </summary>
     public static string EscapeString(string value)
         => SqlDialectDefaults.EscapeString(value);
+    
+    public static Dictionary<Type, ISqlDataType> ClrToSqlTypeMap => new()
+    {
+        [typeof(int)] = MssqlDataType.Int,
+        [typeof(long)] = MssqlDataType.BigInt,
+        [typeof(short)] = MssqlDataType.SmallInt,
+        [typeof(byte)] = MssqlDataType.TinyInt,
+        [typeof(string)] = MssqlDataType.Text,
+        [typeof(bool)] = MssqlDataType.Boolean,
+        [typeof(decimal)] = MssqlDataType.Decimal,
+        [typeof(float)] = MssqlDataType.Real,
+        [typeof(double)] = MssqlDataType.Float,
+        [typeof(DateTime)] = MssqlDataType.DateTime2,
+        [typeof(DateOnly)] = MssqlDataType.Date,
+        [typeof(TimeOnly)] = MssqlDataType.Time,
+        [typeof(Guid)] = MssqlDataType.UniqueIdentifier,
+        [typeof(byte[])] = MssqlDataType.VarBinary,
+        [typeof(char)] = MssqlDataType.NChar,
+    };
 }

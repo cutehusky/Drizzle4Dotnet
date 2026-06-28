@@ -248,7 +248,7 @@ public static class TableDefinitionComparer
     }
 
     private static List<(AlterAction Action, string Description)> GetColumnModifications(
-        ColumnDefinition oldCol, ColumnDefinition newCol)
+        IColumnDefinition oldCol, IColumnDefinition newCol)
     {
         var modifications = new List<(AlterAction, string)>();
 

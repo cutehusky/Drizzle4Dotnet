@@ -1,5 +1,5 @@
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Oracle.Nodes;
+using Drizzle4Dotnet.Oracle.Operators.Nodes;
 
 namespace Drizzle4Dotnet.Oracle;
 

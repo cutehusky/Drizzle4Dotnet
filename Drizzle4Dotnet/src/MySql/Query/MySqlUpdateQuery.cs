@@ -1,11 +1,8 @@
-using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query.Update;
-using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.MySql;
+namespace Drizzle4Dotnet.MySql.Query;
 
 /// <summary>
 /// MySQL-specific UPDATE query builder.

@@ -1,7 +1,6 @@
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.Mssql.Nodes;
+namespace Drizzle4Dotnet.Mssql.Operators.Nodes;
 
 /// <summary>
 /// Represents NEXT VALUE FOR [sequence_name].

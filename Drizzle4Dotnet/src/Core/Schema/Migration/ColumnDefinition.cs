@@ -3,15 +3,55 @@ using Drizzle4Dotnet.Core.Shared;
 namespace Drizzle4Dotnet.Core.Schema.Migration;
 
 /// <summary>
-/// Represents a column definition for DDL generation (CREATE TABLE, ALTER TABLE, etc.).
+/// Non-generic interface for accessing column definition properties without dialect knowledge.
+/// Used by <see cref="TableDefinition"/> and schema comparison utilities.
 /// </summary>
-public class ColumnDefinition
+public interface IColumnDefinition
+{ 
+    /// <summary>The column name in the database.</summary>
+    string Name { get; }
+    
+    /// <summary>The typed SQL data type.</summary>
+    ISqlDataType SqlDataType { get; }
+    
+    /// <summary>The SQL type name string (e.g., "BIGINT", "TEXT").</summary>
+    string DataType { get; }
+    
+    /// <summary>Whether the column is nullable.</summary>
+    bool IsNullable { get; set; }
+    
+    /// <summary>Whether the column is a primary key.</summary>
+    bool IsPrimaryKey { get; set; }
+    
+    /// <summary>Whether the column has an auto-increment/identity attribute.</summary>
+    bool IsAutoIncrement { get; set; }
+    
+    /// <summary>A default value expression (e.g., "NOW()", "'default'").</summary>
+    string? DefaultValue { get; set; }
+    
+    /// <summary>A CHECK constraint expression.</summary>
+    string? CheckExpression { get; set; }
+    
+    /// <summary>Column comment/description.</summary>
+    string? Comment { get; set; }
+}
+
+/// <summary>
+/// Represents a column definition for DDL generation (CREATE TABLE, ALTER TABLE, etc.).
+/// Generic over <typeparamref name="TDialect"/> for compile-time dialect enforcement.
+/// Stores the SQL data type as an <see cref="ISqlDataType"/> for type-safe dialect-specific types.
+/// </summary>
+/// <typeparam name="TDialect">The SQL dialect implementation (e.g., <c>PgSqlSqlDialectImpl</c>).</typeparam>
+public class ColumnDefinition<TDialect> : IColumnDefinition where TDialect : ISqlDialect
 {
     /// <summary>The column name in the database.</summary>
     public string Name { get; }
     
-    /// <summary>The SQL data type (e.g., "BIGINT", "TEXT", "NUMERIC(18,2)").</summary>
-    public string DataType { get; }
+    /// <summary>The typed SQL data type.</summary>
+    public ISqlDataType SqlDataType { get; }
+    
+    /// <summary>The SQL type name string (e.g., "BIGINT", "TEXT", "NUMERIC(18,2)").</summary>
+    public string DataType => SqlDataType.Sql;
     
     /// <summary>Whether the column is nullable.</summary>
     public bool IsNullable { get; set; } = true;
@@ -31,50 +71,64 @@ public class ColumnDefinition
     /// <summary>Column comment/description.</summary>
     public string? Comment { get; set; }
 
-    public ColumnDefinition(string name, string dataType)
+    /// <summary>
+    /// Creates a column definition with a typed SQL data type.
+    /// </summary>
+    /// <param name="name">The column name.</param>
+    /// <param name="sqlDataType">The typed SQL data type (e.g., <see cref="PgSqlDataType.BigInt"/>).</param>
+    public ColumnDefinition(string name, ISqlDataType sqlDataType)
     {
         Name = name;
-        DataType = dataType;
+        SqlDataType = sqlDataType;
     }
 
-    public ColumnDefinition NotNull()
+    /// <summary>
+    /// Creates a column definition with a raw SQL data type string.
+    /// Wraps the string in a <see cref="RawSqlDataType"/>.
+    /// </summary>
+    public ColumnDefinition(string name, string dataType)
+        : this(name, new RawSqlDataType(dataType))
+    {
+    }
+
+    public ColumnDefinition<TDialect> NotNull()
     {
         IsNullable = false;
         return this;
     }
 
-    public ColumnDefinition Nullable()
+    public ColumnDefinition<TDialect> Nullable()
     {
         IsNullable = true;
         return this;
     }
 
-    public ColumnDefinition PrimaryKey()
+    public ColumnDefinition<TDialect> PrimaryKey()
     {
         IsPrimaryKey = true;
         IsNullable = false;
         return this;
     }
 
-    public ColumnDefinition AutoIncrement()
+    public ColumnDefinition<TDialect> AutoIncrement()
     {
         IsAutoIncrement = true;
         return this;
     }
 
-    public ColumnDefinition WithDefault(string defaultValue)
+    public ColumnDefinition<TDialect> WithDefault(string defaultValue)
     {
         DefaultValue = defaultValue;
         return this;
     }
 
-    public ColumnDefinition WithCheck(string checkExpression)
+    public ColumnDefinition<TDialect> WithCheck(string checkExpression)
     {
         CheckExpression = checkExpression;
         return this;
     }
 
-    public ColumnDefinition WithComment(string comment)
+    public ColumnDefinition<TDialect> WithComment(string comment)
     {
         Comment = comment;
         return this;
@@ -86,22 +140,11 @@ public class ColumnDefinition
 /// </summary>
 public enum ColumnChangeType
 {
-    /// <summary>Column exists in both schemas with no changes.</summary>
     None,
-    
-    /// <summary>Column was added.</summary>
     Added,
-    
-    /// <summary>Column was removed.</summary>
     Removed,
-    
-    /// <summary>Column data type changed.</summary>
     TypeChanged,
-    
-    /// <summary>Column nullability changed.</summary>
     NullabilityChanged,
-    
-    /// <summary>Column default value changed.</summary>
     DefaultChanged
 }
 
@@ -112,14 +155,14 @@ public readonly struct ColumnChange
 {
     public ColumnChangeType ChangeType { get; }
     public string ColumnName { get; }
-    public ColumnDefinition? OldDefinition { get; }
-    public ColumnDefinition? NewDefinition { get; }
+    public IColumnDefinition? OldDefinition { get; }
+    public IColumnDefinition? NewDefinition { get; }
 
     public ColumnChange(
         ColumnChangeType changeType,
         string columnName,
-        ColumnDefinition? oldDefinition = null,
-        ColumnDefinition? newDefinition = null)
+        IColumnDefinition? oldDefinition = null,
+        IColumnDefinition? newDefinition = null)
     {
         ChangeType = changeType;
         ColumnName = columnName;
@@ -133,16 +176,9 @@ public readonly struct ColumnChange
 /// </summary>
 public enum TableChangeType
 {
-    /// <summary>Table exists in both schemas.</summary>
     None,
-    
-    /// <summary>Table was added.</summary>
     Added,
-    
-    /// <summary>Table was removed.</summary>
     Removed,
-    
-    /// <summary>Table columns changed.</summary>
     Modified
 }
 
@@ -177,25 +213,19 @@ public readonly struct TableChange
 
 /// <summary>
 /// Defines a complete table structure for DDL generation.
+/// Columns are stored via <see cref="IColumnDefinition"/> to support any dialect.
 /// </summary>
 public class TableDefinition
 {
-    /// <summary>The table name.</summary>
     public string TableName { get; }
-    
-    /// <summary>The schema name.</summary>
     public string SchemaName { get; }
-    
-    /// <summary>The columns in the table.</summary>
-    public IReadOnlyList<ColumnDefinition> Columns { get; }
-    
-    /// <summary>Additional table constraints (e.g., "UNIQUE(col1, col2)").</summary>
+    public IReadOnlyList<IColumnDefinition> Columns { get; }
     public IReadOnlyList<string> TableConstraints { get; }
 
     public TableDefinition(
         string tableName,
         string schemaName,
-        IReadOnlyList<ColumnDefinition> columns,
+        IReadOnlyList<IColumnDefinition> columns,
         IReadOnlyList<string>? tableConstraints = null)
     {
         TableName = tableName;

@@ -2,10 +2,9 @@ using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
-using Drizzle4Dotnet.Sqlite.Nodes;
+using Drizzle4Dotnet.Sqlite.Operators.Nodes;
 
-namespace Drizzle4Dotnet.Sqlite;
+namespace Drizzle4Dotnet.Sqlite.Query;
 
 /// <summary>
 /// SQLite-specific INSERT query builder.

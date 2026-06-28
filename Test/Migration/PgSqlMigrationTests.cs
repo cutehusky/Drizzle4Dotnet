@@ -1,6 +1,8 @@
 using Drizzle4Dotnet.Core.Schema.Migration;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
+using Drizzle4Dotnet.MySql;
+using Drizzle4Dotnet.PgSql;
+using ColumnDefinition = Drizzle4Dotnet.Core.Schema.Migration.ColumnDefinition<Drizzle4Dotnet.PgSql.PgSqlSqlDialectImpl>;
 using PgSql = SharedDemo.PgSql;
 using MySql = SharedDemo.MySql;
 
@@ -737,7 +739,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_ExportUsersTable()
     {
-        var tableDef = OrmSchemaExporter.GetTableDefinition<PgSql.UsersTable>();
+        var tableDef = OrmSchemaExporter.GetTableDefinition<PgSql.UsersTable, PgSqlSqlDialectImpl>();
         Assert.That(tableDef, Is.Not.Null);
         Assert.That(tableDef.TableName, Is.EqualTo("Users"));
         Assert.That(tableDef.SchemaName, Is.EqualTo("public"));
@@ -747,7 +749,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_ExportUsersTable_VerifyColumns()
     {
-        var tableDef = OrmSchemaExporter.GetTableDefinition<PgSql.UsersTable>();
+        var tableDef = OrmSchemaExporter.GetTableDefinition<PgSql.UsersTable, PgSqlSqlDialectImpl>();
 
         var columnNames = tableDef.Columns.Select(c => c.Name).ToList();
         Assert.That(columnNames, Does.Contain("Id"));
@@ -764,7 +766,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_ColumnTypes_PgSql()
     {
-        var tableDef = OrmSchemaExporter.GetTableDefinition<PgSql.UsersTable>(OrmSchemaExporter.PgSqlTypeMap);
+        var tableDef = OrmSchemaExporter.GetTableDefinition<PgSql.UsersTable, PgSqlSqlDialectImpl>(PgSqlSqlDialectImpl.ClrToSqlTypeMap);
 
         var idCol = tableDef.Columns.First(c => c.Name == "Id");
         Assert.That(idCol.DataType, Is.EqualTo("BIGINT"));
@@ -785,7 +787,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_ColumnTypes_MySql()
     {
-        var tableDef = OrmSchemaExporter.GetTableDefinition<SharedDemo.MySql.UsersTable>(OrmSchemaExporter.MySqlTypeMap);
+        var tableDef = OrmSchemaExporter.GetTableDefinition<MySql.UsersTable, MySqlSqlDialectImpl>(MySqlSqlDialectImpl.ClrToSqlTypeMap);
 
         var idCol = tableDef.Columns.First(c => c.Name == "Id");
         Assert.That(idCol.DataType, Is.EqualTo("BIGINT"));
@@ -800,7 +802,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_NullableDetection()
     {
-        var tableDef = OrmSchemaExporter.GetTableDefinition<PgSql.UsersTable>();
+        var tableDef = OrmSchemaExporter.GetTableDefinition<PgSql.UsersTable, PgSqlSqlDialectImpl>();
 
         var managerIdCol = tableDef.Columns.FirstOrDefault(c => c.Name == "ManagerId");
         Assert.That(managerIdCol, Is.Not.Null);
@@ -816,7 +818,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_ExportMultipleTables()
     {
-        var tables = OrmSchemaExporter.GetTableDefinitions(
+        var tables = OrmSchemaExporter.GetTableDefinitions<PgSqlSqlDialectImpl>(
             typeof(PgSql.UsersTable),
             typeof(PgSql.DepartmentsTable),
             typeof(PgSql.RolesTable)
@@ -831,7 +833,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_CreateTableFromOrm()
     {
-        var createTable = OrmSchemaExporter.CreateTable<PgSql.UsersTable>(OrmSchemaExporter.PgSqlTypeMap);
+        var createTable = OrmSchemaExporter.CreateTable<PgSql.UsersTable, PgSqlSqlDialectImpl>(PgSqlSqlDialectImpl.ClrToSqlTypeMap);
         var (sql, _) = Build(createTable);
         Print("CREATE TABLE from ORM schema", sql);
 
@@ -845,7 +847,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_SchemaSnapshotFromOrm()
     {
-        var snapshot = OrmSchemaExporter.CreateSchemaSnapshot("v1",
+        var snapshot = OrmSchemaExporter.CreateSchemaSnapshot<PgSqlSqlDialectImpl>("v1",
             typeof(PgSql.UsersTable), typeof(PgSql.DepartmentsTable));
 
         Assert.That(snapshot.Name, Is.EqualTo("v1"));
@@ -861,7 +863,7 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_CompareOrmToSnapshot()
     {
-        var current = OrmSchemaExporter.CreateSchemaSnapshot("current", typeof(PgSql.UsersTable));
+        var current = OrmSchemaExporter.CreateSchemaSnapshot<PgSqlSqlDialectImpl>("current", typeof(PgSql.UsersTable));
 
         var targetColumns = current.Tables[0].Columns.ToList();
         targetColumns.Add(new SnapshotColumn
@@ -900,10 +902,10 @@ public class PgSqlMigrationTests
     [Test]
     public void OrmSchemaExporter_FullWorkflow()
     {
-        var currentSnapshot = OrmSchemaExporter.CreateSchemaSnapshot("v1",
+        var currentSnapshot = OrmSchemaExporter.CreateSchemaSnapshot<PgSqlSqlDialectImpl>("v1",
             typeof(PgSql.UsersTable), typeof(PgSql.DepartmentsTable));
 
-        var targetSnapshot = OrmSchemaExporter.CreateSchemaSnapshot("v2",
+        var targetSnapshot = OrmSchemaExporter.CreateSchemaSnapshot<PgSqlSqlDialectImpl>("v2",
             typeof(PgSql.UsersTable), typeof(PgSql.DepartmentsTable), typeof(PgSql.RolesTable));
 
         var diff = currentSnapshot.Compare(targetSnapshot);

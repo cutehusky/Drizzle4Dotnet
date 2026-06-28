@@ -4,7 +4,6 @@ using Drizzle4Dotnet.Core.Operators.Nodes;
 using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 using Drizzle4Dotnet.PgSql;
 using SharedDemo.PgSql;
 using static Drizzle4Dotnet.Core.Operators.Operators;

@@ -1,6 +1,6 @@
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
-using Drizzle4Dotnet.Dialect;
+using Drizzle4Dotnet.Sqlite;
 
 namespace SharedDemo.Sqlite
 {

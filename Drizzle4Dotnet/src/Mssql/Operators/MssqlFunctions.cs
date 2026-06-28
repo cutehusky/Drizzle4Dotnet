@@ -1,4 +1,4 @@
-namespace Drizzle4Dotnet.Mssql;
+namespace Drizzle4Dotnet.Mssql.Operators;
 
 /// <summary>
 /// Entry point partial class for MSSQL-specific functions.

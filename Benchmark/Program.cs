@@ -1,14 +1,13 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 using Dapper;
-using Drizzle4Dotnet.Core;
-using Drizzle4Dotnet.Dialect;
+using Drizzle4Dotnet.Core.Operators;
 using Drizzle4Dotnet.PgSql;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using SharedDemo;
 using SharedDemo.PgSql;
-using static Drizzle4Dotnet.Core.Operators.Operators;
+
+namespace Benchmark;
 
 [MemoryDiagnoser]
 public class OrmBenchmark
@@ -135,7 +134,7 @@ WHERE ""Id"" = @id;";
     {
         var user = await Db.Select(UsersTable.ModelAll)
             .From(Users)
-            .Where(Eq(UsersTable.Id, 1));
+            .Where(Operators.Eq(UsersTable.Id, 1));
     }
     
     [Benchmark]

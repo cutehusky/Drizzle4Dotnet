@@ -1,8 +1,7 @@
 using Drizzle4Dotnet.Core.Operators;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.Sqlite.Nodes;
+namespace Drizzle4Dotnet.Sqlite.Operators.Nodes;
 
 /// <summary>
 /// Represents a SQLite _rowid_ expression.

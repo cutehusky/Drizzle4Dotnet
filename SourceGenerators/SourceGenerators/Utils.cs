@@ -137,11 +137,11 @@ public class DialectInfo
 
     private static readonly Dictionary<string, DialectInfo> _byTypeName = new()
     {
-        { "Drizzle4Dotnet.Dialect.PgSqlSqlDialectImpl", PgSql },
-        { "Drizzle4Dotnet.Dialect.MySqlSqlDialectImpl", MySql },
-        { "Drizzle4Dotnet.Dialect.SqliteSqlDialectImpl", Sqlite },
-        { "Drizzle4Dotnet.Dialect.MssqlSqlDialectImpl", Mssql },
-        { "Drizzle4Dotnet.Dialect.OracleSqlDialectImpl", Oracle },
+        { "Drizzle4Dotnet.PgSql.PgSqlSqlDialectImpl", PgSql },
+        { "Drizzle4Dotnet.MySql.MySqlSqlDialectImpl", MySql },
+        { "Drizzle4Dotnet.Sqlite.SqliteSqlDialectImpl", Sqlite },
+        { "Drizzle4Dotnet.Mssql.MssqlSqlDialectImpl", Mssql },
+        { "Drizzle4Dotnet.Oracle.OracleSqlDialectImpl", Oracle },
     };
 
     /// <summary>

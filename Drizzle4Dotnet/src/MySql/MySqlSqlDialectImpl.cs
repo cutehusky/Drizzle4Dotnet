@@ -1,6 +1,8 @@
+using Drizzle4Dotnet.Core.Schema.Migration;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.MySql.Schema;
 
-namespace Drizzle4Dotnet.Dialect;
+namespace Drizzle4Dotnet.MySql;
 
 public class MySqlSqlDialectImpl : ISqlDialect
 {
@@ -167,4 +169,23 @@ public class MySqlSqlDialectImpl : ISqlDialect
     /// </summary>
     public static string EscapeString(string value)
         => SqlDialectDefaults.EscapeString(value);
+    
+    public static Dictionary<Type, ISqlDataType> ClrToSqlTypeMap => new()
+    {
+        [typeof(int)] = MySqlDataType.Int,
+        [typeof(long)] = MySqlDataType.BigInt,
+        [typeof(short)] = MySqlDataType.SmallInt,
+        [typeof(byte)] = MySqlDataType.TinyInt,
+        [typeof(string)] = MySqlDataType.Text,
+        [typeof(bool)] = MySqlDataType.Boolean,
+        [typeof(decimal)] = MySqlDataType.Decimal,
+        [typeof(float)] = MySqlDataType.Float,
+        [typeof(double)] = MySqlDataType.Double,
+        [typeof(DateTime)] = MySqlDataType.DateTime,
+        [typeof(DateOnly)] = MySqlDataType.Date,
+        [typeof(TimeOnly)] = MySqlDataType.Time,
+        [typeof(Guid)] = MySqlDataType.Uuid,
+        [typeof(byte[])] = MySqlDataType.Blob,
+        [typeof(char)] = MySqlDataType.Char,
+    };
 }

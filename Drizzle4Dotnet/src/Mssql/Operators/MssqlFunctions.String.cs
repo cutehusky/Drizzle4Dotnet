@@ -1,7 +1,7 @@
 using Drizzle4Dotnet.Core.Operators.Nodes;
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.Mssql;
+namespace Drizzle4Dotnet.Mssql.Operators;
 
 // ======================================================================
 // MSSQL String Functions

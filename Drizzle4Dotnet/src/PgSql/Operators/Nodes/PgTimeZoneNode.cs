@@ -1,7 +1,7 @@
 using Drizzle4Dotnet.Core.Operators;
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.PgSql.Nodes;
+namespace Drizzle4Dotnet.PgSql.Operators.Nodes;
 
 /// <summary>
 /// Represents a PostgreSQL timezone name as a SQL string literal: 'UTC', 'Asia/Saigon', etc.

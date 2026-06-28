@@ -2,7 +2,6 @@ using System.Data.Common;
 using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 using Drizzle4Dotnet.PgSql.Query;
 
 namespace Drizzle4Dotnet.PgSql;

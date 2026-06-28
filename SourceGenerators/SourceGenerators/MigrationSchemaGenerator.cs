@@ -254,7 +254,8 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
 
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Migration;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Shared;");
-            sb.AppendLine("using Drizzle4Dotnet.Dialect;");
+            sb.AppendLine($"using {dialect.DialectNamespace};");
+            sb.AppendLine($"using {dialect.DialectNamespace}.Schema;");
             sb.AppendLine();
 
             sb.AppendLine($"partial class {table.ClassName}");
@@ -275,16 +276,29 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
             sb.AppendLine();
 
             // Build column definitions
-            sb.AppendLine("            var columns = new ColumnDefinition[]");
+            var columnTypeName = $"ColumnDefinition<{dialect.DialectImplType}>";
+            sb.AppendLine("            IColumnDefinition[] columns = new IColumnDefinition[]");
             sb.AppendLine("            {");
             foreach (var col in table.Columns)
             {
-                var sqlType = col.ExplicitDataType ?? MapClrToSqlType(col.ClrType, dialect.DialectImplType);
+                bool isExplicitType = col.ExplicitDataType != null;
+                string sqlType;
+                if (isExplicitType)
+                {
+                    // Explicit DataType from attribute: use raw string
+                    sqlType = $"\"{EscapeString(col.ExplicitDataType)}\"";
+                }
+                else
+                {
+                    // Auto-mapped type: use dialect-specific const string reference
+                    sqlType = MapClrToSqlTypeRef(col.ClrType, dialect.DialectImplType);
+                }
+
                 var isNullable = col.IsNullable ? "true" : "false";
                 var autoIncrement = col.AutoIncrement ? "true" : "false";
                 var primaryKey = col.PrimaryKey ? "true" : "false";
 
-                sb.AppendLine($"                new ColumnDefinition(\"{col.DbColumnName}\", \"{sqlType}\")");
+                sb.AppendLine($"                new {columnTypeName}(\"{col.DbColumnName}\", {sqlType})");
                 sb.AppendLine("                {");
 
                 if (!col.IsNullable)
@@ -475,6 +489,106 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
             "char" or "Char" => "CHAR(1)",
             _ => "TEXT"
         };
+    }
+
+    /// <summary>
+    /// Returns the dialect type const class name (e.g., "PgSqlType", "MySqlType", "SqliteType").
+    /// </summary>
+    private static string GetTypeConstClassName(string dialectType)
+    {
+        if (dialectType.Contains("MySql"))
+            return "MySqlType";
+        if (dialectType.Contains("Sqlite"))
+            return "SqliteType";
+        if (dialectType.Contains("Mssql"))
+            return "MssqlType";
+        if (dialectType.Contains("Oracle"))
+            return "OracleType";
+        return "PgSqlType";
+    }
+
+    /// <summary>
+    /// Maps a CLR type to a dialect-specific const string reference for use in generated code.
+    /// Returns a code fragment like "PgSqlType.BigInt" instead of a raw SQL string literal.
+    /// </summary>
+    private static string MapClrToSqlTypeRef(string fullyQualifiedTypeName, string dialectType)
+    {
+        var simplified = fullyQualifiedTypeName
+            .Replace("global::", "")
+            .Replace("System.", "")
+            .Replace("?", "");
+
+        var typeClass = GetTypeConstClassName(dialectType);
+        var isMySql = dialectType.Contains("MySql");
+
+        var propName = simplified switch
+        {
+            "int" or "Int32" => "Integer",
+            "long" or "Int64" => "BigInt",
+            "short" or "Int16" => "SmallInt",
+            "byte" or "Byte" => "TinyInt",
+            "string" or "String" => "Text",
+            "bool" or "Boolean" => "Boolean",
+            "decimal" or "Decimal" => "Numeric",
+            "float" or "Single" => "Float",
+            "double" or "Double" => "DoublePrecision",
+            "DateTime" => "Timestamp",
+            "DateOnly" => "Date",
+            "TimeOnly" => "Time",
+            "Guid" => "Uuid",
+            "byte[]" or "Byte[]" => "Bytea",
+            "char" or "Char" => "Char",
+            _ => "Text",
+        };
+
+        // Handle dialect-specific naming differences
+        if (isMySql)
+        {
+            if (propName is "Float") propName = "Float";
+            if (propName is "DoublePrecision") propName = "Double";
+            if (propName is "Timestamp") propName = "DateTime";
+            if (propName is "Numeric") propName = "Decimal";
+            if (propName is "Integer") propName = "Int";
+            if (propName is "Bytea") propName = "Blob";
+        }
+        else if (typeClass == "SqliteType")
+        {
+            // SQLite uses generic types, many map to same const
+            if (propName is "BigInt" or "SmallInt" or "TinyInt") propName = "Integer";
+            if (propName is "DoublePrecision" or "Float") propName = "Real";
+            if (propName is "Timestamp") propName = "Text";
+            if (propName is "Uuid" or "Char") propName = "Text";
+            if (propName is "Date" or "Time") propName = "Text";
+            if (propName is "Bytea") propName = "Blob";
+        }
+        else if (typeClass == "OracleType")
+        {
+            if (propName is "Integer") propName = "Integer";
+            if (propName is "Numeric") propName = "Decimal";
+            if (propName is "Float") propName = "BinaryFloat";
+            if (propName is "DoublePrecision") propName = "BinaryDouble";
+            if (propName is "Time") propName = "Time";
+            if (propName is "Bytea") propName = "Blob";
+            if (propName is "Uuid") propName = "Uuid";
+        }
+        else if (typeClass == "MssqlType")
+        {
+            if (propName is "Integer") propName = "Int";
+            if (propName is "Numeric") propName = "Decimal";
+            if (propName is "Timestamp") propName = "DateTime2";
+            if (propName is "DoublePrecision") propName = "Float";
+            if (propName is "Uuid") propName = "UniqueIdentifier";
+            if (propName is "Bytea") propName = "VarBinary";
+            if (propName is "Char") propName = "NChar";
+        }
+        else
+        {
+            // PgSqlType
+            if (propName is "TinyInt") propName = "SmallInt";
+            if (propName is "Float") propName = "Real";
+        }
+
+        return $"{typeClass}.{propName}";
     }
 
     private static string GetDialectSuffix(string dialectType)

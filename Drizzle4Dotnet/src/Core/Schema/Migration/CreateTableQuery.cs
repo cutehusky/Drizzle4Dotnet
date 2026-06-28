@@ -71,7 +71,7 @@ public class CreateTableQuery : ISql
         sqlBuilder.Append("\n)");
     }
 
-    private static string BuildColumnSql(ColumnDefinition col)
+    private static string BuildColumnSql(IColumnDefinition col)
     {
         var sb = new System.Text.StringBuilder();
         sb.Append("  ");
@@ -337,7 +337,7 @@ public class AlterTableQuery : ISql
     /// <summary>
     /// Adds a column to the table.
     /// </summary>
-    public AlterTableQuery AddColumn(ColumnDefinition column)
+    public AlterTableQuery AddColumn(IColumnDefinition column)
     {
         _actions.Add(new AlterTableAction(AlterTableActionType.AddColumn, column));
         return this;
@@ -510,7 +510,7 @@ public class AlterTableQuery : ISql
         }
     }
 
-    private static void AppendColumnDef(ISqlBuilder sqlBuilder, ColumnDefinition col)
+    private static void AppendColumnDef(ISqlBuilder sqlBuilder, IColumnDefinition col)
     {
         sqlBuilder.Append(col.Name);
         sqlBuilder.Append(' ');
@@ -555,7 +555,7 @@ public class AlterTableQuery : ISql
     private sealed class AlterTableAction
     {
         public AlterTableActionType ActionType { get; }
-        public ColumnDefinition? Column { get; }
+        public IColumnDefinition? Column { get; }
         public string? ColumnName { get; }
         public string? NewDataType { get; }
         public string? NewDefault { get; }
@@ -565,7 +565,7 @@ public class AlterTableQuery : ISql
 
         public AlterTableAction(
             AlterTableActionType actionType,
-            ColumnDefinition? column = null,
+            IColumnDefinition? column = null,
             string? columnName = null,
             string? newDataType = null,
             string? newDefault = null,

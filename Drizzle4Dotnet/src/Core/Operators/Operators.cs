@@ -1,10 +1,12 @@
+using Drizzle4Dotnet.PgSql.Operators;
+
 namespace Drizzle4Dotnet.Core.Operators;
 
 /// <summary>
 /// Standard SQL operators organized into partial class files by category.
 /// Extension methods on ISql provide `column.Eq(value)` syntax.
 /// Static methods on ISql provide `Operators.Eq(column, value)` syntax.
-/// For PostgreSQL-specific operators, see <see cref="PgSql.PgOperators"/>.
+/// For PostgreSQL-specific operators, see <see cref="PgOperators"/>.
 /// </summary>
 public static partial class Operators
 {

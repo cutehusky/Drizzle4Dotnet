@@ -1,7 +1,6 @@
 using Drizzle4Dotnet.Core.Schema.Tables;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.Oracle;
+namespace Drizzle4Dotnet.Oracle.Schema;
 
 // ======================================================================
 // Oracle-specific table interface aliases

@@ -1,7 +1,7 @@
 using Drizzle4Dotnet.Core.Operators;
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.MySql.Nodes;
+namespace Drizzle4Dotnet.MySql.Operators.Nodes;
 
 /// <summary>
 /// Represents a MySQL POSITION function: POSITION(substring IN column)

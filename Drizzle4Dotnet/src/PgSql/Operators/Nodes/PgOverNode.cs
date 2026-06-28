@@ -1,6 +1,6 @@
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.PgSql.Nodes;
+namespace Drizzle4Dotnet.PgSql.Operators.Nodes;
 
 /// <summary>
 /// Fluent builder for the OVER clause: PARTITION BY, ORDER BY, and frame specification.

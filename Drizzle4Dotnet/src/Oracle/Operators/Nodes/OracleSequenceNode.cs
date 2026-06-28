@@ -1,7 +1,6 @@
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.Oracle.Nodes;
+namespace Drizzle4Dotnet.Oracle.Operators.Nodes;
 
 /// <summary>
 /// Represents a sequence reference in Oracle.

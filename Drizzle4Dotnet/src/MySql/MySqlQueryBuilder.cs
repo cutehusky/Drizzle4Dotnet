@@ -1,6 +1,6 @@
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
+using Drizzle4Dotnet.MySql.Query;
 
 namespace Drizzle4Dotnet.MySql;
 

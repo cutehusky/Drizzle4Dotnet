@@ -1,5 +1,4 @@
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 using Drizzle4Dotnet.Oracle.Query;
 
 namespace Drizzle4Dotnet.Oracle;

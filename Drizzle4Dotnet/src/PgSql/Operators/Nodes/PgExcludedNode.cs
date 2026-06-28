@@ -1,7 +1,6 @@
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.PgSql.Nodes;
+namespace Drizzle4Dotnet.PgSql.Operators.Nodes;
 
 /// <summary>
 /// Represents an EXCLUDED column reference for PostgreSQL ON CONFLICT DO UPDATE SET.

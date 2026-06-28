@@ -1,5 +1,5 @@
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
+using Drizzle4Dotnet.Mssql;
 
 namespace SharedDemo.Mssql;
 
@@ -8,15 +8,14 @@ namespace SharedDemo.Mssql;
 public partial class UserSelect
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public long Id { get;set; }
+    public long Id { get; set; }
 
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
-    public string Email { get; set;}
-    
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public string Name { get; set;}
-}
+    public string Email { get; set; }
 
+    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
+    public string Name { get; set; }
+}
 
 [DbSelect(Dialect = typeof(MssqlSqlDialectImpl))]
 public partial class UserWithRelationsSelect

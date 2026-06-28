@@ -1,7 +1,7 @@
 using Drizzle4Dotnet.Core.Operators.Nodes;
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.Oracle;
+namespace Drizzle4Dotnet.Oracle.Operators;
 
 public static partial class OracleFunctions
 {

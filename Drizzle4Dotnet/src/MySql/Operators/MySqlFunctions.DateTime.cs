@@ -1,8 +1,8 @@
 using Drizzle4Dotnet.Core.Operators.Nodes;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.MySql.Nodes;
+using Drizzle4Dotnet.MySql.Operators.Nodes;
 
-namespace Drizzle4Dotnet.MySql;
+namespace Drizzle4Dotnet.MySql.Operators;
 
 public static partial class MySqlFunctions
 {

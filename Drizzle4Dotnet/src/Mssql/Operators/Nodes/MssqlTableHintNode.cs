@@ -1,6 +1,6 @@
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.Mssql.Nodes;
+namespace Drizzle4Dotnet.Mssql.Operators.Nodes;
 
 /// <summary>
 /// Represents a table hint in MSSQL: WITH (NOLOCK), WITH (TABLOCK), etc.

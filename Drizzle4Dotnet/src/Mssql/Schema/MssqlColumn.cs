@@ -1,8 +1,7 @@
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.Mssql;
+namespace Drizzle4Dotnet.Mssql.Schema;
 
 /// <summary>
 /// MSSQL-specific column type. Alias for DbColumn{T, TTable, MssqlSqlDialectImpl}.

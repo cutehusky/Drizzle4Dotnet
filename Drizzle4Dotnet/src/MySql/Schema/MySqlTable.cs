@@ -1,9 +1,6 @@
-using Drizzle4Dotnet.Core.Query.Select;
 using Drizzle4Dotnet.Core.Schema.Tables;
-using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
 
-namespace Drizzle4Dotnet.MySql;
+namespace Drizzle4Dotnet.MySql.Schema;
 
 // ======================================================================
 // MySQL-specific table interface aliases

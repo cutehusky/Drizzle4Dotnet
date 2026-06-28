@@ -117,11 +117,11 @@ public class TypedTupleSelectedColumns<{tParams}, TDialect> : ITypedTupleSelecte
             sb.AppendLine("using System.Data.Common;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Shared;");
             sb.AppendLine("using System.Text;");
-            sb.AppendLine("using Drizzle4Dotnet.Dialect;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Tables;");
             sb.AppendLine("using Drizzle4Dotnet.Core.Schema.Columns;");
             sb.AppendLine($"using {dialect.DialectNamespace};");
-
+            sb.AppendLine($"using {dialect.DialectNamespace}.Schema;");
+            
             if (!string.IsNullOrEmpty(model.Namespace))
             {
                 sb.AppendLine($"namespace {model.Namespace};");

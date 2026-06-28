@@ -1,5 +1,5 @@
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
+using Drizzle4Dotnet.PgSql;
 
 namespace SharedDemo.PgSql;
 

@@ -1,6 +1,8 @@
+using Drizzle4Dotnet.Core.Schema.Migration;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Oracle.Schema;
 
-namespace Drizzle4Dotnet.Dialect;
+namespace Drizzle4Dotnet.Oracle;
 
 /// <summary>
 /// Oracle (PL/SQL) dialect implementation.
@@ -143,4 +145,23 @@ public class OracleSqlDialectImpl : ISqlDialect
     /// </summary>
     public static string EscapeString(string value)
         => SqlDialectDefaults.EscapeString(value);
+    
+    public static Dictionary<Type, ISqlDataType> ClrToSqlTypeMap => new()
+    {
+        [typeof(int)] = OracleDataType.Integer,
+        [typeof(long)] = OracleDataType.BigInt,
+        [typeof(short)] = OracleDataType.SmallInt,
+        [typeof(byte)] = OracleDataType.TinyInt,
+        [typeof(string)] = OracleDataType.Text,
+        [typeof(bool)] = OracleDataType.Boolean,
+        [typeof(decimal)] = OracleDataType.Decimal,
+        [typeof(float)] = OracleDataType.BinaryFloat,
+        [typeof(double)] = OracleDataType.BinaryDouble,
+        [typeof(DateTime)] = OracleDataType.Timestamp,
+        [typeof(DateOnly)] = OracleDataType.Date,
+        [typeof(TimeOnly)] = OracleDataType.Time,
+        [typeof(Guid)] = OracleDataType.Uuid,
+        [typeof(byte[])] = OracleDataType.Blob,
+        [typeof(char)] = OracleDataType.Char,
+    };
 }
