@@ -33,7 +33,7 @@ public static class GenerateCommand
             if (snapshotPath == null)
             {
                 // Auto-discover the latest snapshot
-                var snapshots = Directory.GetFiles(outputDir, "snapshot-*.json")
+                var snapshots = Directory.GetFiles(outputDir, "*-snapshot-*.json")
                     .OrderByDescending(f => f)
                     .ToArray();
 

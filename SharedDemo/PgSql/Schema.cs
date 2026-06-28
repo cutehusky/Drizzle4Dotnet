@@ -6,8 +6,8 @@ using Drizzle4Dotnet.PgSql.Schema;
 namespace SharedDemo.PgSql
 {
     [Table("Users", "public", Dialect = typeof(PgSqlSqlDialectImpl))]
-    [ForeignKeyConstraint("FK_Users_Departments", [ColumnNames.Id], typeof(DepartmentsTable), [DepartmentsTable.ColumnNames.Id])]
-    [ForeignKeyConstraint("FK_Users_Roles", [ColumnNames.RoleId], typeof(RolesTable), [RolesTable.ColumnNames.Id])]
+    // [ForeignKeyConstraint("FK_Users_Departments", [ColumnNames.Id], typeof(DepartmentsTable), [DepartmentsTable.ColumnNames.Id])]
+    // [ForeignKeyConstraint("FK_Users_Roles", [ColumnNames.RoleId], typeof(RolesTable), [RolesTable.ColumnNames.Id])]
     [ForeignKeyConstraint("FK_Users_Manager", [ColumnNames.ManagerId], typeof(UsersTable), [ColumnNames.Id])]
     [Index("IX_Users_Email", [ColumnNames.Email], IsUnique = true)]
     [Index("IX_Users_Name_Age", [ColumnNames.Name, ColumnNames.Age], IsUnique = false)]

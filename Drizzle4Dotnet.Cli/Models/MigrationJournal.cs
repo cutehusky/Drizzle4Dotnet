@@ -25,6 +25,12 @@ public class MigrationJournalEntry
 
     /// <summary>Description of what this migration does.</summary>
     public string Description { get; set; } = "";
+
+    /// <summary>
+    /// Sequential incremental ID for this migration (e.g., "0001", "0002").
+    /// Used in file naming to ensure uniqueness and ordering.
+    /// </summary>
+    public string IncrementalId { get; set; } = "";
 }
 
 /// <summary>

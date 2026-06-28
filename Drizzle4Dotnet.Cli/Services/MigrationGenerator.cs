@@ -114,7 +114,7 @@ public class MigrationGenerator
         else
         {
             // Try to find latest snapshot in output directory
-            var snapshotFiles = Directory.GetFiles(outputDir, "snapshot-*.json")
+            var snapshotFiles = Directory.GetFiles(outputDir, "*-snapshot-*.json")
                 .OrderByDescending(f => f)
                 .ToArray();
 
@@ -146,15 +146,20 @@ public class MigrationGenerator
             );
         }
 
+        // Load or create journal
+        var journalPath = Path.Combine(outputDir, "migration-journal.json");
+        var journal = MigrationJournal.Load(journalPath);
+        journal.Provider = ProviderName;
+
         // Generate SQL script
         var sqlScript = GenerateSqlScript(plan);
         var checksum = ComputeChecksum(sqlScript);
 
-        // Generate safe filename
+        // Generate safe filename with incremental ID
         var safeName = SanitizeFileName(migrationName);
-        var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-        var sqlFileName = $"{timestamp}_{safeName}.sql";
-        var snapshotFileName = $"snapshot-{safeName}.json";
+        var incrementalId = GetNextIncrementalId(journal);
+        var sqlFileName = $"{incrementalId}-{safeName}-up.sql";
+        var snapshotFileName = $"{incrementalId}-snapshot-{safeName}.json";
 
         var sqlFilePath = Path.Combine(outputDir, sqlFileName);
         var snapshotFilePath = Path.Combine(outputDir, snapshotFileName);
@@ -165,11 +170,6 @@ public class MigrationGenerator
         // Write snapshot file
         var snapshotJson = targetSnapshot.Serialize();
         File.WriteAllText(snapshotFilePath, snapshotJson);
-
-        // Update journal
-        var journalPath = Path.Combine(outputDir, "migration-journal.json");
-        var journal = MigrationJournal.Load(journalPath);
-        journal.Provider = ProviderName;
 
         // Check if migration already exists in journal
         if (journal.Migrations.Any(m => m.Name == migrationName))
@@ -191,7 +191,8 @@ public class MigrationGenerator
                 Checksum = checksum,
                 SqlFileName = sqlFileName,
                 SnapshotFileName = snapshotFileName,
-                Description = description
+                Description = description,
+                IncrementalId = incrementalId
             });
         }
 
@@ -236,6 +237,44 @@ public class MigrationGenerator
         var invalid = Path.GetInvalidFileNameChars();
         var sanitized = new string(name.Where(c => !invalid.Contains(c)).ToArray());
         return string.IsNullOrWhiteSpace(sanitized) ? "migration" : sanitized;
+    }
+
+    /// <summary>
+    /// Computes the next incremental ID based on existing migration journal entries.
+    /// IDs are zero-padded to 4 digits (e.g., "0001", "0002", "0010").
+    /// </summary>
+    private static string GetNextIncrementalId(MigrationJournal journal)
+    {
+        if (journal.Migrations.Count == 0)
+            return "0001";
+
+        // Parse existing incremental IDs to find the highest number
+        var maxId = 0;
+        foreach (var entry in journal.Migrations)
+        {
+            if (!string.IsNullOrEmpty(entry.IncrementalId) &&
+                int.TryParse(entry.IncrementalId, out var parsed) &&
+                parsed > maxId)
+            {
+                maxId = parsed;
+            }
+        }
+
+        // Also scan SQL filenames for existing incremental IDs (for backward compatibility with old journal entries)
+        var sqlFilePattern = new System.Text.RegularExpressions.Regex(@"^(\d+)-");
+        foreach (var entry in journal.Migrations)
+        {
+            if (!string.IsNullOrEmpty(entry.SqlFileName))
+            {
+                var match = sqlFilePattern.Match(entry.SqlFileName);
+                if (match.Success && int.TryParse(match.Groups[1].Value, out var parsed) && parsed > maxId)
+                {
+                    maxId = parsed;
+                }
+            }
+        }
+
+        return (maxId + 1).ToString("D4");
     }
 
     /// <summary>
