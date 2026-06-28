@@ -55,7 +55,7 @@ public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, Pg
             }
         }
 
-        SqlStatics.BuildSqlSet<PgSqlSqlDialectImpl>(sqlBuilder, SetValues);
+        SqlStatics.BuildSqlSetClause<PgSqlSqlDialectImpl>(sqlBuilder, SetValues);
 
         // WHERE clause (includes join conditions if combined)
         SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);

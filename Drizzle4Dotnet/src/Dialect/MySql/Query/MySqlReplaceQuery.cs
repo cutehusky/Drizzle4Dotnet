@@ -20,20 +20,14 @@ public class MySqlReplaceQuery<TTable> : InsertQuery<TTable, MySqlSqlDialectImpl
         : base(table, executor)
     {
     }
-
-    public override void BuildSql(ISqlBuilder sqlBuilder)
+    
+    protected override void BuildInsertKeywords(ISqlBuilder sqlBuilder)
     {
-        if (NewValues.Count == 0)
-            throw new InvalidOperationException("No values provided for replace.");
-
-        var allColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
-
-        SqlStatics.BuildSqlCte<MySqlSqlDialectImpl>(sqlBuilder, CteTables, Recursive);
-
         sqlBuilder.Append("REPLACE INTO ");
-        Table.BuildRefSql(sqlBuilder);
+    }
 
-        SqlStatics.BuildInsertColumnList<MySqlSqlDialectImpl>(sqlBuilder, allColumns);
-        SqlStatics.BuildInsertRowValues(sqlBuilder, NewValues, allColumns, defaultValue: "DEFAULT");
+    protected override void BuildDefaultValues(ISqlBuilder sqlBuilder)
+    {
+        sqlBuilder.Append(" () VALUES ()");
     }
 }

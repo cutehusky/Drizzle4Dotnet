@@ -80,7 +80,7 @@ public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>,
 
         sqlBuilder.Append("UPDATE ");
         Table.BuildRefSql(sqlBuilder);
-        SqlStatics.BuildSqlSet<TDialect>(sqlBuilder, SetValues);
+        SqlStatics.BuildSqlSetClause<TDialect>(sqlBuilder, SetValues);
 
         SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
     }

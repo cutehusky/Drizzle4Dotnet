@@ -36,7 +36,7 @@ public static class SqlStatics
     /// Builds a SET clause for UPDATE queries from a dictionary of column → value pairs.
     /// Values can be raw scalars (added as parameters) or IGenericSql expressions (rendered inline).
     /// </summary>
-    public static void BuildSqlSet<TDialect>(
+    public static void BuildSqlSetClause<TDialect>(
         ISqlBuilder sqlBuilder,
         Dictionary<string, object?> setValues)
         where TDialect : ISqlDialect

@@ -12,7 +12,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
     where TDialect : ISqlDialect
 {
     protected readonly TTable Table;
-    protected readonly List<Dictionary<string, object?>> NewValues = new();
+    protected readonly List<Dictionary<string, object?>> ValuesToInsert = new();
     protected IGenericSql? FromQuery; // must be IReturning<TReturn, TDialect, TVirtualTable> but C# doesn't allow generic constraints on method parameters
     protected bool UseDefaultValues;
 
@@ -31,7 +31,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
     {
         Dictionary<string, object?> value = new();
         record.Writer(value);
-        NewValues.Add(value);
+        ValuesToInsert.Add(value);
         return (TSelf)this;
     }
     
@@ -41,7 +41,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
         {
             Dictionary<string, object?> value = new();
             record.Writer(value);
-            NewValues.Add(value);
+            ValuesToInsert.Add(value);
         }
         return (TSelf)this;
     }
@@ -55,7 +55,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
             var val = columnValuePair.Value;
             value[col.Identifier] = val;
         }
-        NewValues.Add(value);
+        ValuesToInsert.Add(value);
         return (TSelf)this;
     }
     
@@ -70,7 +70,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
                 var val = columnValuePair.Value;
                 value[col.Identifier] = val;
             }
-            NewValues.Add(value);
+            ValuesToInsert.Add(value);
         }
         return (TSelf)this;
     }
@@ -85,6 +85,17 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
         return (TSelf)this;
     }
     
+    
+    /// <summary>
+    /// INSERT DEFAULT VALUES — inserts a row with all default values.
+    /// </summary>
+    public TSelf DefaultValues()
+    {
+        UseDefaultValues = true;
+        return (TSelf)this;
+    }
+
+    
     /// <summary>
     /// Builds the INSERT statement without the VALUES clause.
     /// Produces: INSERT INTO table (col1, col2, ...)
@@ -92,7 +103,7 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
     /// </summary>
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        var hasValues = NewValues.Count > 0;
+        var hasValues = ValuesToInsert.Count > 0;
         var hasFrom = FromQuery != null;
         
         if (hasValues && hasFrom)
@@ -120,12 +131,12 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
             sqlBuilder.Append(' ');
             FromQuery.BuildSql(sqlBuilder);
         }
-        else if (NewValues.Count > 0)
+        else if (ValuesToInsert.Count > 0)
         {
-            var allColumns = NewValues.SelectMany(d => d.Keys).Distinct().ToList();
+            var allColumns = ValuesToInsert.SelectMany(d => d.Keys).Distinct().ToList();
             // Column list
             SqlStatics.BuildInsertColumnList<TDialect>(sqlBuilder, allColumns);
-            SqlStatics.BuildInsertRowValues(sqlBuilder, NewValues, allColumns);
+            SqlStatics.BuildInsertRowValues(sqlBuilder, ValuesToInsert, allColumns);
         }
     }
     

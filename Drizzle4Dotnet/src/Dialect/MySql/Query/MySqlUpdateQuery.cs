@@ -90,7 +90,7 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
         // MySQL UPDATE JOIN syntax
         SqlStatics.BuildSqlJoins<MySqlSqlDialectImpl>(sqlBuilder, _joins);
 
-        SqlStatics.BuildSqlSet<MySqlSqlDialectImpl>(sqlBuilder, SetValues);
+        SqlStatics.BuildSqlSetClause<MySqlSqlDialectImpl>(sqlBuilder, SetValues);
 
         SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
 

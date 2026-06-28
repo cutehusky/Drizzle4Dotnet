@@ -162,21 +162,7 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl, Pg
         _conflictSetWhere = condition;
         return this;
     }
-
-    // ======================================================================
-    // DEFAULT VALUES (PostgreSQL-specific — not in base InsertQuery)
-    // ======================================================================
-
-    /// <summary>
-    /// INSERT DEFAULT VALUES — inserts a row with all default values.
-    /// PostgreSQL-specific: only available in the PgSql dialect.
-    /// </summary>
-    public PgInsertQuery<TTable> DefaultValues()
-    {
-        UseDefaultValues = true;
-        return this;
-    }
-
+    
     // ======================================================================
     // BuildSql
     // ======================================================================
@@ -194,34 +180,87 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl, Pg
             _conflictTargetWhere,
             _conflictSetWhere);
     }
-
+    
     private void ValidateConflictSettings()
     {
-        var hasTarget = (_conflictTargetColumns is { Count: > 0 }) || !string.IsNullOrEmpty(_conflictTargetString);
+        var hasColumnsTarget = _conflictTargetColumns is { Count: > 0 };
+        var hasConstraintTarget = !string.IsNullOrWhiteSpace(_conflictTargetString);
+        var hasTarget = hasColumnsTarget || hasConstraintTarget;
+
         var hasAction = _conflictAction != null;
+        var isDoUpdate = _conflictAction == "DO UPDATE SET";
+        var isDoNothing = _conflictAction == "DO NOTHING";
+
         var hasUpdates = _conflictUpdates.Count > 0;
-        var targetWhere = _conflictTargetWhere != null;
-        var setWhere = _conflictSetWhere != null;
+        var hasTargetWhere = _conflictTargetWhere != null;
+        var hasSetWhere = _conflictSetWhere != null;
 
+        // ---------------------------------------------------------------------
+        // Conflict target required
+        // ---------------------------------------------------------------------
         if (hasAction && !hasTarget)
+        {
             throw new InvalidOperationException(
-                "ON CONFLICT action (DoNothing/DoUpdate) requires a conflict target. " +
-                "Call OnConflict(columns) or OnConflictOnConstraint(name) first.");
+                "DoNothing() and DoUpdate() require a conflict target. " +
+                "Call OnConflict(...) or OnConflictOnConstraint(...) first.");
+        }
 
-        if (hasUpdates && _conflictAction != "DO UPDATE SET")
+        if (hasTargetWhere && !hasTarget)
+        {
             throw new InvalidOperationException(
-                "SetOnConflict requires DoUpdate() to be called first. " +
-                "Usage: .OnConflict(...).DoUpdate().SetOnConflict(column, value)");
+                "WhereConflictTarget() requires a conflict target.");
+        }
 
-        if (targetWhere && !hasTarget)
+        // ---------------------------------------------------------------------
+        // DO UPDATE validation
+        // ---------------------------------------------------------------------
+        if (hasUpdates && !isDoUpdate)
+        {
             throw new InvalidOperationException(
-                "WhereConflictTarget requires a conflict target. " +
-                "Call OnConflict(columns) or OnConflictOnConstraint(name) first.");
+                "SetOnConflict() requires DoUpdate().");
+        }
+        if (hasSetWhere && !isDoUpdate)
+        {
+            throw new InvalidOperationException(
+                "WhereOnConflictSet() requires DoUpdate().");
+        }
+        if (isDoUpdate && !hasUpdates)
+        {
+            throw new InvalidOperationException(
+                "DoUpdate() requires at least one SetOnConflict(...) assignment.");
+        }
 
-        if (setWhere && _conflictAction != "DO UPDATE SET")
+        // ---------------------------------------------------------------------
+        // DO NOTHING validation
+        // ---------------------------------------------------------------------
+        if (isDoNothing && hasUpdates)
+        {
             throw new InvalidOperationException(
-                "WhereOnConflictSet requires DoUpdate() to be called first. " +
-                "Usage: .OnConflict(...).DoUpdate().WhereOnConflictSet(...)");
+                "DO NOTHING cannot be combined with SetOnConflict().");
+        }
+        if (isDoNothing && hasSetWhere)
+        {
+            throw new InvalidOperationException(
+                "DO NOTHING cannot be combined with WhereOnConflictSet().");
+        }
+
+        // ---------------------------------------------------------------------
+        // Invalid action
+        // ---------------------------------------------------------------------
+        if (hasAction && !isDoNothing && !isDoUpdate)
+        {
+            throw new InvalidOperationException(
+                $"Unsupported ON CONFLICT action '{_conflictAction}'.");
+        }
+
+        // ---------------------------------------------------------------------
+        // Defensive checks (should never happen)
+        // ---------------------------------------------------------------------
+        if (hasColumnsTarget && hasConstraintTarget)
+        {
+            throw new InvalidOperationException(
+                "Only one conflict target is allowed. Use either OnConflict(...) or OnConflictOnConstraint(...), not both.");
+        }
     }
 }
 
