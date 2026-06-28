@@ -120,6 +120,9 @@ public class DebugOptions
     /// <summary>Path to the assembly containing the table types.</summary>
     public string? AssemblyPath { get; set; }
 
+    /// <summary>Path to the .csproj file. If set, the project will be built and AssemblyPath resolved automatically.</summary>
+    public string? ProjectPath { get; set; }
+
     /// <summary>Enable verbose output.</summary>
     public bool Verbose { get; set; }
 }

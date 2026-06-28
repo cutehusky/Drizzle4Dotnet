@@ -72,15 +72,26 @@ public static class GenerateCommand
             );
 
             Console.WriteLine();
-            Console.WriteLine($"✅ Migration generated successfully!");
-            Console.WriteLine();
-            Console.WriteLine($"  SQL Script:   {result.SqlFilePath}");
-            Console.WriteLine($"  Snapshot:     {result.SnapshotFilePath}");
-            Console.WriteLine($"  Checksum:     {result.Checksum}");
-            Console.WriteLine();
-            Console.WriteLine($"  Description:");
-            Console.WriteLine($"    {result.Description}");
-            Console.WriteLine();
+
+            if (string.IsNullOrEmpty(result.SqlFilePath))
+            {
+                Console.WriteLine($"⏭️  No schema changes detected. Nothing to generate.");
+                Console.WriteLine();
+                Console.WriteLine($"  Description:  {result.Description}");
+                Console.WriteLine();
+            }
+            else
+            {
+                Console.WriteLine($"✅ Migration generated successfully!");
+                Console.WriteLine();
+                Console.WriteLine($"  SQL Script:   {result.SqlFilePath}");
+                Console.WriteLine($"  Snapshot:     {result.SnapshotFilePath}");
+                Console.WriteLine($"  Checksum:     {result.Checksum}");
+                Console.WriteLine();
+                Console.WriteLine($"  Description:");
+                Console.WriteLine($"    {result.Description}");
+                Console.WriteLine();
+            }
 
             return 0;
         }
@@ -137,6 +148,9 @@ public class GenerateOptions
 
     /// <summary>Path to the assembly containing the table types.</summary>
     public string? AssemblyPath { get; set; }
+
+    /// <summary>Path to the .csproj file. If set, the project will be built and AssemblyPath resolved automatically.</summary>
+    public string? ProjectPath { get; set; }
 
     /// <summary>Enable verbose output.</summary>
     public bool Verbose { get; set; }

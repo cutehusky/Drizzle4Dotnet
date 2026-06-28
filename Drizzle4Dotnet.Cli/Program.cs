@@ -1,4 +1,5 @@
 using Drizzle4Dotnet.Cli.Commands;
+using Drizzle4Dotnet.Cli.Services;
 
 namespace Drizzle4Dotnet.Cli;
 
@@ -113,6 +114,12 @@ public class Program
                     else errors.Add("--assembly requires a value");
                     break;
 
+                case "--project":
+                case "--proj":
+                    if (++i < args.Length) options.ProjectPath = args[i];
+                    else errors.Add("--project requires a value");
+                    break;
+
                 case "--verbose":
                 case "-V":
                     options.Verbose = true;
@@ -123,6 +130,10 @@ public class Program
                     break;
             }
         }
+
+        // Resolve assembly path from project or assembly option
+        if (!ResolveAssemblyPath(options, errors))
+            return 1;
 
         // Validate required options
         if (string.IsNullOrWhiteSpace(options.MigrationName))
@@ -145,7 +156,8 @@ public class Program
             Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
             Console.Error.WriteLine("  --output, -o      Output directory (default: ./Migrations/{provider})");
             Console.Error.WriteLine("  --snapshot, -s    Path to current snapshot JSON file");
-            Console.Error.WriteLine("  --assembly, -a    Path to assembly containing table types");
+            Console.Error.WriteLine("  --project, --proj Path to .csproj file (builds automatically)");
+            Console.Error.WriteLine("  --assembly, -a    Path to pre-built assembly DLL");
             Console.Error.WriteLine("  --verbose, -V     Enable verbose output");
             return 1;
         }
@@ -197,6 +209,12 @@ public class Program
                     else errors.Add("--assembly requires a value");
                     break;
 
+                case "--project":
+                case "--proj":
+                    if (++i < args.Length) options.ProjectPath = args[i];
+                    else errors.Add("--project requires a value");
+                    break;
+
                 case "--verbose":
                 case "-V":
                     options.Verbose = true;
@@ -207,6 +225,10 @@ public class Program
                     break;
             }
         }
+
+        // Resolve assembly path
+        if (!ResolveAssemblyPath(options, errors))
+            return 1;
 
         // Validate required options
         if (string.IsNullOrWhiteSpace(options.SnapshotName))
@@ -228,12 +250,74 @@ public class Program
             Console.Error.WriteLine("  --name, -n        Snapshot name (e.g., 'v1.0.0')");
             Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
             Console.Error.WriteLine("  --output, -o      Output file path (default: ./snapshot.json)");
-            Console.Error.WriteLine("  --assembly, -a    Path to assembly containing table types");
+            Console.Error.WriteLine("  --project, --proj Path to .csproj file (builds automatically)");
+            Console.Error.WriteLine("  --assembly, -a    Path to pre-built assembly DLL");
             Console.Error.WriteLine("  --verbose, -V     Enable verbose output");
             return 1;
         }
 
         return SnapshotCommand.Execute(options);
+    }
+
+    /// <summary>
+    /// Resolves the assembly path from either --project (builds the project) or --assembly (direct path).
+    /// Modifies the options object in place, setting AssemblyPath if --project was provided.
+    /// Returns false if there was a resolution error.
+    /// </summary>
+    private static bool ResolveAssemblyPath<T>(T options, List<string> errors) where T : class
+    {
+        // Try to get ProjectPath and AssemblyPath via reflection (works for all options types)
+        var projProp = typeof(T).GetProperty("ProjectPath");
+        var asmProp = typeof(T).GetProperty("AssemblyPath");
+
+        var projectPath = projProp?.GetValue(options) as string;
+        var assemblyPath = asmProp?.GetValue(options) as string;
+
+        // If both provided, project takes precedence
+        if (!string.IsNullOrWhiteSpace(projectPath))
+        {
+            try
+            {
+                var builtDll = ProjectBuilder.Build(projectPath);
+                Console.WriteLine($"  Built DLL:    {builtDll}");
+                asmProp?.SetValue(options, builtDll);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Failed to build project '{projectPath}': {ex.Message}");
+                return false;
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(assemblyPath))
+        {
+            // Neither provided - try auto-discover in current directory
+            var cwd = Directory.GetCurrentDirectory();
+            var csprojFiles = Directory.GetFiles(cwd, "*.csproj");
+            if (csprojFiles.Length == 1)
+            {
+                try
+                {
+                    var builtDll = ProjectBuilder.Build(csprojFiles[0]);
+                    Console.WriteLine($"  Auto-discovered project: {Path.GetFileName(csprojFiles[0])}");
+                    Console.WriteLine($"  Built DLL:    {builtDll}");
+                    asmProp?.SetValue(options, builtDll);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"Failed to auto-build project: {ex.Message}");
+                    return false;
+                }
+            }
+            else
+            {
+                errors.Add("Either --project <path.csproj> or --assembly <path.dll> is required. " +
+                          (csprojFiles.Length > 1
+                              ? $"Multiple .csproj files found in current directory. Specify one with --project."
+                              : ""));
+            }
+        }
+
+        return true;
     }
 
     private static int HandleStatus(string[] args)
@@ -314,6 +398,12 @@ public class Program
                     else errors.Add("--assembly requires a value");
                     break;
 
+                case "--project":
+                case "--proj":
+                    if (++i < args.Length) options.ProjectPath = args[i];
+                    else errors.Add("--project requires a value");
+                    break;
+
                 case "--verbose":
                 case "-V":
                     options.Verbose = true;
@@ -324,6 +414,10 @@ public class Program
                     break;
             }
         }
+
+        // Resolve assembly path
+        if (!ResolveAssemblyPath(options, errors))
+            return 1;
 
         if (options.TableTypes.Count == 0)
             errors.Add("--types is required (comma-separated list of fully qualified type names)");
@@ -339,7 +433,8 @@ public class Program
             Console.Error.WriteLine("Options:");
             Console.Error.WriteLine("  --provider, -p    Database provider (pgsql, mysql, mssql, sqlite, oracle)");
             Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
-            Console.Error.WriteLine("  --assembly, -a    Path to assembly containing table types");
+            Console.Error.WriteLine("  --project, --proj Path to .csproj file (builds automatically)");
+            Console.Error.WriteLine("  --assembly, -a    Path to pre-built assembly DLL");
             Console.Error.WriteLine("  --verbose, -V     Enable verbose output");
             return 1;
         }

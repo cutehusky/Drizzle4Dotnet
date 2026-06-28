@@ -127,10 +127,12 @@ public class MigrationGenerator
         // Generate migration plan
         MigrationPlan plan;
         string description;
+        bool hasChanges = true;
 
         if (currentSnapshot != null)
         {
             var diff = currentSnapshot.Compare(targetSnapshot);
+            hasChanges = diff.HasChanges;
             description = DescribeDiff(diff);
             plan = diff.ToMigrationPlan(migrationName);
         }
@@ -150,6 +152,20 @@ public class MigrationGenerator
 
             plan = new MigrationPlan(migrationName, steps);
             description = string.Join("; ", steps.Select(s => s.Description));
+        }
+
+        // If no changes detected and we have a previous snapshot, don't generate files
+        if (!hasChanges && currentSnapshot != null)
+        {
+            return new MigrationGenerationResult(
+                migrationName,
+                "-- No schema changes detected.",
+                "",
+                targetSnapshot.Serialize(),
+                "",
+                ComputeChecksum(""),
+                "No schema changes detected."
+            );
         }
 
         // Generate SQL script
