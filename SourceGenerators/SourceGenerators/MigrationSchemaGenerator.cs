@@ -352,11 +352,11 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
 
             if (hasConstraints)
             {
-                sb.AppendLine("            var tableConstraints = new string[]");
+                sb.AppendLine("            var tableConstraints = new TableConstraint[]");
                 sb.AppendLine("            {");
                 foreach (var constraint in table.TableConstraints)
                 {
-                    sb.AppendLine($"                \"{EscapeString(constraint)}\",");
+                    sb.AppendLine($"                new RawTableConstraint(\"{EscapeString(constraint)}\"),");
                 }
                 sb.AppendLine("            };");
                 sb.AppendLine();

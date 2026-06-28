@@ -64,7 +64,8 @@ public class CreateTableQuery : ISql
         // Add table-level constraints
         foreach (var constraint in _table.TableConstraints)
         {
-            parts.Add(constraint);
+            var constraintSql = constraint.ToString();
+            parts.Add(constraintSql);
         }
 
         sqlBuilder.Append(string.Join(",\n", parts));

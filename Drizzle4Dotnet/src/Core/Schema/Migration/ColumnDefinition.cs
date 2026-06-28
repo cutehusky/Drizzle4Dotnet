@@ -220,17 +220,20 @@ public class TableDefinition
     public string TableName { get; }
     public string SchemaName { get; }
     public IReadOnlyList<IColumnDefinition> Columns { get; }
-    public IReadOnlyList<string> TableConstraints { get; }
+    public IReadOnlyList<TableConstraint> TableConstraints { get; }
+    public IReadOnlyList<TableIndex> Indexes { get; }
 
     public TableDefinition(
         string tableName,
         string schemaName,
         IReadOnlyList<IColumnDefinition> columns,
-        IReadOnlyList<string>? tableConstraints = null)
+        IReadOnlyList<TableConstraint>? tableConstraints = null,
+        IReadOnlyList<TableIndex>? indexes = null)
     {
         TableName = tableName;
         SchemaName = schemaName;
         Columns = columns;
-        TableConstraints = tableConstraints ?? Array.Empty<string>();
+        TableConstraints = tableConstraints ?? Array.Empty<TableConstraint>();
+        Indexes = indexes ?? Array.Empty<TableIndex>();
     }
 }

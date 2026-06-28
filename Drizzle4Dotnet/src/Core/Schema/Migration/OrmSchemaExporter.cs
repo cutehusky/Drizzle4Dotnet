@@ -66,6 +66,49 @@ public static class OrmSchemaExporter
         var tableName = GetStaticPropertyValue<string>(tableType, "TableName") ?? tableType.Name;
         var schemaName = GetStaticPropertyValue<string>(tableType, "SchemaName") ?? "public";
 
+        // Read typed table-level constraint attributes
+        var constraints = new List<TableConstraint>();
+
+        foreach (var fkAttr in tableType.GetCustomAttributes<ForeignKeyConstraintAttribute>())
+        {
+            var foreignTableName = GetStaticPropertyValue<string>(fkAttr.ForeignTable, "TableName")
+                                   ?? fkAttr.ForeignTable.Name;
+            constraints.Add(new ForeignKeyConstraint(
+                fkAttr.ConstraintName,
+                fkAttr.Columns,
+                foreignTableName,
+                fkAttr.ForeignColumns));
+        }
+
+        foreach (var uqAttr in tableType.GetCustomAttributes<UniqueConstraintAttribute>())
+        {
+            constraints.Add(new UniqueConstraint(uqAttr.Columns));
+        }
+
+        foreach (var pkAttr in tableType.GetCustomAttributes<PrimaryKeyTableConstraintAttribute>())
+        {
+            constraints.Add(new PrimaryKeyTableConstraint(pkAttr.Columns));
+        }
+
+        foreach (var ckAttr in tableType.GetCustomAttributes<CheckTableConstraintAttribute>())
+        {
+            constraints.Add(new CheckTableConstraint(ckAttr.Expression));
+        }
+
+        // Read index attributes
+        var indexes = new List<TableIndex>();
+        foreach (var idxAttr in tableType.GetCustomAttributes<IndexAttribute>())
+        {
+            indexes.Add(new TableIndex(
+                idxAttr.IndexName,
+                schemaName,
+                tableName,
+                idxAttr.Columns,
+                isUnique: idxAttr.IsUnique,
+                indexType: idxAttr.IndexType,
+                where: idxAttr.Where));
+        }
+
         // Extract columns by finding static properties typed as DbColumn<,,> or subclasses
         var columns = new List<IColumnDefinition>();
 
@@ -119,7 +162,7 @@ public static class OrmSchemaExporter
             });
         }
 
-        return new TableDefinition(tableName, schemaName, columns);
+        return new TableDefinition(tableName, schemaName, columns, constraints, indexes);
     }
 
     private static bool IsColumnType(Type type)

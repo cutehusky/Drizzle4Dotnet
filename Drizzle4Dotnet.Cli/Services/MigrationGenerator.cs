@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Drizzle4Dotnet.Cli.Models;
 using Drizzle4Dotnet.Core.Schema.Columns;
+using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Schema.Migration;
 using Drizzle4Dotnet.Core.Schema.Migration.Query;
 using Drizzle4Dotnet.Core.Shared;
@@ -463,6 +464,33 @@ public class MigrationGenerator
         var tableName = tableNameProp?.GetValue(null)?.ToString() ?? tableType.Name;
         var schemaName = schemaNameProp?.GetValue(null)?.ToString() ?? "public";
         Console.WriteLine($"     Table:        {schemaName}.{tableName}");
+        Console.WriteLine($"     Type:         {tableType.FullName}");
+        Console.WriteLine();
+
+        // Custom attributes on the table class
+        var tableAttrs = tableType.GetCustomAttributes(false);
+        var tableCustomAttrs = tableAttrs
+            .Where(a => a.GetType().Namespace != null
+                && !a.GetType().Namespace.StartsWith("System.")
+                && !a.GetType().Namespace.StartsWith("Microsoft.")
+                && a.GetType().Name is not "CompilerGeneratedAttribute"
+                and not "NullableContextAttribute"
+                and not "NullableAttribute")
+            .ToList();
+        if (tableCustomAttrs.Count > 0)
+        {
+            Console.WriteLine($"     Table Attributes: {tableCustomAttrs.Count}");
+            foreach (var attr in tableCustomAttrs)
+            {
+                var attrName = attr.GetType().Name;
+                var attrDetail = DescribeAttribute(attr);
+                Console.WriteLine($"       [{attrName}]{attrDetail}");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"     Table Attributes: none");
+        }
 
         // Interfaces
         var interfaces = tableType.GetInterfaces();

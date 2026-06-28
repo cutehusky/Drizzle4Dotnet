@@ -47,7 +47,9 @@ public class SchemaSnapshot
             var snTable = new SnapshotTable
             {
                 SchemaName = table.SchemaName,
-                TableName = table.TableName
+                TableName = table.TableName,
+                Constraints = table.TableConstraints.Select(c => c.ToString()!).ToList(),
+                Indexes = table.Indexes.Select(i => i.ToString()!).ToList()
             };
             foreach (var col in table.Columns)
             {
@@ -193,12 +195,14 @@ public class SchemaSnapshot
 /// <summary>
 /// Serializable representation of a table for snapshot storage.
 /// </summary>
-public class SnapshotTable
-{
-    public string SchemaName { get; set; } = "public";
-    public string TableName { get; set; } = "";
-    public List<SnapshotColumn> Columns { get; set; } = new();
-}
+    public class SnapshotTable
+    {
+        public string SchemaName { get; set; } = "public";
+        public string TableName { get; set; } = "";
+        public List<SnapshotColumn> Columns { get; set; } = new();
+        public List<string> Constraints { get; set; } = new();
+        public List<string> Indexes { get; set; } = new();
+    }
 
 /// <summary>
 /// Serializable representation of a column for snapshot storage.

@@ -5,51 +5,60 @@ using Drizzle4Dotnet.PgSql.Schema;
 
 namespace SharedDemo.PgSql
 {
-    [Table("Users", "public", Dialect = typeof(PgSqlSqlDialectImpl),
-        Constraints = new[]
-        {
-            "CONSTRAINT \"FK_Users_Departments\" FOREIGN KEY (\"DepartmentId\") REFERENCES \"Departments\"(\"Id\")",
-            "CONSTRAINT \"FK_Users_Roles\" FOREIGN KEY (\"RoleId\") REFERENCES \"Roles\"(\"Id\")",
-            "CONSTRAINT \"FK_Users_Manager\" FOREIGN KEY (\"ManagerId\") REFERENCES \"Users\"(\"Id\")"
-        })]
+    [Table("Users", "public", Dialect = typeof(PgSqlSqlDialectImpl))]
+    [ForeignKeyConstraint("FK_Users_Departments", new[] { "DepartmentId" }, typeof(DepartmentsTable), new[] { "Id" })]
+    [ForeignKeyConstraint("FK_Users_Roles", new[] { "RoleId" }, typeof(RolesTable), new[] { "Id" })]
+    [ForeignKeyConstraint("FK_Users_Manager", new[] { "ManagerId" }, typeof(UsersTable), new[] { "Id" })]
+    [Index("IX_Users_Email", new[] { "Email" }, IsUnique = true)]
+    [Index("IX_Users_Name_Age", new[] { "Name", "Age" })]
     public partial class UsersTable
     {
         public static class Columns
         {
             [PgSqlBigInt]
             [Column("Id")]
+            [PrimaryKey]
             public static long Id { get; set; }
 
             [PgSqlUuid]
             [Column("Guid")]
+            [NotNull]
             public static Guid Guid { get; set; }
 
             [PgSqlText]
             [Column("Name")]
+            [NotNull]
             public static string Name { get; set; }
 
             [PgSqlText]
             [Column("Email")]
+            [NotNull]
             public static string Email { get; set; }
 
             [PgSqlBigInt]
             [Column("Age")]
+            [NotNull]
             public static long Age { get; set; }
 
             [PgSqlNumeric]
             [Column("Salary")]
+            [NotNull]
+            [DefaultValue("0")]
             public static decimal Salary { get; set; }
 
             [PgSqlDoublePrecision]
             [Column("Rating")]
+            [NotNull]
             public static double Rating { get; set; }
 
             [PgSqlBoolean]
             [Column("IsActive")]
+            [NotNull]
             public static bool IsActive { get; set; }
 
             [PgSqlBigInt]
             [Column("DepartmentId")]
+            [NotNull]
             public static long DepartmentId { get; set; }
 
             [PgSqlBigInt]
@@ -58,10 +67,13 @@ namespace SharedDemo.PgSql
 
             [PgSqlBigInt]
             [Column("RoleId")]
+            [NotNull]
             public static long RoleId { get; set; }
 
             [PgSqlTimestamp]
-            [Column("CreatedAt", NotNull = true, DefaultValue = "NOW()")]
+            [Column("CreatedAt")]
+            [NotNull]
+            [DefaultValue("NOW()")]
             public static DateTime CreatedAt { get; set; }
 
             [PgSqlTimestamp]
@@ -75,49 +87,60 @@ namespace SharedDemo.PgSql
     {
     }
     
-    [Table("Departments", "public", Dialect = typeof(PgSqlSqlDialectImpl),
-        Constraints = new[] {
-            "CONSTRAINT \"FK_Departments_Parent\" FOREIGN KEY (\"ParentDepartmentId\") REFERENCES \"Departments\"(\"Id\")",
-            "CONSTRAINT \"FK_Departments_Manager\" FOREIGN KEY (\"ManagerId\") REFERENCES \"Users\"(\"Id\")"
-        })]
+    [Table("Departments", "public", Dialect = typeof(PgSqlSqlDialectImpl))]
+    [ForeignKeyConstraint("FK_Departments_Parent", new[] { "ParentDepartmentId" }, typeof(DepartmentsTable), new[] { "Id" })]
+    [ForeignKeyConstraint("FK_Departments_Manager", new[] { "ManagerId" }, typeof(UsersTable), new[] { "Id" })]
+    [Index("IX_Departments_Name", new[] { "Name" }, IsUnique = true)]
     public partial class DepartmentsTable
     {
         public static class Columns
         {
             [PgSqlBigInt]
             [Column("Id")]
+            [PrimaryKey]
             public static long Id { get; set; }
 
             [PgSqlUuid]
             [Column("Guid")]
+            [NotNull]
             public static Guid Guid { get; set; }
 
             [PgSqlText]
             [Column("Name")]
+            [NotNull]
             public static string Name { get; set; }
 
             [PgSqlText]
             [Column("Code")]
+            [NotNull]
             public static string Code { get; set; }
 
             [PgSqlText]
             [Column("Location")]
+            [NotNull]
             public static string Location { get; set; }
 
             [PgSqlNumeric]
             [Column("Budget")]
+            [NotNull]
+            [DefaultValue("0")]
             public static decimal Budget { get; set; }
 
             [PgSqlBigInt]
             [Column("HeadCount")]
+            [NotNull]
+            [DefaultValue("0")]
             public static long HeadCount { get; set; }
 
             [PgSqlBoolean]
             [Column("IsActive")]
+            [NotNull]
             public static bool IsActive { get; set; }
 
             [PgSqlTimestamp]
-            [Column("CreatedAt", NotNull = true, DefaultValue = "NOW()")]
+            [Column("CreatedAt")]
+            [NotNull]
+            [DefaultValue("NOW()")]
             public static DateTime CreatedAt { get; set; }
 
             [PgSqlTimestamp]
@@ -126,6 +149,7 @@ namespace SharedDemo.PgSql
 
             [PgSqlText]
             [Column("Description")]
+            [NotNull]
             public static string Description { get; set; }
             
             [PgSqlBigInt]
@@ -134,6 +158,7 @@ namespace SharedDemo.PgSql
             
             [PgSqlBigInt]
             [Column("ManagerId")]
+            [NotNull]
             public static long ManagerId { get; set; }
         }
     }
@@ -189,53 +214,66 @@ namespace SharedDemo.PgSql
         }
     }
     
-    [Table("Projects", "public", Dialect = typeof(PgSqlSqlDialectImpl),
-        Constraints = new[] {
-            "CONSTRAINT \"FK_Projects_Departments\" FOREIGN KEY (\"DepartmentId\") REFERENCES \"Departments\"(\"Id\")",
-            "CONSTRAINT \"FK_Projects_Owner\" FOREIGN KEY (\"OwnerId\") REFERENCES \"Users\"(\"Id\")"
-        })]
+    [Table("Projects", "public", Dialect = typeof(PgSqlSqlDialectImpl))]
+    [ForeignKeyConstraint("FK_Projects_Departments", new[] { "DepartmentId" }, typeof(DepartmentsTable), new[] { "Id" })]
+    [ForeignKeyConstraint("FK_Projects_Owner", new[] { "OwnerId" }, typeof(UsersTable), new[] { "Id" })]
+    [CheckTableConstraint("Progress >= 0 AND Progress <= 100")]
+    [Index("IX_Projects_Code", new[] { "Code" }, IsUnique = true)]
+    [Index("IX_Projects_OwnerId", new[] { "OwnerId" })]
     public partial class ProjectsTable
     {
         public static class Columns
         {
             [PgSqlBigInt]
             [Column("Id")]
+            [PrimaryKey]
             public static long Id { get; set; }
 
             [PgSqlUuid]
             [Column("Guid")]
+            [NotNull]
             public static Guid Guid { get; set; }
 
             [PgSqlText]
             [Column("Name")]
+            [NotNull]
             public static string Name { get; set; }
 
             [PgSqlText]
             [Column("Code")]
+            [NotNull]
             public static string Code { get; set; }
 
             [PgSqlBigInt]
             [Column("OwnerId")]
+            [NotNull]
             public static long OwnerId { get; set; }
 
             [PgSqlBigInt]
             [Column("DepartmentId")]
+            [NotNull]
             public static long DepartmentId { get; set; }
 
             [PgSqlNumeric]
             [Column("Budget")]
+            [NotNull]
+            [DefaultValue("0")]
             public static decimal Budget { get; set; }
 
             [PgSqlDoublePrecision]
             [Column("Progress")]
+            [NotNull]
+            [DefaultValue("0")]
             public static double Progress { get; set; }
 
             [PgSqlBoolean]
             [Column("IsActive")]
+            [NotNull]
             public static bool IsActive { get; set; }
 
             [PgSqlTimestamp]
             [Column("StartDate")]
+            [NotNull]
             public static DateTime StartDate { get; set; }
 
             [PgSqlTimestamp]
@@ -243,7 +281,9 @@ namespace SharedDemo.PgSql
             public static DateTime? EndDate { get; set; }
 
             [PgSqlTimestamp]
-            [Column("CreatedAt", NotNull = true, DefaultValue = "NOW()")]
+            [Column("CreatedAt")]
+            [NotNull]
+            [DefaultValue("NOW()")]
             public static DateTime CreatedAt { get; set; }
 
             [PgSqlTimestamp]
