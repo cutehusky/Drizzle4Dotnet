@@ -42,7 +42,7 @@ public class PgSqlMigrationTests
             .AutoIncrement();
 
         Assert.That(col.Name, Is.EqualTo("Id"));
-        Assert.That(col.DataType, Is.EqualTo("BIGINT"));
+        Assert.That(col.RawDataType, Is.EqualTo("BIGINT"));
         Assert.That(col.IsPrimaryKey, Is.True);
         Assert.That(col.IsAutoIncrement, Is.True);
         Assert.That(col.IsNullable, Is.False);
@@ -770,19 +770,19 @@ public class PgSqlMigrationTests
         var tableDef = OrmSchemaExporter.GetTableDefinition<PgSql.UsersTable, PgSqlSqlDialectImpl>();
 
         var idCol = tableDef.Columns.First(c => c.Name == "Id");
-        Assert.That(idCol.DataType, Is.EqualTo("BIGINT"));
+        Assert.That(idCol.RawDataType, Is.EqualTo("BIGINT"));
 
         var nameCol = tableDef.Columns.First(c => c.Name == "Name");
-        Assert.That(nameCol.DataType, Is.EqualTo("TEXT"));
+        Assert.That(nameCol.RawDataType, Is.EqualTo("TEXT"));
 
         var salaryCol = tableDef.Columns.First(c => c.Name == "Salary");
-        Assert.That(salaryCol.DataType, Is.EqualTo("NUMERIC(18,2)"));
+        Assert.That(salaryCol.RawDataType, Is.EqualTo("NUMERIC(18,2)"));
 
         var isActiveCol = tableDef.Columns.First(c => c.Name == "IsActive");
-        Assert.That(isActiveCol.DataType, Is.EqualTo("BOOLEAN"));
+        Assert.That(isActiveCol.RawDataType, Is.EqualTo("BOOLEAN"));
 
         var createdAtCol = tableDef.Columns.First(c => c.Name == "CreatedAt");
-        Assert.That(createdAtCol.DataType, Is.EqualTo("TIMESTAMP"));
+        Assert.That(createdAtCol.RawDataType, Is.EqualTo("TIMESTAMP"));
     }
 
     [Test]
@@ -791,13 +791,13 @@ public class PgSqlMigrationTests
         var tableDef = OrmSchemaExporter.GetTableDefinition<MySql.UsersTable, MySqlSqlDialectImpl>();
 
         var idCol = tableDef.Columns.First(c => c.Name == "Id");
-        Assert.That(idCol.DataType, Is.EqualTo("BIGINT"));
+        Assert.That(idCol.RawDataType, Is.EqualTo("BIGINT"));
 
         var nameCol = tableDef.Columns.First(c => c.Name == "Name");
-        Assert.That(nameCol.DataType, Is.EqualTo("VARCHAR(255)"));
+        Assert.That(nameCol.RawDataType, Is.EqualTo("VARCHAR(255)"));
 
         var isActiveCol = tableDef.Columns.First(c => c.Name == "IsActive");
-        Assert.That(isActiveCol.DataType, Is.EqualTo("TINYINT(1)"));
+        Assert.That(isActiveCol.RawDataType, Is.EqualTo("TINYINT(1)"));
     }
 
     [Test]
@@ -870,7 +870,7 @@ public class PgSqlMigrationTests
         targetColumns.Add(new SnapshotColumn
         {
             Name = "Phone",
-            DataType = "TEXT",
+            RawDataType = "TEXT",
             IsNullable = true
         });
         var target = new SchemaSnapshot
@@ -1272,24 +1272,24 @@ public class PgSqlMigrationTests
         Assert.That(schema.SchemaName, Is.EqualTo("public"));
 
         var cols = schema.Columns.ToDictionary(c => c.Name);
-        Assert.That(cols["Id"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Id"].RawDataType, Is.EqualTo("BIGINT"));
         Assert.That(cols["Id"].IsPrimaryKey, Is.True);
         Assert.That(cols["Id"].IsNullable, Is.False);
 
-        Assert.That(cols["Guid"].DataType, Is.EqualTo("UUID"));
+        Assert.That(cols["Guid"].RawDataType, Is.EqualTo("UUID"));
         Assert.That(cols["Guid"].IsNullable, Is.False);
 
-        Assert.That(cols["Name"].DataType, Is.EqualTo("TEXT"));
+        Assert.That(cols["Name"].RawDataType, Is.EqualTo("TEXT"));
         Assert.That(cols["Name"].IsNullable, Is.False);
 
-        Assert.That(cols["Salary"].DataType, Is.EqualTo("NUMERIC(18,2)"));
+        Assert.That(cols["Salary"].RawDataType, Is.EqualTo("NUMERIC(18,2)"));
         Assert.That(cols["Salary"].DefaultValue, Is.EqualTo("0"));
 
-        Assert.That(cols["CreatedAt"].DataType, Is.EqualTo("TIMESTAMP"));
+        Assert.That(cols["CreatedAt"].RawDataType, Is.EqualTo("TIMESTAMP"));
         Assert.That(cols["CreatedAt"].DefaultValue, Is.EqualTo("NOW()"));
         Assert.That(cols["CreatedAt"].IsNullable, Is.False);
 
-        Assert.That(cols["ManagerId"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["ManagerId"].RawDataType, Is.EqualTo("BIGINT"));
         Assert.That(cols["ManagerId"].IsNullable, Is.True);
 
         // Verify CREATE TABLE SQL output
@@ -1309,16 +1309,16 @@ public class PgSqlMigrationTests
         Assert.That(schema.TableName, Is.EqualTo("Departments"));
 
         var cols = schema.Columns.ToDictionary(c => c.Name);
-        Assert.That(cols["Id"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Id"].RawDataType, Is.EqualTo("BIGINT"));
         Assert.That(cols["Id"].IsPrimaryKey, Is.True);
 
-        Assert.That(cols["Name"].DataType, Is.EqualTo("TEXT"));
+        Assert.That(cols["Name"].RawDataType, Is.EqualTo("TEXT"));
         Assert.That(cols["Name"].IsNullable, Is.False);
 
-        Assert.That(cols["Budget"].DataType, Is.EqualTo("NUMERIC(18,2)"));
+        Assert.That(cols["Budget"].RawDataType, Is.EqualTo("NUMERIC(18,2)"));
         Assert.That(cols["Budget"].DefaultValue, Is.EqualTo("0"));
 
-        Assert.That(cols["Description"].DataType, Is.EqualTo("TEXT"));
+        Assert.That(cols["Description"].RawDataType, Is.EqualTo("TEXT"));
 
         var sql = PgSql.DepartmentsTable.ToCreateTableSqlPgSql();
         Print("PgSql Departments DDL", sql);
@@ -1332,13 +1332,13 @@ public class PgSqlMigrationTests
         Assert.That(schema.TableName, Is.EqualTo("Roles"));
 
         var cols = schema.Columns.ToDictionary(c => c.Name);
-        Assert.That(cols["Id"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Id"].RawDataType, Is.EqualTo("BIGINT"));
         Assert.That(cols["Id"].IsPrimaryKey, Is.True);
 
-        Assert.That(cols["BaseSalary"].DataType, Is.EqualTo("NUMERIC(18,2)"));
-        Assert.That(cols["BonusRate"].DataType, Is.EqualTo("DOUBLE PRECISION"));
+        Assert.That(cols["BaseSalary"].RawDataType, Is.EqualTo("NUMERIC(18,2)"));
+        Assert.That(cols["BonusRate"].RawDataType, Is.EqualTo("DOUBLE PRECISION"));
 
-        Assert.That(cols["CanApproveBudget"].DataType, Is.EqualTo("BOOLEAN"));
+        Assert.That(cols["CanApproveBudget"].RawDataType, Is.EqualTo("BOOLEAN"));
 
         var sql = PgSql.RolesTable.ToCreateTableSqlPgSql();
         Print("PgSql Roles DDL", sql);
@@ -1352,10 +1352,10 @@ public class PgSqlMigrationTests
         Assert.That(schema.TableName, Is.EqualTo("Projects"));
 
         var cols = schema.Columns.ToDictionary(c => c.Name);
-        Assert.That(cols["Code"].DataType, Is.EqualTo("TEXT"));
-        Assert.That(cols["OwnerId"].DataType, Is.EqualTo("BIGINT"));
-        Assert.That(cols["Progress"].DataType, Is.EqualTo("DOUBLE PRECISION"));
-        Assert.That(cols["StartDate"].DataType, Is.EqualTo("TIMESTAMP"));
+        Assert.That(cols["Code"].RawDataType, Is.EqualTo("TEXT"));
+        Assert.That(cols["OwnerId"].RawDataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Progress"].RawDataType, Is.EqualTo("DOUBLE PRECISION"));
+        Assert.That(cols["StartDate"].RawDataType, Is.EqualTo("TIMESTAMP"));
         Assert.That(cols["StartDate"].IsNullable, Is.False);
 
         var sql = PgSql.ProjectsTable.ToCreateTableSqlPgSql();
@@ -1370,12 +1370,12 @@ public class PgSqlMigrationTests
         Assert.That(schema.TableName, Is.EqualTo("UserProjects"));
 
         var cols = schema.Columns.ToDictionary(c => c.Name);
-        Assert.That(cols["UserId"].DataType, Is.EqualTo("BIGINT"));
-        Assert.That(cols["ProjectId"].DataType, Is.EqualTo("BIGINT"));
-        Assert.That(cols["Role"].DataType, Is.EqualTo("TEXT"));
-        Assert.That(cols["Allocation"].DataType, Is.EqualTo("DOUBLE PRECISION"));
-        Assert.That(cols["HourlyRate"].DataType, Is.EqualTo("NUMERIC(18,2)"));
-        Assert.That(cols["AssignedAt"].DataType, Is.EqualTo("TIMESTAMP"));
+        Assert.That(cols["UserId"].RawDataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["ProjectId"].RawDataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Role"].RawDataType, Is.EqualTo("TEXT"));
+        Assert.That(cols["Allocation"].RawDataType, Is.EqualTo("DOUBLE PRECISION"));
+        Assert.That(cols["HourlyRate"].RawDataType, Is.EqualTo("NUMERIC(18,2)"));
+        Assert.That(cols["AssignedAt"].RawDataType, Is.EqualTo("TIMESTAMP"));
 
         var sql = PgSql.UserProjectsTable.ToCreateTableSqlPgSql();
         Print("PgSql UserProjects DDL", sql);
@@ -1389,18 +1389,18 @@ public class PgSqlMigrationTests
         Assert.That(schema.TableName, Is.EqualTo("Users"));
 
         var cols = schema.Columns.ToDictionary(c => c.Name);
-        Assert.That(cols["Id"].DataType, Is.EqualTo("BIGINT"));
+        Assert.That(cols["Id"].RawDataType, Is.EqualTo("BIGINT"));
         Assert.That(cols["Id"].IsPrimaryKey, Is.True);
         Assert.That(cols["Id"].IsAutoIncrement, Is.True);
 
-        Assert.That(cols["Guid"].DataType, Is.EqualTo("CHAR(36)"));
-        Assert.That(cols["Name"].DataType, Is.EqualTo("VARCHAR(255)"));
-        Assert.That(cols["Email"].DataType, Is.EqualTo("VARCHAR(255)"));
-        Assert.That(cols["IsActive"].DataType, Is.EqualTo("TINYINT(1)"));
-        Assert.That(cols["Salary"].DataType, Is.EqualTo("DECIMAL(18,2)"));
-        Assert.That(cols["Rating"].DataType, Is.EqualTo("DOUBLE"));
-        Assert.That(cols["CreatedAt"].DataType, Is.EqualTo("DATETIME(6)"));
-        Assert.That(cols["DeletedAt"].DataType, Is.EqualTo("DATETIME(6)"));
+        Assert.That(cols["Guid"].RawDataType, Is.EqualTo("CHAR(36)"));
+        Assert.That(cols["Name"].RawDataType, Is.EqualTo("VARCHAR(255)"));
+        Assert.That(cols["Email"].RawDataType, Is.EqualTo("VARCHAR(255)"));
+        Assert.That(cols["IsActive"].RawDataType, Is.EqualTo("TINYINT(1)"));
+        Assert.That(cols["Salary"].RawDataType, Is.EqualTo("DECIMAL(18,2)"));
+        Assert.That(cols["Rating"].RawDataType, Is.EqualTo("DOUBLE"));
+        Assert.That(cols["CreatedAt"].RawDataType, Is.EqualTo("DATETIME(6)"));
+        Assert.That(cols["DeletedAt"].RawDataType, Is.EqualTo("DATETIME(6)"));
         Assert.That(cols["DeletedAt"].IsNullable, Is.True);
 
         var sql = SharedDemo.MySql.UsersTable.ToCreateTableSqlMySql();
@@ -1418,8 +1418,8 @@ public class PgSqlMigrationTests
         Assert.That(schema.TableName, Is.EqualTo("Projects"));
 
         var cols = schema.Columns.ToDictionary(c => c.Name);
-        Assert.That(cols["Code"].DataType, Is.EqualTo("VARCHAR(100)"));
-        Assert.That(cols["StartDate"].DataType, Is.EqualTo("DATETIME(6)"));
+        Assert.That(cols["Code"].RawDataType, Is.EqualTo("VARCHAR(100)"));
+        Assert.That(cols["StartDate"].RawDataType, Is.EqualTo("DATETIME(6)"));
 
         var sql = SharedDemo.MySql.ProjectsTable.ToCreateTableSqlMySql();
         Print("MySql Projects DDL", sql);
@@ -1455,9 +1455,9 @@ public class PgSqlMigrationTests
         Assert.That(PgSql.ProjectsTable.SchemaDefinition, Is.Not.Null);
         Assert.That(PgSql.UserProjectsTable.SchemaDefinition, Is.Not.Null);
         Assert.That(MySql.UsersTable.SchemaDefinition, Is.Not.Null);
-        Assert.That(SharedDemo.MySql.DepartmentsTable.SchemaDefinition, Is.Not.Null);
-        Assert.That(SharedDemo.MySql.RolesTable.SchemaDefinition, Is.Not.Null);
-        Assert.That(SharedDemo.MySql.ProjectsTable.SchemaDefinition, Is.Not.Null);
-        Assert.That(SharedDemo.MySql.UserProjectsTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(MySql.DepartmentsTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(MySql.RolesTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(MySql.ProjectsTable.SchemaDefinition, Is.Not.Null);
+        Assert.That(MySql.UserProjectsTable.SchemaDefinition, Is.Not.Null);
     }
 }

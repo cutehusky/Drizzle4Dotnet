@@ -80,7 +80,19 @@ public static class OrmSchemaExporter
                 continue;
 
             var clrType = GetColumnClrType(propType);
-            var sqlType = MapClrToSql(clrType, typeMap);
+
+            // Check for SqlTypeAttribute subclass on the property (e.g., [PgSqlBigInt])
+            var sqlTypeAttr = prop.GetCustomAttribute<SqlTypeAttribute>();
+            ISqlDataType sqlType;
+            if (sqlTypeAttr != null)
+            {
+                sqlType = sqlTypeAttr.ToSqlDataType();
+            }
+            else
+            {
+                sqlType = MapClrToSql(clrType, typeMap);
+            }
+
             var isNullable = IsClrNullable(clrType);
 
             columns.Add(new ColumnDefinition<TDialect>(columnName, sqlType)

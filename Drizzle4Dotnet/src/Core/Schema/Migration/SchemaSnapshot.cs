@@ -54,7 +54,7 @@ public class SchemaSnapshot
                 snTable.Columns.Add(new SnapshotColumn
                 {
                     Name = col.Name,
-                    DataType = col.DataType,
+                    RawDataType = col.RawDataType,
                     IsNullable = col.IsNullable,
                     IsPrimaryKey = col.IsPrimaryKey,
                     IsAutoIncrement = col.IsAutoIncrement,
@@ -139,7 +139,7 @@ public class SchemaSnapshot
             if (oldCols.TryGetValue(name, out var oldCol))
             {
                 // Check for changes
-                if (oldCol.DataType != newCol.DataType)
+                if (oldCol.RawDataType != newCol.RawDataType)
                 {
                     changes.Add(new ColumnChange(ColumnChangeType.TypeChanged, name, ToColDef(oldCol), ToColDef(newCol)));
                 }
@@ -173,7 +173,7 @@ public class SchemaSnapshot
 
     private static IColumnDefinition ToColDef(SnapshotColumn col)
     {
-        return new ColumnDefinition<PgSqlSqlDialectImpl>(col.Name, col.DataType)
+        return new ColumnDefinition<PgSqlSqlDialectImpl>(col.Name, col.RawDataType)
         {
             IsNullable = col.IsNullable,
             IsPrimaryKey = col.IsPrimaryKey,
@@ -206,7 +206,7 @@ public class SnapshotTable
 public class SnapshotColumn
 {
     public string Name { get; set; } = "";
-    public string DataType { get; set; } = "";
+    public string RawDataType { get; set; } = "";
     public bool IsNullable { get; set; } = true;
     public bool IsPrimaryKey { get; set; }
     public bool IsAutoIncrement { get; set; }
@@ -268,7 +268,7 @@ public class SchemaDiff
                                 alterQuery.DropColumn(colChange.ColumnName);
                                 break;
                             case ColumnChangeType.TypeChanged:
-                                alterQuery.AlterColumnType(colChange.ColumnName, colChange.NewDefinition!.DataType);
+                                alterQuery.AlterColumnType(colChange.ColumnName, colChange.NewDefinition!.RawDataType);
                                 break;
                             case ColumnChangeType.NullabilityChanged:
                                 if (colChange.NewDefinition!.IsNullable)

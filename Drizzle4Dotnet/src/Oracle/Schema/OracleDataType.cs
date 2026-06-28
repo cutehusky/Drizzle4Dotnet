@@ -1,3 +1,4 @@
+using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Migration;
 
 namespace Drizzle4Dotnet.Oracle.Schema;
@@ -39,4 +40,172 @@ public readonly struct OracleDataType : ISqlDataType
     public static OracleDataType VarChar2Of(int length) => new($"VARCHAR2({length})");
     /// <summary>Creates a custom/arbitrary SQL type.</summary>
     public static OracleDataType Custom(string sql) => new(sql);
+}
+
+// ============================================================================
+// Oracle Data Type Attributes (subclasses of SqlTypeAttribute)
+// ============================================================================
+
+/// <summary>NUMBER</summary>
+public sealed class OracleNumberAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "NUMBER";
+}
+
+/// <summary>NUMBER(10)</summary>
+public sealed class OracleIntegerAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "NUMBER(10)";
+}
+
+/// <summary>NUMBER(19)</summary>
+public sealed class OracleBigIntAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "NUMBER(19)";
+}
+
+/// <summary>NUMBER(5)</summary>
+public sealed class OracleSmallIntAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "NUMBER(5)";
+}
+
+/// <summary>NUMBER(3)</summary>
+public sealed class OracleTinyIntAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "NUMBER(3)";
+}
+
+/// <summary>VARCHAR2(255)</summary>
+public sealed class OracleTextAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "VARCHAR2(255)";
+}
+
+/// <summary>NUMBER(1)</summary>
+public sealed class OracleBooleanAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "NUMBER(1)";
+}
+
+/// <summary>NUMBER(precision, scale) — default NUMBER(18,2)</summary>
+public sealed class OracleDecimalAttribute : SqlTypeAttribute
+{
+    public int Precision { get; }
+    public int Scale { get; }
+
+    public OracleDecimalAttribute(int precision = 18, int scale = 2)
+    {
+        Precision = precision;
+        Scale = scale;
+    }
+
+    public override string SqlType => $"NUMBER({Precision},{Scale})";
+}
+
+/// <summary>BINARY_FLOAT</summary>
+public sealed class OracleBinaryFloatAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "BINARY_FLOAT";
+}
+
+/// <summary>BINARY_DOUBLE</summary>
+public sealed class OracleBinaryDoubleAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "BINARY_DOUBLE";
+}
+
+/// <summary>BINARY_FLOAT (alias)</summary>
+public sealed class OracleFloatAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "BINARY_FLOAT";
+}
+
+/// <summary>BINARY_DOUBLE (alias)</summary>
+public sealed class OracleDoublePrecisionAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "BINARY_DOUBLE";
+}
+
+/// <summary>TIMESTAMP</summary>
+public sealed class OracleTimestampAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "TIMESTAMP";
+}
+
+/// <summary>DATE</summary>
+public sealed class OracleDateAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "DATE";
+}
+
+/// <summary>INTERVAL DAY TO SECOND</summary>
+public sealed class OracleTimeAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "INTERVAL DAY TO SECOND";
+}
+
+/// <summary>RAW(16)</summary>
+public sealed class OracleUuidAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "RAW(16)";
+}
+
+/// <summary>RAW(16) (alias)</summary>
+public sealed class OracleRawAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "RAW(16)";
+}
+
+/// <summary>BLOB</summary>
+public sealed class OracleBlobAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "BLOB";
+}
+
+/// <summary>BLOB (alias)</summary>
+public sealed class OracleByteaAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "BLOB";
+}
+
+/// <summary>CHAR(1)</summary>
+public sealed class OracleCharAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "CHAR(1)";
+}
+
+/// <summary>VARCHAR2(length) — default VARCHAR2(255)</summary>
+public sealed class OracleVarChar2Attribute : SqlTypeAttribute
+{
+    public int? Length { get; }
+
+    public OracleVarChar2Attribute() { }
+
+    public OracleVarChar2Attribute(int length) => Length = length;
+
+    public override string SqlType => Length.HasValue ? $"VARCHAR2({Length.Value})" : "VARCHAR2(255)";
+}
+
+/// <summary>NUMBER(precision, scale) with custom precision and scale.</summary>
+public sealed class OracleNumberFormatAttribute : SqlTypeAttribute
+{
+    public int Precision { get; }
+    public int Scale { get; }
+
+    public OracleNumberFormatAttribute(int precision, int scale)
+    {
+        Precision = precision;
+        Scale = scale;
+    }
+
+    public override string SqlType => $"NUMBER({Precision},{Scale})";
+}
+
+/// <summary>Custom raw SQL type.</summary>
+public sealed class OracleCustomAttribute : SqlTypeAttribute
+{
+    public override string SqlType { get; }
+
+    public OracleCustomAttribute(string sqlType) => SqlType = sqlType;
 }

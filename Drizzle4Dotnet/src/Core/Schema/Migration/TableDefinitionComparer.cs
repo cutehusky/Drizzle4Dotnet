@@ -125,7 +125,7 @@ public static class TableDefinitionComparer
             {
                 // New column - ADD
                 alterBuilder.AddColumn(newCol);
-                changes.Add($"  Add column {name} ({newCol.DataType})");
+                changes.Add($"  Add column {name} ({newCol.RawDataType})");
                 hasColumnChanges = true;
             }
         }
@@ -254,11 +254,11 @@ public static class TableDefinitionComparer
         var modifications = new List<(AlterAction, string)>();
 
         // Check data type change
-        if (!string.Equals(oldCol.DataType, newCol.DataType, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(oldCol.RawDataType, newCol.RawDataType, StringComparison.OrdinalIgnoreCase))
         {
             modifications.Add((
-                AlterAction.AlterType(newCol.Name, newCol.DataType),
-                $"Type: {oldCol.DataType} → {newCol.DataType}"));
+                AlterAction.AlterType(newCol.Name, newCol.RawDataType),
+                $"Type: {oldCol.RawDataType} → {newCol.RawDataType}"));
         }
 
         // Check nullability change

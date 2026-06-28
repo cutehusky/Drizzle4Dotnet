@@ -1,3 +1,6 @@
+using System;
+using Drizzle4Dotnet.Core.Schema.Migration;
+
 namespace Drizzle4Dotnet.Core.Schema.Columns;
 
 /// <summary>
@@ -9,12 +12,6 @@ public class ColumnAttribute(string name) : Attribute
 {
     /// <summary>The column name in the database.</summary>
     public string Name { get; } = name;
-
-    /// <summary>
-    /// Explicitly overrides the SQL data type (e.g., "VARCHAR(100)", "NUMERIC(20,4)", "TEXT").
-    /// If not specified, the type is inferred from the CLR type based on the dialect.
-    /// </summary>
-    public string? DataType { get; set; }
 
     /// <summary>
     /// Default value expression for the column (e.g., "NOW()", "0", "'default'", "true").
@@ -59,3 +56,26 @@ public class ColumnAttribute(string name) : Attribute
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
 public class PrimaryKeyAttribute : Attribute { }
+
+// ============================================================================
+// SQL Data Type Attribute Hierarchy
+// ============================================================================
+
+/// <summary>
+/// Abstract base attribute for dialect-specific SQL data type annotations.
+/// Subclass this to create typed attributes for each data type (e.g., <c>PgSqlIntegerAttribute</c>).
+/// Place on a property alongside <see cref="ColumnAttribute"/> to specify the exact SQL column type.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+public abstract class SqlTypeAttribute : Attribute
+{
+    /// <summary>
+    /// The SQL type name string (e.g., "INTEGER", "BIGINT", "VARCHAR(100)").
+    /// </summary>
+    public abstract string SqlType { get; }
+
+    /// <summary>
+    /// Converts this attribute to an <see cref="ISqlDataType"/> instance.
+    /// </summary>
+    public ISqlDataType ToSqlDataType() => new RawSqlDataType(SqlType);
+}

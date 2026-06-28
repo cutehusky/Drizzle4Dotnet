@@ -14,8 +14,8 @@ public interface IColumnDefinition
     /// <summary>The typed SQL data type.</summary>
     ISqlDataType SqlDataType { get; }
     
-    /// <summary>The SQL type name string (e.g., "BIGINT", "TEXT").</summary>
-    string DataType { get; }
+    /// <summary>The raw SQL type name string (e.g., "BIGINT", "TEXT").</summary>
+    string RawDataType { get; }
     
     /// <summary>Whether the column is nullable.</summary>
     bool IsNullable { get; set; }
@@ -50,8 +50,8 @@ public class ColumnDefinition<TDialect> : IColumnDefinition where TDialect : ISq
     /// <summary>The typed SQL data type.</summary>
     public ISqlDataType SqlDataType { get; }
     
-    /// <summary>The SQL type name string (e.g., "BIGINT", "TEXT", "NUMERIC(18,2)").</summary>
-    public string DataType => SqlDataType.Sql;
+    /// <summary>The raw SQL type name string (e.g., "BIGINT", "TEXT", "NUMERIC(18,2)").</summary>
+    public string RawDataType => SqlDataType.Sql;
     
     /// <summary>Whether the column is nullable.</summary>
     public bool IsNullable { get; set; } = true;

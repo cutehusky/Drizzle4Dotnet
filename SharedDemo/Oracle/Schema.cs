@@ -1,6 +1,7 @@
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Oracle;
+using Drizzle4Dotnet.Oracle.Schema;
 
 namespace SharedDemo.Oracle
 {
@@ -14,43 +15,56 @@ namespace SharedDemo.Oracle
     {
         public static class Columns
         {
-            [Column("Id", DataType = "NUMBER(10)", PrimaryKey = true)]
+            [OracleInteger]
+            [Column("Id",PrimaryKey = true)]
             public static long Id { get; set; }
 
-            [Column("Guid", DataType = "RAW(16)", NotNull = true)]
+            [OracleUuid]
+            [Column("Guid",NotNull = true)]
             public static Guid Guid { get; set; }
 
-            [Column("Name", DataType = "VARCHAR2(255)", NotNull = true)]
+            [OracleVarChar2]
+            [Column("Name",NotNull = true)]
             public static string Name { get; set; }
 
-            [Column("Email", DataType = "VARCHAR2(255)", NotNull = true)]
+            [OracleVarChar2]
+            [Column("Email",NotNull = true)]
             public static string Email { get; set; }
 
-            [Column("Age", DataType = "NUMBER(10)", NotNull = true)]
+            [OracleInteger]
+            [Column("Age",NotNull = true)]
             public static long Age { get; set; }
 
-            [Column("Salary", DataType = "NUMBER(18,2)", DefaultValue = "0", NotNull = true)]
+            [OracleDecimal]
+            [Column("Salary",DefaultValue = "0", NotNull = true)]
             public static decimal Salary { get; set; }
 
-            [Column("Rating", DataType = "BINARY_DOUBLE", NotNull = true)]
+            [OracleBinaryDouble]
+            [Column("Rating",NotNull = true)]
             public static double Rating { get; set; }
 
-            [Column("IsActive", DataType = "NUMBER(1)", NotNull = true)]
+            [OracleBoolean]
+            [Column("IsActive",NotNull = true)]
             public static bool IsActive { get; set; }
 
-            [Column("DepartmentId", DataType = "NUMBER(10)", NotNull = true)]
+            [OracleInteger]
+            [Column("DepartmentId",NotNull = true)]
             public static long DepartmentId { get; set; }
 
-            [Column("ManagerId", DataType = "NUMBER(10)")]
+            [OracleInteger]
+            [Column("ManagerId")]
             public static long? ManagerId { get; set; }
 
-            [Column("RoleId", DataType = "NUMBER(10)", NotNull = true)]
+            [OracleInteger]
+            [Column("RoleId",NotNull = true)]
             public static long RoleId { get; set; }
 
-            [Column("CreatedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "SYSTIMESTAMP")]
+            [OracleTimestamp]
+            [Column("CreatedAt",NotNull = true, DefaultValue = "SYSTIMESTAMP")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt", DataType = "TIMESTAMP")]
+            [OracleTimestamp]
+            [Column("UpdatedAt")]
             public static DateTime? UpdatedAt { get; set; }
         }
     }
@@ -69,43 +83,56 @@ namespace SharedDemo.Oracle
     {
         public static class Columns
         {
-            [Column("Id", DataType = "NUMBER(10)", PrimaryKey = true)]
+            [OracleInteger]
+            [Column("Id",PrimaryKey = true)]
             public static long Id { get; set; }
 
-            [Column("Guid", DataType = "RAW(16)", NotNull = true)]
+            [OracleUuid]
+            [Column("Guid",NotNull = true)]
             public static Guid Guid { get; set; }
 
-            [Column("Name", DataType = "VARCHAR2(255)", NotNull = true)]
+            [OracleVarChar2]
+            [Column("Name",NotNull = true)]
             public static string Name { get; set; }
 
-            [Column("Code", DataType = "VARCHAR2(100)", NotNull = true)]
+            [OracleVarChar2]
+            [Column("Code",NotNull = true)]
             public static string Code { get; set; }
 
-            [Column("Location", DataType = "VARCHAR2(255)", NotNull = true)]
+            [OracleVarChar2]
+            [Column("Location",NotNull = true)]
             public static string Location { get; set; }
 
-            [Column("Budget", DataType = "NUMBER(18,2)", DefaultValue = "0", NotNull = true)]
+            [OracleDecimal]
+            [Column("Budget",DefaultValue = "0", NotNull = true)]
             public static decimal Budget { get; set; }
 
-            [Column("HeadCount", DataType = "NUMBER(10)", DefaultValue = "0", NotNull = true)]
+            [OracleInteger]
+            [Column("HeadCount",DefaultValue = "0", NotNull = true)]
             public static long HeadCount { get; set; }
 
-            [Column("IsActive", DataType = "NUMBER(1)", NotNull = true)]
+            [OracleBoolean]
+            [Column("IsActive",NotNull = true)]
             public static bool IsActive { get; set; }
 
-            [Column("CreatedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "SYSTIMESTAMP")]
+            [OracleTimestamp]
+            [Column("CreatedAt",NotNull = true, DefaultValue = "SYSTIMESTAMP")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt", DataType = "TIMESTAMP")]
+            [OracleTimestamp]
+            [Column("UpdatedAt")]
             public static DateTime? UpdatedAt { get; set; }
 
-            [Column("Description", DataType = "CLOB", NotNull = true)]
+            [OracleText]
+            [Column("Description",NotNull = true)]
             public static string Description { get; set; }
             
-            [Column("ParentDepartmentId", DataType = "NUMBER(10)")]
+            [OracleInteger]
+            [Column("ParentDepartmentId")]
             public static long? ParentDepartmentId { get; set; }
             
-            [Column("ManagerId", DataType = "NUMBER(10)", NotNull = true)]
+            [OracleInteger]
+            [Column("ManagerId",NotNull = true)]
             public static long ManagerId { get; set; }
         }
     }
@@ -115,37 +142,48 @@ namespace SharedDemo.Oracle
     {
         public static class Columns
         {
-            [Column("Id", DataType = "NUMBER(10)", PrimaryKey = true)]
+            [OracleInteger]
+            [Column("Id",PrimaryKey = true)]
             public static long Id { get; set; }
 
-            [Column("Guid", DataType = "RAW(16)", NotNull = true)]
+            [OracleUuid]
+            [Column("Guid",NotNull = true)]
             public static Guid Guid { get; set; }
 
-            [Column("Name", DataType = "VARCHAR2(100)", NotNull = true)]
+            [OracleVarChar2]
+            [Column("Name",NotNull = true)]
             public static string Name { get; set; }
 
-            [Column("Level", DataType = "NUMBER(10)", NotNull = true)]
+            [OracleInteger]
+            [Column("Level",NotNull = true)]
             public static long Level { get; set; }
 
-            [Column("BaseSalary", DataType = "NUMBER(18,2)", DefaultValue = "0", NotNull = true)]
+            [OracleDecimal]
+            [Column("BaseSalary",DefaultValue = "0", NotNull = true)]
             public static decimal BaseSalary { get; set; }
 
-            [Column("BonusRate", DataType = "BINARY_DOUBLE", DefaultValue = "0", NotNull = true)]
+            [OracleBinaryDouble]
+            [Column("BonusRate",DefaultValue = "0", NotNull = true)]
             public static double BonusRate { get; set; }
 
-            [Column("IsActive", DataType = "NUMBER(1)", NotNull = true)]
+            [OracleBoolean]
+            [Column("IsActive",NotNull = true)]
             public static bool IsActive { get; set; }
 
-            [Column("CanApproveBudget", DataType = "NUMBER(1)", NotNull = true)]
+            [OracleBoolean]
+            [Column("CanApproveBudget",NotNull = true)]
             public static bool CanApproveBudget { get; set; }
 
-            [Column("CreatedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "SYSTIMESTAMP")]
+            [OracleTimestamp]
+            [Column("CreatedAt",NotNull = true, DefaultValue = "SYSTIMESTAMP")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt", DataType = "TIMESTAMP")]
+            [OracleTimestamp]
+            [Column("UpdatedAt")]
             public static DateTime? UpdatedAt { get; set; }
 
-            [Column("Description", DataType = "CLOB", NotNull = true)]
+            [OracleText]
+            [Column("Description",NotNull = true)]
             public static string Description { get; set; }
         }
     }
@@ -159,43 +197,56 @@ namespace SharedDemo.Oracle
     {
         public static class Columns
         {
-            [Column("Id", DataType = "NUMBER(10)", PrimaryKey = true)]
+            [OracleInteger]
+            [Column("Id",PrimaryKey = true)]
             public static long Id { get; set; }
 
-            [Column("Guid", DataType = "RAW(16)", NotNull = true)]
+            [OracleUuid]
+            [Column("Guid",NotNull = true)]
             public static Guid Guid { get; set; }
 
-            [Column("Name", DataType = "VARCHAR2(255)", NotNull = true)]
+            [OracleVarChar2]
+            [Column("Name",NotNull = true)]
             public static string Name { get; set; }
 
-            [Column("Code", DataType = "VARCHAR2(100)", NotNull = true)]
+            [OracleVarChar2]
+            [Column("Code",NotNull = true)]
             public static string Code { get; set; }
 
-            [Column("OwnerId", DataType = "NUMBER(10)", NotNull = true)]
+            [OracleInteger]
+            [Column("OwnerId",NotNull = true)]
             public static long OwnerId { get; set; }
 
-            [Column("DepartmentId", DataType = "NUMBER(10)", NotNull = true)]
+            [OracleInteger]
+            [Column("DepartmentId",NotNull = true)]
             public static long DepartmentId { get; set; }
 
-            [Column("Budget", DataType = "NUMBER(18,2)", DefaultValue = "0", NotNull = true)]
+            [OracleDecimal]
+            [Column("Budget",DefaultValue = "0", NotNull = true)]
             public static decimal Budget { get; set; }
 
-            [Column("Progress", DataType = "BINARY_DOUBLE", DefaultValue = "0", NotNull = true)]
+            [OracleBinaryDouble]
+            [Column("Progress",DefaultValue = "0", NotNull = true)]
             public static double Progress { get; set; }
 
-            [Column("IsActive", DataType = "NUMBER(1)", NotNull = true)]
+            [OracleBoolean]
+            [Column("IsActive",NotNull = true)]
             public static bool IsActive { get; set; }
 
-            [Column("StartDate", DataType = "DATE", NotNull = true)]
+            [OracleDate]
+            [Column("StartDate",NotNull = true)]
             public static DateTime StartDate { get; set; }
 
-            [Column("EndDate", DataType = "DATE")]
+            [OracleDate]
+            [Column("EndDate")]
             public static DateTime? EndDate { get; set; }
 
-            [Column("CreatedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "SYSTIMESTAMP")]
+            [OracleTimestamp]
+            [Column("CreatedAt",NotNull = true, DefaultValue = "SYSTIMESTAMP")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt", DataType = "TIMESTAMP")]
+            [OracleTimestamp]
+            [Column("UpdatedAt")]
             public static DateTime? UpdatedAt { get; set; }
         }
     }
@@ -209,37 +260,48 @@ namespace SharedDemo.Oracle
     {
         public static class Columns
         {
-            [Column("Id", DataType = "NUMBER(10)", PrimaryKey = true)]
+            [OracleInteger]
+            [Column("Id",PrimaryKey = true)]
             public static long Id { get; set; }
 
-            [Column("UserId", DataType = "NUMBER(10)", NotNull = true)]
+            [OracleInteger]
+            [Column("UserId",NotNull = true)]
             public static long UserId { get; set; }
 
-            [Column("ProjectId", DataType = "NUMBER(10)", NotNull = true)]
+            [OracleInteger]
+            [Column("ProjectId",NotNull = true)]
             public static long ProjectId { get; set; }
 
-            [Column("Role", DataType = "VARCHAR2(100)", NotNull = true)]
+            [OracleVarChar2]
+            [Column("Role",NotNull = true)]
             public static string Role { get; set; }
 
-            [Column("Allocation", DataType = "BINARY_DOUBLE", DefaultValue = "0", NotNull = true)]
+            [OracleBinaryDouble]
+            [Column("Allocation",DefaultValue = "0", NotNull = true)]
             public static double Allocation { get; set; }
 
-            [Column("HourlyRate", DataType = "NUMBER(18,2)", DefaultValue = "0", NotNull = true)]
+            [OracleDecimal]
+            [Column("HourlyRate",DefaultValue = "0", NotNull = true)]
             public static decimal HourlyRate { get; set; }
 
-            [Column("IsActive", DataType = "NUMBER(1)", NotNull = true)]
+            [OracleBoolean]
+            [Column("IsActive",NotNull = true)]
             public static bool IsActive { get; set; }
 
-            [Column("AssignedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "SYSTIMESTAMP")]
+            [OracleTimestamp]
+            [Column("AssignedAt",NotNull = true, DefaultValue = "SYSTIMESTAMP")]
             public static DateTime AssignedAt { get; set; }
 
-            [Column("RemovedAt", DataType = "TIMESTAMP")]
+            [OracleTimestamp]
+            [Column("RemovedAt")]
             public static DateTime? RemovedAt { get; set; }
 
-            [Column("CreatedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "SYSTIMESTAMP")]
+            [OracleTimestamp]
+            [Column("CreatedAt",NotNull = true, DefaultValue = "SYSTIMESTAMP")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt", DataType = "TIMESTAMP")]
+            [OracleTimestamp]
+            [Column("UpdatedAt")]
             public static DateTime? UpdatedAt { get; set; }
         }
     }

@@ -197,7 +197,7 @@ public class AlterTableQuery : ISql
     {
         sqlBuilder.Append(col.Name);
         sqlBuilder.Append(' ');
-        sqlBuilder.Append(col.DataType);
+        sqlBuilder.Append(col.RawDataType);
 
         if (col.IsAutoIncrement)
         {

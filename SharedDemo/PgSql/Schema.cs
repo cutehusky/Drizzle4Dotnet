@@ -1,6 +1,7 @@
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.PgSql;
+using Drizzle4Dotnet.PgSql.Schema;
 
 namespace SharedDemo.PgSql
 {
@@ -15,43 +16,56 @@ namespace SharedDemo.PgSql
     {
         public static class Columns
         {
-            [Column("Id", DataType = "BIGINT", PrimaryKey = true)]
+            [PgSqlBigInt]
+            [Column("Id")]
             public static long Id { get; set; }
 
-            [Column("Guid", DataType = "UUID", NotNull = true)]
+            [PgSqlUuid]
+            [Column("Guid")]
             public static Guid Guid { get; set; }
 
-            [Column("Name", DataType = "TEXT", NotNull = true)]
+            [PgSqlText]
+            [Column("Name")]
             public static string Name { get; set; }
 
-            [Column("Email", DataType = "TEXT", NotNull = true)]
+            [PgSqlText]
+            [Column("Email")]
             public static string Email { get; set; }
 
-            [Column("Age", DataType = "BIGINT", NotNull = true)]
+            [PgSqlBigInt]
+            [Column("Age")]
             public static long Age { get; set; }
 
-            [Column("Salary", DataType = "NUMERIC(18,2)", DefaultValue = "0", NotNull = true)]
+            [PgSqlNumeric]
+            [Column("Salary")]
             public static decimal Salary { get; set; }
 
-            [Column("Rating", DataType = "DOUBLE PRECISION", NotNull = true)]
+            [PgSqlDoublePrecision]
+            [Column("Rating")]
             public static double Rating { get; set; }
 
-            [Column("IsActive", DataType = "BOOLEAN", NotNull = true)]
+            [PgSqlBoolean]
+            [Column("IsActive")]
             public static bool IsActive { get; set; }
 
-            [Column("DepartmentId", DataType = "BIGINT", NotNull = true)]
+            [PgSqlBigInt]
+            [Column("DepartmentId")]
             public static long DepartmentId { get; set; }
 
-            [Column("ManagerId", DataType = "BIGINT")]
+            [PgSqlBigInt]
+            [Column("ManagerId")]
             public static long? ManagerId { get; set; }
 
-            [Column("RoleId", DataType = "BIGINT", NotNull = true)]
+            [PgSqlBigInt]
+            [Column("RoleId")]
             public static long RoleId { get; set; }
 
-            [Column("CreatedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "NOW()")]
+            [PgSqlTimestamp]
+            [Column("CreatedAt", NotNull = true, DefaultValue = "NOW()")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt", DataType = "TIMESTAMP")]
+            [PgSqlTimestamp]
+            [Column("UpdatedAt")]
             public static DateTime? UpdatedAt { get; set; }
         }
     }
@@ -70,43 +84,56 @@ namespace SharedDemo.PgSql
     {
         public static class Columns
         {
-            [Column("Id", DataType = "BIGINT", PrimaryKey = true)]
+            [PgSqlBigInt]
+            [Column("Id")]
             public static long Id { get; set; }
 
-            [Column("Guid", DataType = "UUID", NotNull = true)]
+            [PgSqlUuid]
+            [Column("Guid")]
             public static Guid Guid { get; set; }
 
-            [Column("Name", DataType = "TEXT", NotNull = true)]
+            [PgSqlText]
+            [Column("Name")]
             public static string Name { get; set; }
 
-            [Column("Code", DataType = "TEXT", NotNull = true)]
+            [PgSqlText]
+            [Column("Code")]
             public static string Code { get; set; }
 
-            [Column("Location", DataType = "TEXT", NotNull = true)]
+            [PgSqlText]
+            [Column("Location")]
             public static string Location { get; set; }
 
-            [Column("Budget", DataType = "NUMERIC(18,2)", DefaultValue = "0", NotNull = true)]
+            [PgSqlNumeric]
+            [Column("Budget")]
             public static decimal Budget { get; set; }
 
-            [Column("HeadCount", DataType = "BIGINT", DefaultValue = "0", NotNull = true)]
+            [PgSqlBigInt]
+            [Column("HeadCount")]
             public static long HeadCount { get; set; }
 
-            [Column("IsActive", DataType = "BOOLEAN", NotNull = true)]
+            [PgSqlBoolean]
+            [Column("IsActive")]
             public static bool IsActive { get; set; }
 
-            [Column("CreatedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "NOW()")]
+            [PgSqlTimestamp]
+            [Column("CreatedAt", NotNull = true, DefaultValue = "NOW()")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt", DataType = "TIMESTAMP")]
+            [PgSqlTimestamp]
+            [Column("UpdatedAt")]
             public static DateTime? UpdatedAt { get; set; }
 
-            [Column("Description", DataType = "TEXT", NotNull = true)]
+            [PgSqlText]
+            [Column("Description")]
             public static string Description { get; set; }
             
-            [Column("ParentDepartmentId", DataType = "BIGINT")]
+            [PgSqlBigInt]
+            [Column("ParentDepartmentId")]
             public static long? ParentDepartmentId { get; set; }
             
-            [Column("ManagerId", DataType = "BIGINT", NotNull = true)]
+            [PgSqlBigInt]
+            [Column("ManagerId")]
             public static long ManagerId { get; set; }
         }
     }
@@ -116,37 +143,48 @@ namespace SharedDemo.PgSql
     {
         public static class Columns
         {
-            [Column("Id", DataType = "BIGINT", PrimaryKey = true)]
+            [PgSqlBigInt]
+            [Column("Id")]
             public static long Id { get; set; }
 
-            [Column("Guid", DataType = "UUID", NotNull = true)]
+            [PgSqlUuid]
+            [Column("Guid")]
             public static Guid Guid { get; set; }
 
-            [Column("Name", DataType = "TEXT", NotNull = true)]
+            [PgSqlText]
+            [Column("Name")]
             public static string Name { get; set; }
 
-            [Column("Level", DataType = "BIGINT", NotNull = true)]
+            [PgSqlBigInt]
+            [Column("Level")]
             public static long Level { get; set; }
 
-            [Column("BaseSalary", DataType = "NUMERIC(18,2)", DefaultValue = "0", NotNull = true)]
+            [PgSqlNumeric]
+            [Column("BaseSalary")]
             public static decimal BaseSalary { get; set; }
 
-            [Column("BonusRate", DataType = "DOUBLE PRECISION", DefaultValue = "0", NotNull = true)]
+            [PgSqlDoublePrecision]
+            [Column("BonusRate")]
             public static double BonusRate { get; set; }
 
-            [Column("IsActive", DataType = "BOOLEAN", NotNull = true)]
+            [PgSqlBoolean]
+            [Column("IsActive")]
             public static bool IsActive { get; set; }
 
-            [Column("CanApproveBudget", DataType = "BOOLEAN", NotNull = true)]
+            [PgSqlBoolean]
+            [Column("CanApproveBudget")]
             public static bool CanApproveBudget { get; set; }
 
-            [Column("CreatedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "NOW()")]
+            [PgSqlTimestamp]
+            [Column("CreatedAt", NotNull = true, DefaultValue = "NOW()")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt", DataType = "TIMESTAMP")]
+            [PgSqlTimestamp]
+            [Column("UpdatedAt")]
             public static DateTime? UpdatedAt { get; set; }
 
-            [Column("Description", DataType = "TEXT", NotNull = true)]
+            [PgSqlText]
+            [Column("Description")]
             public static string Description { get; set; }
         }
     }
@@ -160,43 +198,56 @@ namespace SharedDemo.PgSql
     {
         public static class Columns
         {
-            [Column("Id", DataType = "BIGINT", PrimaryKey = true)]
+            [PgSqlBigInt]
+            [Column("Id")]
             public static long Id { get; set; }
 
-            [Column("Guid", DataType = "UUID", NotNull = true)]
+            [PgSqlUuid]
+            [Column("Guid")]
             public static Guid Guid { get; set; }
 
-            [Column("Name", DataType = "TEXT", NotNull = true)]
+            [PgSqlText]
+            [Column("Name")]
             public static string Name { get; set; }
 
-            [Column("Code", DataType = "TEXT", NotNull = true)]
+            [PgSqlText]
+            [Column("Code")]
             public static string Code { get; set; }
 
-            [Column("OwnerId", DataType = "BIGINT", NotNull = true)]
+            [PgSqlBigInt]
+            [Column("OwnerId")]
             public static long OwnerId { get; set; }
 
-            [Column("DepartmentId", DataType = "BIGINT", NotNull = true)]
+            [PgSqlBigInt]
+            [Column("DepartmentId")]
             public static long DepartmentId { get; set; }
 
-            [Column("Budget", DataType = "NUMERIC(18,2)", DefaultValue = "0", NotNull = true)]
+            [PgSqlNumeric]
+            [Column("Budget")]
             public static decimal Budget { get; set; }
 
-            [Column("Progress", DataType = "DOUBLE PRECISION", DefaultValue = "0", NotNull = true)]
+            [PgSqlDoublePrecision]
+            [Column("Progress")]
             public static double Progress { get; set; }
 
-            [Column("IsActive", DataType = "BOOLEAN", NotNull = true)]
+            [PgSqlBoolean]
+            [Column("IsActive")]
             public static bool IsActive { get; set; }
 
-            [Column("StartDate", DataType = "TIMESTAMP", NotNull = true)]
+            [PgSqlTimestamp]
+            [Column("StartDate")]
             public static DateTime StartDate { get; set; }
 
-            [Column("EndDate", DataType = "TIMESTAMP")]
+            [PgSqlTimestamp]
+            [Column("EndDate")]
             public static DateTime? EndDate { get; set; }
 
-            [Column("CreatedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "NOW()")]
+            [PgSqlTimestamp]
+            [Column("CreatedAt", NotNull = true, DefaultValue = "NOW()")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt", DataType = "TIMESTAMP")]
+            [PgSqlTimestamp]
+            [Column("UpdatedAt")]
             public static DateTime? UpdatedAt { get; set; }
         }
     }
@@ -210,37 +261,48 @@ namespace SharedDemo.PgSql
     {
         public static class Columns
         {
-            [Column("Id", DataType = "BIGINT", PrimaryKey = true)]
+            [PgSqlBigInt]
+            [Column("Id")]
             public static long Id { get; set; }
 
-            [Column("UserId", DataType = "BIGINT", NotNull = true)]
+            [PgSqlBigInt]
+            [Column("UserId")]
             public static long UserId { get; set; }
 
-            [Column("ProjectId", DataType = "BIGINT", NotNull = true)]
+            [PgSqlBigInt]
+            [Column("ProjectId")]
             public static long ProjectId { get; set; }
 
-            [Column("Role", DataType = "TEXT", NotNull = true)]
+            [PgSqlText]
+            [Column("Role")]
             public static string Role { get; set; }
 
-            [Column("Allocation", DataType = "DOUBLE PRECISION", DefaultValue = "0", NotNull = true)]
+            [PgSqlDoublePrecision]
+            [Column("Allocation")]
             public static double Allocation { get; set; }
 
-            [Column("HourlyRate", DataType = "NUMERIC(18,2)", DefaultValue = "0", NotNull = true)]
+            [PgSqlNumeric]
+            [Column("HourlyRate")]
             public static decimal HourlyRate { get; set; }
 
-            [Column("IsActive", DataType = "BOOLEAN", NotNull = true)]
+            [PgSqlBoolean]
+            [Column("IsActive")]
             public static bool IsActive { get; set; }
 
-            [Column("AssignedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "NOW()")]
+            [PgSqlTimestamp]
+            [Column("AssignedAt", NotNull = true, DefaultValue = "NOW()")]
             public static DateTime AssignedAt { get; set; }
 
-            [Column("RemovedAt", DataType = "TIMESTAMP")]
+            [PgSqlTimestamp]
+            [Column("RemovedAt")]
             public static DateTime? RemovedAt { get; set; }
 
-            [Column("CreatedAt", DataType = "TIMESTAMP", NotNull = true, DefaultValue = "NOW()")]
+            [PgSqlTimestamp]
+            [Column("CreatedAt", NotNull = true, DefaultValue = "NOW()")]
             public static DateTime CreatedAt { get; set; }
 
-            [Column("UpdatedAt", DataType = "TIMESTAMP")]
+            [PgSqlTimestamp]
+            [Column("UpdatedAt")]
             public static DateTime? UpdatedAt { get; set; }
         }
     }

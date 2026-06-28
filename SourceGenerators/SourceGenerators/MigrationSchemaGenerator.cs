@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -134,7 +135,6 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                         namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T);
 
                 // Read column attribute properties
-                string? explicitDataType = null;
                 string? defaultValue = null;
                 bool autoIncrement = false;
                 bool? notNullOverride = null;
@@ -146,9 +146,6 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                 {
                     switch (namedArg.Key)
                     {
-                        case "DataType":
-                            explicitDataType = namedArg.Value.Value?.ToString();
-                            break;
                         case "DefaultValue":
                             defaultValue = namedArg.Value.Value?.ToString();
                             break;
@@ -181,6 +178,30 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                         a.AttributeClass?.Name == "PrimaryKeyAttribute");
                 }
 
+                // Check for SqlTypeAttribute subclass (e.g., [PgSqlBigInt], [MssqlInt])
+                string? attributeSqlType = null;
+                foreach (var attr in subMember.GetAttributes())
+                {
+                    if (attr.AttributeClass == null)
+                        continue;
+                    if (IsSqlTypeAttribute(attr.AttributeClass))
+                    {
+                        // Extract the SQL type from the attribute
+                        // For attributes like [PgSqlBigInt] (no args) or [PgSqlVarChar(100)]
+                        if (attr.ConstructorArguments.Length > 0)
+                        {
+                            var attrClassName = attr.AttributeClass.Name;
+                            attributeSqlType = ResolveSqlTypeFromAttribute(attrClassName, attr.ConstructorArguments.ToArray());
+                        }
+                        else
+                        {
+                            // Parameterless attribute: map attribute class name to SQL type
+                            attributeSqlType = ResolveSqlTypeFromAttribute(attr.AttributeClass.Name, null);
+                        }
+                        break;
+                    }
+                }
+
                 // Determine final nullability
                 bool isNullable;
                 if (notNullOverride.HasValue)
@@ -194,7 +215,7 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                     DbColumnName = dbColumnName,
                     ClrType = typeName,
                     IsNullable = isNullable,
-                    ExplicitDataType = explicitDataType,
+                    AttributeSqlType = attributeSqlType,
                     DefaultValue = defaultValue,
                     AutoIncrement = autoIncrement,
                     PrimaryKey = primaryKey,
@@ -282,12 +303,11 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
             sb.AppendLine("            {");
             foreach (var col in table.Columns)
             {
-                bool isExplicitType = col.ExplicitDataType != null;
                 string sqlType;
-                if (isExplicitType)
+                if (col.AttributeSqlType != null)
                 {
-                    // Explicit DataType from attribute: use raw string
-                    sqlType = $"\"{EscapeString(col.ExplicitDataType)}\"";
+                    // SqlTypeAttribute subclass (e.g., [PgSqlBigInt]): use the resolved SQL string
+                    sqlType = $"\"{EscapeString(col.AttributeSqlType)}\"";
                 }
                 else
                 {
@@ -605,6 +625,214 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
         return "PgSql";
     }
 
+    /// <summary>
+    /// Checks if an attribute type derives from SqlTypeAttribute by walking the base type chain.
+    /// </summary>
+    private static bool IsSqlTypeAttribute(INamedTypeSymbol attrClass)
+    {
+        var current = attrClass.BaseType;
+        while (current != null)
+        {
+            if (current.Name == "SqlTypeAttribute")
+                return true;
+            current = current.BaseType;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Resolves the SQL type string from a SqlTypeAttribute subclass by attribute class name.
+    /// This is used at source-generation time when the attribute's abstract SqlType property
+    /// is not directly available via constructor arguments alone.
+    /// </summary>
+    private static string? ResolveSqlTypeFromAttribute(string attributeName, TypedConstant[]? args)
+    {
+        // Map attribute class name patterns to SQL type strings.
+        // This handles the common-case parameterless attributes like [PgSqlBigInt], [MssqlInt].
+        // For parameterized attributes like [PgSqlVarChar(100)], the type is reconstructed here.
+
+        // --- PgSql ---
+        if (attributeName == "PgSqlCustomAttribute")
+        {
+            if (args != null && args.Length >= 1)
+                return args[0].Value?.ToString();
+            throw new InvalidOperationException("PgSqlCustomAttribute requires a SQL type string argument.");
+        }
+        if (attributeName == "MySqlCustomAttribute")
+        {
+            if (args != null && args.Length >= 1)
+                return args[0].Value?.ToString();
+            throw new InvalidOperationException("MySqlCustomAttribute requires a SQL type string argument.");
+        }
+        if (attributeName == "SqliteCustomAttribute")
+        {
+            if (args != null && args.Length >= 1)
+                return args[0].Value?.ToString();
+            throw new InvalidOperationException("SqliteCustomAttribute requires a SQL type string argument.");
+        }
+        if (attributeName == "MssqlCustomAttribute")
+        {
+            if (args != null && args.Length >= 1)
+                return args[0].Value?.ToString();
+            throw new InvalidOperationException("MssqlCustomAttribute requires a SQL type string argument.");
+        }
+        if (attributeName == "OracleCustomAttribute")
+        {
+            if (args != null && args.Length >= 1)
+                return args[0].Value?.ToString();
+            throw new InvalidOperationException("OracleCustomAttribute requires a SQL type string argument.");
+        }
+        
+        if (attributeName == "PgSqlIntegerAttribute") return "INTEGER";
+        if (attributeName == "PgSqlBigIntAttribute") return "BIGINT";
+        if (attributeName == "PgSqlSmallIntAttribute") return "SMALLINT";
+        if (attributeName == "PgSqlTextAttribute") return "TEXT";
+        if (attributeName == "PgSqlBooleanAttribute") return "BOOLEAN";
+        if (attributeName == "PgSqlNumericAttribute")
+        {
+            if (args != null && args.Length >= 2)
+                return $"NUMERIC({args[0].Value},{args[1].Value})";
+            return "NUMERIC(18,2)";
+        }
+        if (attributeName == "PgSqlRealAttribute") return "REAL";
+        if (attributeName == "PgSqlDoublePrecisionAttribute") return "DOUBLE PRECISION";
+        if (attributeName == "PgSqlTimestampAttribute") return "TIMESTAMP";
+        if (attributeName == "PgSqlDateAttribute") return "DATE";
+        if (attributeName == "PgSqlTimeAttribute") return "TIME";
+        if (attributeName == "PgSqlUuidAttribute") return "UUID";
+        if (attributeName == "PgSqlByteaAttribute") return "BYTEA";
+        if (attributeName == "PgSqlBlobAttribute") return "BYTEA";
+        if (attributeName == "PgSqlCharAttribute") return "CHAR(1)";
+        if (attributeName == "PgSqlVarCharAttribute")
+        {
+            if (args != null && args.Length >= 1)
+                return $"VARCHAR({args[0].Value})";
+            return "VARCHAR";
+        }
+        if (attributeName == "PgSqlBigSerialAttribute") return "BIGSERIAL";
+        if (attributeName == "PgSqlSerialAttribute") return "SERIAL";
+
+        // --- Mssql ---
+        if (attributeName == "MssqlIntAttribute") return "INT";
+        if (attributeName == "MssqlBigIntAttribute") return "BIGINT";
+        if (attributeName == "MssqlSmallIntAttribute") return "SMALLINT";
+        if (attributeName == "MssqlTinyIntAttribute") return "TINYINT";
+        if (attributeName == "MssqlTextAttribute") return "NVARCHAR(MAX)";
+        if (attributeName == "MssqlBooleanAttribute") return "BIT";
+        if (attributeName == "MssqlDecimalAttribute")
+        {
+            if (args != null && args.Length >= 2)
+                return $"DECIMAL({args[0].Value},{args[1].Value})";
+            return "DECIMAL(18,2)";
+        }
+        if (attributeName == "MssqlRealAttribute") return "REAL";
+        if (attributeName == "MssqlFloatAttribute") return "FLOAT";
+        if (attributeName == "MssqlDateTime2Attribute") return "DATETIME2";
+        if (attributeName == "MssqlDateAttribute") return "DATE";
+        if (attributeName == "MssqlTimeAttribute") return "TIME";
+        if (attributeName == "MssqlUniqueIdentifierAttribute") return "UNIQUEIDENTIFIER";
+        if (attributeName == "MssqlVarBinaryAttribute") return "VARBINARY(MAX)";
+        if (attributeName == "MssqlBlobAttribute") return "VARBINARY(MAX)";
+        if (attributeName == "MssqlByteaAttribute") return "VARBINARY(MAX)";
+        if (attributeName == "MssqlNCharAttribute") return "NCHAR(1)";
+        if (attributeName == "MssqlCharAttribute") return "CHAR(1)";
+        if (attributeName == "MssqlNVarCharAttribute")
+        {
+            if (args != null && args.Length >= 1)
+                return $"NVARCHAR({args[0].Value})";
+            return "NVARCHAR(MAX)";
+        }
+        if (attributeName == "MssqlVarCharAttribute")
+        {
+            if (args != null && args.Length >= 1)
+                return $"VARCHAR({args[0].Value})";
+            return "VARCHAR(MAX)";
+        }
+        if (attributeName == "MssqlBigSerialAttribute") return "BIGINT IDENTITY(1,1)";
+        if (attributeName == "MssqlSerialAttribute") return "INT IDENTITY(1,1)";
+
+        // --- MySql ---
+        if (attributeName == "MySqlIntAttribute") return "INT";
+        if (attributeName == "MySqlBigIntAttribute") return "BIGINT";
+        if (attributeName == "MySqlSmallIntAttribute") return "SMALLINT";
+        if (attributeName == "MySqlTinyIntAttribute") return "TINYINT";
+        if (attributeName == "MySqlTextAttribute") return "VARCHAR(255)";
+        if (attributeName == "MySqlBooleanAttribute") return "TINYINT(1)";
+        if (attributeName == "MySqlDecimalAttribute")
+        {
+            if (args != null && args.Length >= 2)
+                return $"DECIMAL({args[0].Value},{args[1].Value})";
+            return "DECIMAL(18,2)";
+        }
+        if (attributeName == "MySqlFloatAttribute") return "FLOAT";
+        if (attributeName == "MySqlDoubleAttribute") return "DOUBLE";
+        if (attributeName == "MySqlDateTimeAttribute") return "DATETIME(6)";
+        if (attributeName == "MySqlDateAttribute") return "DATE";
+        if (attributeName == "MySqlTimeAttribute") return "TIME";
+        if (attributeName == "MySqlUuidAttribute") return "CHAR(36)";
+        if (attributeName == "MySqlBlobAttribute") return "BLOB";
+        if (attributeName == "MySqlByteaAttribute") return "BLOB";
+        if (attributeName == "MySqlCharAttribute") return "CHAR(1)";
+        if (attributeName == "MySqlVarCharAttribute")
+        {
+            if (args != null && args.Length >= 1)
+                return $"VARCHAR({args[0].Value})";
+            return "VARCHAR";
+        }
+        if (attributeName == "MySqlBigSerialAttribute") return "BIGINT AUTO_INCREMENT";
+        if (attributeName == "MySqlSerialAttribute") return "INT AUTO_INCREMENT";
+
+        // --- Oracle ---
+        if (attributeName == "OracleNumberAttribute") return "NUMBER";
+        if (attributeName == "OracleIntegerAttribute") return "NUMBER(10)";
+        if (attributeName == "OracleBigIntAttribute") return "NUMBER(19)";
+        if (attributeName == "OracleSmallIntAttribute") return "NUMBER(5)";
+        if (attributeName == "OracleTinyIntAttribute") return "NUMBER(3)";
+        if (attributeName == "OracleTextAttribute") return "VARCHAR2(255)";
+        if (attributeName == "OracleBooleanAttribute") return "NUMBER(1)";
+        if (attributeName == "OracleDecimalAttribute")
+        {
+            if (args != null && args.Length >= 2)
+                return $"NUMBER({args[0].Value},{args[1].Value})";
+            return "NUMBER(18,2)";
+        }
+        if (attributeName == "OracleBinaryFloatAttribute") return "BINARY_FLOAT";
+        if (attributeName == "OracleBinaryDoubleAttribute") return "BINARY_DOUBLE";
+        if (attributeName == "OracleFloatAttribute") return "BINARY_FLOAT";
+        if (attributeName == "OracleDoublePrecisionAttribute") return "BINARY_DOUBLE";
+        if (attributeName == "OracleTimestampAttribute") return "TIMESTAMP";
+        if (attributeName == "OracleDateAttribute") return "DATE";
+        if (attributeName == "OracleTimeAttribute") return "INTERVAL DAY TO SECOND";
+        if (attributeName == "OracleUuidAttribute") return "RAW(16)";
+        if (attributeName == "OracleRawAttribute") return "RAW(16)";
+        if (attributeName == "OracleBlobAttribute") return "BLOB";
+        if (attributeName == "OracleByteaAttribute") return "BLOB";
+        if (attributeName == "OracleCharAttribute") return "CHAR(1)";
+        if (attributeName == "OracleVarChar2Attribute")
+        {
+            if (args != null && args.Length >= 1)
+                return $"VARCHAR2({args[0].Value})";
+            return "VARCHAR2(255)";
+        }
+        if (attributeName == "OracleNumberFormatAttribute")
+        {
+            if (args != null && args.Length >= 2)
+                return $"NUMBER({args[0].Value},{args[1].Value})";
+            return "NUMBER(18,2)";
+        }
+
+        // --- Sqlite ---
+        if (attributeName == "SqliteIntegerAttribute" || attributeName == "SqliteBigIntAttribute" || attributeName == "SqliteSmallIntAttribute" || attributeName == "SqliteTinyIntAttribute") return "INTEGER";
+        if (attributeName == "SqliteBooleanAttribute") return "INTEGER";
+        if (attributeName == "SqliteNumericAttribute") return "NUMERIC";
+        if (attributeName == "SqliteTextAttribute" || attributeName == "SqliteTimestampAttribute" || attributeName == "SqliteDateTimeAttribute" || attributeName == "SqliteDateAttribute" || attributeName == "SqliteTimeAttribute" || attributeName == "SqliteUuidAttribute" || attributeName == "SqliteCharAttribute" || attributeName == "SqliteVarCharAttribute") return "TEXT";
+        if (attributeName == "SqliteRealAttribute" || attributeName == "SqliteDoublePrecisionAttribute" || attributeName == "SqliteFloatAttribute") return "REAL";
+        if (attributeName == "SqliteBlobAttribute" || attributeName == "SqliteByteaAttribute") return "BLOB";
+        if (attributeName == "SqliteIntegerPrimaryKeyAttribute") return "INTEGER PRIMARY KEY";
+
+        return null;
+    }
+
     private class ColumnSchemaModel
     {
         public string PropName { get; set; } = "";
@@ -613,7 +841,7 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
         public bool IsNullable { get; set; }
 
         // Extended column configuration
-        public string? ExplicitDataType { get; set; }
+        public string? AttributeSqlType { get; set; }
         public string? DefaultValue { get; set; }
         public bool AutoIncrement { get; set; }
         public bool PrimaryKey { get; set; }

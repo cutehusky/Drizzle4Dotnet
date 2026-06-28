@@ -1,3 +1,4 @@
+using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Migration;
 
 namespace Drizzle4Dotnet.Mssql.Schema;
@@ -40,4 +41,169 @@ public readonly struct MssqlDataType : ISqlDataType
     public static MssqlDataType NVarCharOf(int length) => new($"NVARCHAR({length})");
     /// <summary>Creates a custom/arbitrary SQL type.</summary>
     public static MssqlDataType Custom(string sql) => new(sql);
+}
+
+// ============================================================================
+// Mssql Data Type Attributes (subclasses of SqlTypeAttribute)
+// ============================================================================
+
+/// <summary>INT</summary>
+public sealed class MssqlIntAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "INT";
+}
+
+/// <summary>BIGINT</summary>
+public sealed class MssqlBigIntAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "BIGINT";
+}
+
+/// <summary>SMALLINT</summary>
+public sealed class MssqlSmallIntAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "SMALLINT";
+}
+
+/// <summary>TINYINT</summary>
+public sealed class MssqlTinyIntAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "TINYINT";
+}
+
+/// <summary>NVARCHAR(MAX)</summary>
+public sealed class MssqlTextAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "NVARCHAR(MAX)";
+}
+
+/// <summary>BIT</summary>
+public sealed class MssqlBooleanAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "BIT";
+}
+
+/// <summary>DECIMAL(precision, scale) — default DECIMAL(18,2)</summary>
+public sealed class MssqlDecimalAttribute : SqlTypeAttribute
+{
+    public int Precision { get; }
+    public int Scale { get; }
+
+    public MssqlDecimalAttribute(int precision = 18, int scale = 2)
+    {
+        Precision = precision;
+        Scale = scale;
+    }
+
+    public override string SqlType => $"DECIMAL({Precision},{Scale})";
+}
+
+/// <summary>REAL</summary>
+public sealed class MssqlRealAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "REAL";
+}
+
+/// <summary>FLOAT</summary>
+public sealed class MssqlFloatAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "FLOAT";
+}
+
+/// <summary>DATETIME2</summary>
+public sealed class MssqlDateTime2Attribute : SqlTypeAttribute
+{
+    public override string SqlType => "DATETIME2";
+}
+
+/// <summary>DATE</summary>
+public sealed class MssqlDateAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "DATE";
+}
+
+/// <summary>TIME</summary>
+public sealed class MssqlTimeAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "TIME";
+}
+
+/// <summary>UNIQUEIDENTIFIER</summary>
+public sealed class MssqlUniqueIdentifierAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "UNIQUEIDENTIFIER";
+}
+
+/// <summary>VARBINARY(MAX)</summary>
+public sealed class MssqlVarBinaryAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "VARBINARY(MAX)";
+}
+
+/// <summary>VARBINARY(MAX) (alias)</summary>
+public sealed class MssqlBlobAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "VARBINARY(MAX)";
+}
+
+/// <summary>VARBINARY(MAX) (alias)</summary>
+public sealed class MssqlByteaAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "VARBINARY(MAX)";
+}
+
+/// <summary>NCHAR(1)</summary>
+public sealed class MssqlNCharAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "NCHAR(1)";
+}
+
+/// <summary>CHAR(1)</summary>
+public sealed class MssqlCharAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "CHAR(1)";
+}
+
+/// <summary>NVARCHAR(length) — default NVARCHAR(MAX)</summary>
+public sealed class MssqlNVarCharAttribute : SqlTypeAttribute
+{
+    public int? Length { get; }
+
+    public MssqlNVarCharAttribute() { }
+
+    public MssqlNVarCharAttribute(int length) => Length = length;
+
+    public override string SqlType => Length.HasValue ? $"NVARCHAR({Length.Value})" : "NVARCHAR(MAX)";
+}
+
+/// <summary>VARCHAR(length) — default VARCHAR(MAX)</summary>
+public sealed class MssqlVarCharAttribute : SqlTypeAttribute
+{
+    public int? Length { get; }
+
+    public MssqlVarCharAttribute() { }
+
+    public MssqlVarCharAttribute(int length) => Length = length;
+
+    public override string SqlType => Length.HasValue ? $"VARCHAR({Length.Value})" : "VARCHAR(MAX)";
+}
+
+/// <summary>BIGINT IDENTITY(1,1)</summary>
+public sealed class MssqlBigSerialAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "BIGINT IDENTITY(1,1)";
+}
+
+/// <summary>INT IDENTITY(1,1)</summary>
+public sealed class MssqlSerialAttribute : SqlTypeAttribute
+{
+    public override string SqlType => "INT IDENTITY(1,1)";
+}
+
+/// <summary>Custom raw SQL type.</summary>
+public sealed class MssqlCustomAttribute : SqlTypeAttribute
+{
+    public override string SqlType { get; }
+
+    public MssqlCustomAttribute(string sqlType) => SqlType = sqlType;
 }

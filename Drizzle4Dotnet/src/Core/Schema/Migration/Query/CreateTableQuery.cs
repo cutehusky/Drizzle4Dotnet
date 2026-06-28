@@ -77,7 +77,7 @@ public class CreateTableQuery : ISql
         sb.Append("  ");
         sb.Append(col.Name);
         sb.Append(' ');
-        sb.Append(col.DataType);
+        sb.Append(col.RawDataType);
 
         if (col.IsAutoIncrement)
         {
