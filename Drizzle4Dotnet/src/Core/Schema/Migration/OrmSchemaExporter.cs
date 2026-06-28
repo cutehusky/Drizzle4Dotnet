@@ -47,6 +47,29 @@ public static class OrmSchemaExporter
     };
 
     /// <summary>
+    /// SQLite-specific CLR-to-SQL type mappings.
+    /// SQLite uses only 5 storage classes: INTEGER, REAL, TEXT, BLOB, NUMERIC.
+    /// </summary>
+    public static readonly Dictionary<Type, string> SqliteTypeMap = new()
+    {
+        [typeof(int)] = "INTEGER",
+        [typeof(long)] = "INTEGER",
+        [typeof(short)] = "INTEGER",
+        [typeof(byte)] = "INTEGER",
+        [typeof(string)] = "TEXT",
+        [typeof(bool)] = "INTEGER",       // 0 or 1
+        [typeof(decimal)] = "NUMERIC",
+        [typeof(float)] = "REAL",
+        [typeof(double)] = "REAL",
+        [typeof(DateTime)] = "TEXT",      // ISO-8601 format
+        [typeof(DateOnly)] = "TEXT",      // 'YYYY-MM-DD'
+        [typeof(TimeOnly)] = "TEXT",      // 'HH:MM:SS'
+        [typeof(Guid)] = "TEXT",          // hex string
+        [typeof(byte[])] = "BLOB",
+        [typeof(char)] = "TEXT",
+    };
+
+    /// <summary>
     /// MySQL-specific CLR-to-SQL type mappings.
     /// </summary>
     public static readonly Dictionary<Type, string> MySqlTypeMap = new()

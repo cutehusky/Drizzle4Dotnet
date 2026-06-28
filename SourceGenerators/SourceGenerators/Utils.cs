@@ -105,10 +105,21 @@ public class DialectInfo
         cteTableInterface: "IMySqlCteTable"
     );
 
+    public static readonly DialectInfo Sqlite = new DialectInfo(
+        dialectImplType: "SqliteSqlDialectImpl",
+        dialectNamespace: "Drizzle4Dotnet.Sqlite",
+        columnType: "SqliteColumn",
+        tableInterface: "ISqliteDbTable",
+        aliasInterface: "ISqliteTableAlias",
+        virtualTableInterface: "ISqliteVirtualTable",
+        cteTableInterface: "ISqliteCteTable"
+    );
+
     private static readonly Dictionary<string, DialectInfo> _byTypeName = new()
     {
         { "Drizzle4Dotnet.Dialect.PgSqlSqlDialectImpl", PgSql },
         { "Drizzle4Dotnet.Dialect.MySqlSqlDialectImpl", MySql },
+        { "Drizzle4Dotnet.Dialect.SqliteSqlDialectImpl", Sqlite },
     };
 
     /// <summary>

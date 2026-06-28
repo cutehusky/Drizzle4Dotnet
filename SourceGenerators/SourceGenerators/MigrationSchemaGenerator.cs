@@ -390,8 +390,23 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
             .Replace("System.", "")
             .Replace("?", "");
 
-        var isPgSql = dialectType.Contains("PgSql");
+        var isSqlite = dialectType.Contains("Sqlite");
         var isMySql = dialectType.Contains("MySql");
+        var isPgSql = dialectType.Contains("PgSql");
+
+        if (isSqlite)
+        {
+            return simplified switch
+            {
+                "int" or "Int32" or "long" or "Int64" or "short" or "Int16" or "byte" or "Byte" => "INTEGER",
+                "string" or "String" or "DateTime" or "DateOnly" or "TimeOnly" or "Guid" or "char" or "Char" => "TEXT",
+                "bool" or "Boolean" => "INTEGER",
+                "decimal" or "Decimal" => "NUMERIC",
+                "float" or "Single" or "double" or "Double" => "REAL",
+                "byte[]" or "Byte[]" => "BLOB",
+                _ => "TEXT"
+            };
+        }
 
         return simplified switch
         {
@@ -418,6 +433,8 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
     {
         if (dialectType.Contains("MySql"))
             return "MySql";
+        if (dialectType.Contains("Sqlite"))
+            return "Sqlite";
         return "PgSql";
     }
 
