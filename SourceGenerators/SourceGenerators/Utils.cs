@@ -125,12 +125,23 @@ public class DialectInfo
         cteTableInterface: "IMssqlCteTable"
     );
 
+    public static readonly DialectInfo Oracle = new DialectInfo(
+        dialectImplType: "OracleSqlDialectImpl",
+        dialectNamespace: "Drizzle4Dotnet.Oracle",
+        columnType: "OracleColumn",
+        tableInterface: "IOracleDbTable",
+        aliasInterface: "IOracleTableAlias",
+        virtualTableInterface: "IOracleVirtualTable",
+        cteTableInterface: "IOracleCteTable"
+    );
+
     private static readonly Dictionary<string, DialectInfo> _byTypeName = new()
     {
         { "Drizzle4Dotnet.Dialect.PgSqlSqlDialectImpl", PgSql },
         { "Drizzle4Dotnet.Dialect.MySqlSqlDialectImpl", MySql },
         { "Drizzle4Dotnet.Dialect.SqliteSqlDialectImpl", Sqlite },
         { "Drizzle4Dotnet.Dialect.MssqlSqlDialectImpl", Mssql },
+        { "Drizzle4Dotnet.Dialect.OracleSqlDialectImpl", Oracle },
     };
 
     /// <summary>

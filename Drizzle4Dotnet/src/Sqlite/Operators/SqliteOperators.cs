@@ -1,5 +1,4 @@
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
 namespace Drizzle4Dotnet.Sqlite;
 

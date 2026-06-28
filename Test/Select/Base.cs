@@ -1,14 +1,14 @@
 using Drizzle4Dotnet.Core;
+using Drizzle4Dotnet.Core.Operators;
+using Drizzle4Dotnet.Core.Operators.Nodes;
 using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Core.Shared.Operators;
-using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 using Drizzle4Dotnet.Dialect;
 using Drizzle4Dotnet.PgSql;
 using SharedDemo.PgSql;
-using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
-using static Drizzle4Dotnet.Core.Shared.Operators.Functions;
+using static Drizzle4Dotnet.Core.Operators.Operators;
+using static Drizzle4Dotnet.Core.Operators.Functions;
 using ProjectSelect = SharedDemo.PgSql.ProjectSelect;
 using UserSelect = SharedDemo.PgSql.UserSelect;
 using UserWithRelationsSelect = SharedDemo.PgSql.UserWithRelationsSelect;

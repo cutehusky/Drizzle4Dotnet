@@ -1,6 +1,6 @@
+using Drizzle4Dotnet.Core.Operators;
+using Drizzle4Dotnet.Core.Operators.Nodes;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Core.Shared.Operators;
-using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 
 namespace Drizzle4Dotnet.Mssql;
 

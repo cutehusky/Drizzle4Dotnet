@@ -1,5 +1,5 @@
+using Drizzle4Dotnet.Core.Operators.Nodes;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 using Drizzle4Dotnet.MySql.Nodes;
 
 namespace Drizzle4Dotnet.MySql;

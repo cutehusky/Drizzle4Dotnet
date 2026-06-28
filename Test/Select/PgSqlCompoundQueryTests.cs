@@ -2,7 +2,7 @@ using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.PgSql;
 using SharedDemo.PgSql;
-using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+using static Drizzle4Dotnet.Core.Operators.Operators;
 
 namespace Test.Select;
 

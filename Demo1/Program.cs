@@ -4,7 +4,7 @@ using Drizzle4Dotnet.PgSql;
 using Npgsql;
 using SharedDemo;
 using SharedDemo.PgSql;
-using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+using static Drizzle4Dotnet.Core.Operators.Operators;
 
 
 public static class EntryPoint {

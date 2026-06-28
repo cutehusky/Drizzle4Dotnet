@@ -394,6 +394,7 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
         var isMySql = dialectType.Contains("MySql");
         var isPgSql = dialectType.Contains("PgSql");
         var isMssql = dialectType.Contains("Mssql");
+        var isOracle = dialectType.Contains("Oracle");
 
         if (isSqlite)
         {
@@ -432,6 +433,29 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
             };
         }
 
+        if (isOracle)
+        {
+            return simplified switch
+            {
+                "int" or "Int32" => "NUMBER(10)",
+                "long" or "Int64" => "NUMBER(19)",
+                "short" or "Int16" => "NUMBER(5)",
+                "byte" or "Byte" => "NUMBER(3)",
+                "string" or "String" => "VARCHAR2(255)",
+                "bool" or "Boolean" => "NUMBER(1)",
+                "decimal" or "Decimal" => "NUMBER(18,2)",
+                "float" or "Single" => "BINARY_FLOAT",
+                "double" or "Double" => "BINARY_DOUBLE",
+                "DateTime" => "TIMESTAMP",
+                "DateOnly" => "DATE",
+                "TimeOnly" => "INTERVAL DAY TO SECOND",
+                "Guid" => "RAW(16)",
+                "byte[]" or "Byte[]" => "BLOB",
+                "char" or "Char" => "CHAR(1)",
+                _ => "VARCHAR2(255)"
+            };
+        }
+
         return simplified switch
         {
             "int" or "Int32" => "INTEGER",
@@ -461,6 +485,8 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
             return "Sqlite";
         if (dialectType.Contains("Mssql"))
             return "Mssql";
+        if (dialectType.Contains("Oracle"))
+            return "Oracle";
         return "PgSql";
     }
 

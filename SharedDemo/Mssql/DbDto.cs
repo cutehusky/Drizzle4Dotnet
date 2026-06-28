@@ -1,9 +1,10 @@
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Dialect;
 
 namespace SharedDemo.Mssql;
 
 
-[DbSelect]
+[DbSelect(Dialect = typeof(MssqlSqlDialectImpl))]
 public partial class UserSelect
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
@@ -17,7 +18,7 @@ public partial class UserSelect
 }
 
 
-[DbSelect]
+[DbSelect(Dialect = typeof(MssqlSqlDialectImpl))]
 public partial class UserWithRelationsSelect
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
@@ -42,7 +43,7 @@ public partial class UserWithRelationsSelect
     public bool IsActive { get; set; }
 }
 
-[DbSelect]
+[DbSelect(Dialect = typeof(MssqlSqlDialectImpl))]
 public partial class ProjectSelect
 {
     [MapWith(typeof(ProjectsTable), ProjectsTable.ColumnNames.Id)]
@@ -67,7 +68,7 @@ public partial class ProjectSelect
     public bool IsActive { get; set; }
 }
 
-[DbSelect]
+[DbSelect(Dialect = typeof(MssqlSqlDialectImpl))]
 public partial class UserProjectSelect
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
@@ -92,7 +93,7 @@ public partial class UserProjectSelect
     public DateTime AssignedAt { get; set; }
 }
 
-[DbSelect]
+[DbSelect(Dialect = typeof(MssqlSqlDialectImpl))]
 public partial class UserFullSelect
 {
     [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]

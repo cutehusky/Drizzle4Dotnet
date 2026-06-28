@@ -1,5 +1,5 @@
+using Drizzle4Dotnet.Core.Operators;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Core.Shared.Operators;
 
 namespace Drizzle4Dotnet.PgSql.Nodes;
 

@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SharedDemo;
 using SharedDemo.PgSql;
-using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+using static Drizzle4Dotnet.Core.Operators.Operators;
 
 [MemoryDiagnoser]
 public class OrmBenchmark

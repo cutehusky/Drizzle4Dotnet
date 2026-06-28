@@ -1,13 +1,13 @@
 using Drizzle4Dotnet.Core;
+using Drizzle4Dotnet.Core.Operators;
+using Drizzle4Dotnet.Core.Operators.Nodes;
 using Drizzle4Dotnet.Core.Query;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Core.Shared.Operators;
-using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
 using Drizzle4Dotnet.Dialect;
 using Drizzle4Dotnet.MySql;
 using SharedDemo.MySql;
-using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
-using static Drizzle4Dotnet.Core.Shared.Operators.Functions;
+using static Drizzle4Dotnet.Core.Operators.Operators;
+using static Drizzle4Dotnet.Core.Operators.Functions;
 using MySqlUserSelect = SharedDemo.MySql.UserSelect;
 using MySqlUserWithRelationsSelect = SharedDemo.MySql.UserWithRelationsSelect;
 using MySqlProjectSelect = SharedDemo.MySql.ProjectSelect;

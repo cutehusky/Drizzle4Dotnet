@@ -3,7 +3,7 @@ using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.Dialect;
 using Drizzle4Dotnet.PgSql;
 using SharedDemo.PgSql;
-using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+using static Drizzle4Dotnet.Core.Operators.Operators;
 using Drizzle4Dotnet.Core.Query;
 
 namespace Test.Delete;

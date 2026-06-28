@@ -1,5 +1,5 @@
-using Drizzle4Dotnet.Core.Shared.Operators;
-using Drizzle4Dotnet.Core.Shared.Operators.Nodes;
+using Drizzle4Dotnet.Core.Operators;
+using Drizzle4Dotnet.Core.Operators.Nodes;
 
 namespace Drizzle4Dotnet.Core.Shared;
 
