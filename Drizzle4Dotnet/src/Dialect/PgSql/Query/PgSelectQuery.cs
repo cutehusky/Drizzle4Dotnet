@@ -38,8 +38,8 @@ public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlS
     ISupportDistinctOn<PgSelectQuery<TReturn, TVirtualTable>>
     where TVirtualTable : IVirtualTable<PgSqlSqlDialectImpl>
 {
-    protected readonly List<PgLockSpec> LockClauses = new();
-    protected readonly List<IGenericSql> _distinctOnColumns = new();
+    private readonly List<PgLockSpec> _lockClauses = new();
+    private readonly List<IGenericSql> _distinctOnColumns = new();
 
     public PgSelectQuery(
         ISelectedColumns<TReturn, PgSqlSqlDialectImpl, TVirtualTable> selectedColumns,
@@ -57,62 +57,62 @@ public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlS
 
     public PgSelectQuery<TReturn, TVirtualTable> CrossLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table)
         => JoinInternal(table, null, "CROSS LATERAL");
-
+    
     // ====== PostgreSQL Lock Clauses ======
 
     /// <summary>FOR UPDATE</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForUpdate(params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        LockClauses.Add(new PgLockSpec("FOR UPDATE", tables));
+        _lockClauses.Add(new PgLockSpec("FOR UPDATE", tables));
         return this;
     }
 
     /// <summary>FOR UPDATE with NOWAIT / SKIP LOCKED and target tables</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForUpdate(bool skipLocked, bool nowait, params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        LockClauses.Add(new PgLockSpec("FOR UPDATE", tables, nowait, skipLocked));
+        _lockClauses.Add(new PgLockSpec("FOR UPDATE", tables, nowait, skipLocked));
         return this;
     }
 
     /// <summary>FOR NO KEY UPDATE</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForNoKeyUpdate(params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        LockClauses.Add(new PgLockSpec("FOR NO KEY UPDATE", tables));
+        _lockClauses.Add(new PgLockSpec("FOR NO KEY UPDATE", tables));
         return this;
     }
 
     /// <summary>FOR NO KEY UPDATE with NOWAIT / SKIP LOCKED and target tables</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForNoKeyUpdate(bool skipLocked, bool nowait, params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        LockClauses.Add(new PgLockSpec("FOR NO KEY UPDATE", tables, nowait, skipLocked));
+        _lockClauses.Add(new PgLockSpec("FOR NO KEY UPDATE", tables, nowait, skipLocked));
         return this;
     }
 
     /// <summary>FOR SHARE</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForShare(params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        LockClauses.Add(new PgLockSpec("FOR SHARE", tables));
+        _lockClauses.Add(new PgLockSpec("FOR SHARE", tables));
         return this;
     }
 
     /// <summary>FOR SHARE with NOWAIT / SKIP LOCKED and target tables</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForShare(bool skipLocked, bool nowait, params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        LockClauses.Add(new PgLockSpec("FOR SHARE", tables, nowait, skipLocked));
+        _lockClauses.Add(new PgLockSpec("FOR SHARE", tables, nowait, skipLocked));
         return this;
     }
 
     /// <summary>FOR KEY SHARE</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForKeyShare(params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        LockClauses.Add(new PgLockSpec("FOR KEY SHARE", tables));
+        _lockClauses.Add(new PgLockSpec("FOR KEY SHARE", tables));
         return this;
     }
 
     /// <summary>FOR KEY SHARE with NOWAIT / SKIP LOCKED and target tables</summary>
     public PgSelectQuery<TReturn, TVirtualTable> ForKeyShare(bool skipLocked, bool nowait, params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        LockClauses.Add(new PgLockSpec("FOR KEY SHARE", tables, nowait, skipLocked));
+        _lockClauses.Add(new PgLockSpec("FOR KEY SHARE", tables, nowait, skipLocked));
         return this;
     }
 
@@ -141,7 +141,7 @@ public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlS
             }
             sqlBuilder.Append(") ");
         }
-        else if (_distinct)
+        else if (IsDistinct)
         {
             sqlBuilder.Append("DISTINCT ");
         }
@@ -149,9 +149,9 @@ public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlS
 
     protected override void BuildSqlLock(ISqlBuilder sqlBuilder)
     {
-        if (LockClauses.Count == 0) return;
+        if (_lockClauses.Count == 0) return;
 
-        foreach (var clause in LockClauses)
+        foreach (var clause in _lockClauses)
         {
             sqlBuilder.Append(' ').Append(clause.LockType);
 

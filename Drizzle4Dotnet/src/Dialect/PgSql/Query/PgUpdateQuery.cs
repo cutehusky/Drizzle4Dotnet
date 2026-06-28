@@ -1,4 +1,3 @@
-using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Query.Update;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
@@ -15,7 +14,7 @@ namespace Drizzle4Dotnet.PgSql;
 public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, PgUpdateQuery<TTable>>
     where TTable : ITable<PgSqlSqlDialectImpl>
 {
-    private readonly List<(IGenericTable<PgSqlSqlDialectImpl>, IGenericSql?)> _fromTables = new();
+    private readonly List<IGenericTable<PgSqlSqlDialectImpl>> _fromTables = new();
 
     public PgUpdateQuery(TTable table, IQueryExecutor<PgSqlSqlDialectImpl> executor) 
         : base(table, executor)
@@ -26,9 +25,9 @@ public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, Pg
     /// Adds a FROM clause for UPDATE ... FROM joins.
     /// PostgreSQL syntax: UPDATE t SET ... FROM other_t WHERE condition
     /// </summary>
-    public PgUpdateQuery<TTable> From(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql? joinCondition = null)
+    public PgUpdateQuery<TTable> From(params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        _fromTables.Add((table, joinCondition));
+        _fromTables.AddRange(tables);
         return this;
     }
 
@@ -43,6 +42,8 @@ public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, Pg
 
         sqlBuilder.Append("UPDATE ");
         Table.BuildRefSql(sqlBuilder);
+        
+        SqlStatics.BuildSqlSetClause<PgSqlSqlDialectImpl>(sqlBuilder, SetValues);
 
         // PostgreSQL UPDATE ... FROM syntax
         if (_fromTables.Count > 0)
@@ -51,11 +52,9 @@ public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, Pg
             for (int i = 0; i < _fromTables.Count; i++)
             {
                 if (i > 0) sqlBuilder.Append(", ");
-                _fromTables[i].Item1.BuildRefSql(sqlBuilder);
+                _fromTables[i].BuildRefSql(sqlBuilder);
             }
         }
-
-        SqlStatics.BuildSqlSetClause<PgSqlSqlDialectImpl>(sqlBuilder, SetValues);
 
         // WHERE clause (includes join conditions if combined)
         SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);

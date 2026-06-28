@@ -99,7 +99,7 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
         
         if (_offset.HasValue && !_limit.HasValue)
         {
-            throw new InvalidOperationException("OFFSET cannot be used without LIMIT in MySQL DELETE.");
+            throw new InvalidOperationException("OFFSET cannot be used without LIMIT in MySQL UPDATE.");
         }
         
         // LIMIT limit or LIMIT offset, limit (MySQL-specific on DELETE)

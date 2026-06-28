@@ -14,16 +14,15 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     where TDialect : ISqlDialect
     where TVirtualTable : IVirtualTable<TDialect>
 {
-    protected IGenericTable<TDialect>? _from;
-    protected readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> _joins = new();
-    protected readonly List<IGenericSql> _wheres = new();
-    protected readonly List<(IGenericSql, bool)> _orderBys = new();
-    protected int? _limit;
-    protected int? _offset;
-    protected bool _distinct;
-    protected readonly List<IGenericSql> _groupBys = new();
-    protected readonly List<IGenericSql> _havings = new();
-    protected string? _intoTable;
+    protected IGenericTable<TDialect>? FromTable;
+    protected readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> Joins = new();
+    protected readonly List<IGenericSql> Wheres = new();
+    protected readonly List<(IGenericSql, bool)> OrderBys = new();
+    protected int? LimitValue;
+    protected int? OffsetValue;
+    protected bool IsDistinct;
+    protected readonly List<IGenericSql> GroupBys = new();
+    protected readonly List<IGenericSql> Havings = new();
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns,
@@ -53,55 +52,32 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
         BuildSqlDistinct(sqlBuilder);
         SelectedColumns.BuildSql(sqlBuilder);
 
-        // INTO (SELECT ... INTO table_name)
-        if (_intoTable != null)
-        {
-            sqlBuilder.Append(" INTO ");
-            sqlBuilder.Append(TDialect.BuildIdentifier(_intoTable));
-        }
-
         // FROM
-        if (_from != null)
+        if (FromTable != null)
         {
             sqlBuilder.Append(" FROM ");
-            _from.BuildRefSql(sqlBuilder);
+            FromTable.BuildRefSql(sqlBuilder);
         }
 
-        SqlStatics.BuildSqlJoins(sqlBuilder, _joins);
+        SqlStatics.BuildSqlJoins(sqlBuilder, Joins);
 
         // WHERE
-        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
 
         // GROUP BY
-        SqlStatics.BuildClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
+        SqlStatics.BuildClause(sqlBuilder, " GROUP BY ", ", ", GroupBys);
 
         // HAVING
-        SqlStatics.BuildClause(sqlBuilder, " HAVING ", " AND ", _havings, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " HAVING ", " AND ", Havings, wrapInParentheses: true);
 
         // ORDER BY
-        SqlStatics.BuildSqlOrderBy(sqlBuilder, _orderBys);
+        SqlStatics.BuildSqlOrderBy(sqlBuilder, OrderBys);
 
         // LIMIT & OFFSET
-        if (_limit.HasValue || _offset.HasValue)
-            sqlBuilder.Append(TDialect.BuildLimitOffset(_limit, _offset));
+        if (LimitValue.HasValue || OffsetValue.HasValue)
+            sqlBuilder.Append(TDialect.BuildLimitOffset(LimitValue, OffsetValue));
         
         BuildSqlLock(sqlBuilder);
-    }
-    
-    
-    protected virtual void BuildSqlOrderBy(ISqlBuilder sqlBuilder)
-    {
-        if (_orderBys.Count > 0)
-        {
-            sqlBuilder.Append(" ORDER BY ");
-            for (int i = 0; i < _orderBys.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                var (expr, isAsc) = _orderBys[i];
-                expr.BuildSql(sqlBuilder);
-                sqlBuilder.Append(isAsc ? " ASC" : " DESC");
-            }
-        }
     }
     
     /// <summary>
@@ -115,68 +91,68 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
 
     public TSelf From(IGenericTable<TDialect> table)
     {
-        _from = table;
+        FromTable = table;
         return (TSelf)this;
     }
 
             
     public TSelf Where(params IGenericSql[] conditions)
     {
-        _wheres.AddRange(conditions);
+        Wheres.AddRange(conditions);
         return (TSelf)this;
     }
     
     public TSelf Where(IGenericSql conditions)
     {
-        _wheres.Add(conditions);
+        Wheres.Add(conditions);
         return (TSelf)this;
     }
     
     public TSelf GroupBy(IGenericSql columns)
     {
-        _groupBys.Add(columns);
+        GroupBys.Add(columns);
         return (TSelf)this;
     }
     
     public TSelf GroupBy(params IGenericSql[] columns)
     {
-        _groupBys.AddRange(columns);
+        GroupBys.AddRange(columns);
         return (TSelf)this;
     }
 
     public TSelf Having(IGenericSql condition)
     {
-        _havings.Add(condition);
+        Havings.Add(condition);
         return (TSelf)this;
     }
     
     public TSelf Having(params IGenericSql[] conditions)
     {
-        _havings.AddRange(conditions);
+        Havings.AddRange(conditions);
         return (TSelf)this;
     }
 
     public TSelf OrderBy(IGenericSql col, bool asc = true)
     {
-        _orderBys.Add((col, asc));
+        OrderBys.Add((col, asc));
         return (TSelf)this;
     }
     
     public TSelf OrderBy(params (IGenericSql col, bool asc)[] columns)
     {
-        foreach (var c in columns) _orderBys.Add(c);
+        foreach (var c in columns) OrderBys.Add(c);
         return (TSelf)this;
     }
 
     public TSelf Limit(int limit)
     {
-        _limit = limit;
+        LimitValue = limit;
         return (TSelf)this;
     }
 
     public TSelf Offset(int offset)
     {
-        _offset = offset;
+        OffsetValue = offset;
         return (TSelf)this;
     }
 
@@ -186,7 +162,7 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
         IGenericSql? on,
         string type)
     {
-        _joins.Add((table, type, on));
+        Joins.Add((table, type, on));
         return (TSelf)this;
     }
 
@@ -205,16 +181,9 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     public TSelf CrossJoin(IGenericTable<TDialect> table)
         => JoinInternal(table, null, "CROSS");
 
-    // ====== SELECT INTO ======
-    public TSelf Into(string tableName)
-    {
-        _intoTable = tableName;
-        return (TSelf)this;
-    }
-
     public TSelf Distinct()
     {
-        _distinct = true;
+        IsDistinct = true;
         return (TSelf)this;
     }
 
@@ -224,6 +193,6 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
     /// </summary>
     protected virtual void BuildSqlDistinct(ISqlBuilder sqlBuilder)
     {
-        if (_distinct) sqlBuilder.Append("DISTINCT ");
+        if (IsDistinct) sqlBuilder.Append("DISTINCT ");
     }
 }

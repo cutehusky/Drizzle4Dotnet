@@ -27,10 +27,7 @@ public class PgDeleteQuery<TTable> : DeleteQuery<TTable, PgSqlSqlDialectImpl, Pg
     /// </summary>
     public PgDeleteQuery<TTable> Using(params IGenericTable<PgSqlSqlDialectImpl>[] tables)
     {
-        foreach (var table in tables)
-        {
-            _usingTables.Add(table);
-        }
+        _usingTables.AddRange(tables);
         return this;
     }
 
