@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using Drizzle4Dotnet.Cli.Models;
+using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Migration;
 using Drizzle4Dotnet.Core.Schema.Migration.Query;
 using Drizzle4Dotnet.Core.Shared;
@@ -44,6 +45,9 @@ public record MigrationGenerationResult(
 /// </summary>
 public class MigrationGenerator
 {
+    // Static guard to prevent duplicate reflection debug output
+    private static readonly HashSet<string> _reflectionDebugPrinted = new();
+
     private readonly DatabaseProvider _provider;
     private readonly Type _dialectType;
 
@@ -363,6 +367,9 @@ public class MigrationGenerator
                     $"Ensure the assembly is referenced and the type name is correct.");
             }
 
+            // DEBUG: Print reflection details when verbose
+            PrintReflectionDebug(type, _dialectType);
+
             // Build the closed generic method: OrmSchemaExporter.GetTableDefinition<TTable, TDialect>()
             var method = exporterType.GetMethods(BindingFlags.Public | BindingFlags.Static)
                 .FirstOrDefault(m => m.Name == "GetTableDefinition" && m.IsGenericMethodDefinition &&
@@ -415,5 +422,213 @@ public class MigrationGenerator
         }
 
         return string.Join("; ", parts);
+    }
+
+    /// <summary>
+    /// Prints detailed reflection debug information for a table type.
+    /// Shows assembly info, interfaces, static properties, column types, custom attributes.
+    /// </summary>
+    private static void PrintReflectionDebug(Type tableType, Type dialectType)
+    {
+        // Only print reflection debug once per type per process run
+        var key = $"{tableType.FullName}@{dialectType.FullName}";
+        if (!_reflectionDebugPrinted.Add(key))
+            return;
+
+        Console.WriteLine();
+        Console.WriteLine($"  🔬 Reflection Debug: {tableType.FullName}");
+        Console.WriteLine($"     Assembly:     {tableType.Assembly.GetName().Name}");
+        Console.WriteLine($"     Dialect:      {dialectType.Name}");
+        Console.WriteLine();
+
+        // Table info
+        var tableNameProp = tableType.GetProperty("TableName", BindingFlags.Public | BindingFlags.Static);
+        var schemaNameProp = tableType.GetProperty("SchemaName", BindingFlags.Public | BindingFlags.Static);
+        var tableName = tableNameProp?.GetValue(null)?.ToString() ?? tableType.Name;
+        var schemaName = schemaNameProp?.GetValue(null)?.ToString() ?? "public";
+        Console.WriteLine($"     Table:        {schemaName}.{tableName}");
+
+        // Interfaces
+        var interfaces = tableType.GetInterfaces();
+        Console.WriteLine($"     Interfaces:   {string.Join(", ", interfaces.Select(i => i.Name))}");
+        Console.WriteLine();
+
+        // Static properties (potential columns)
+        var props = tableType.GetProperties(BindingFlags.Public | BindingFlags.Static);
+        var columnProps = props.Where(p => IsColumnType(p.PropertyType)).ToList();
+
+        Console.WriteLine($"     Static Properties: {props.Length} total, {columnProps.Count} column(s)");
+        Console.WriteLine();
+
+        foreach (var prop in props)
+        {
+            var propType = prop.PropertyType;
+            var isColumn = columnProps.Contains(prop);
+
+            Console.WriteLine($"     {(isColumn ? "📌" : "  ")} {prop.Name} : {GetTypeDisplayName(propType)}");
+
+            // Print column-specific info
+            if (isColumn)
+            {
+                // Column identifier
+                var instance = prop.GetValue(null);
+                if (instance != null)
+                {
+                    var identifierProp = propType.GetProperty("Identifier", BindingFlags.Public | BindingFlags.Instance);
+                    var identifier = identifierProp?.GetValue(instance)?.ToString();
+                    Console.WriteLine($"         Identifier:  {identifier ?? "(null)"}");
+                }
+
+                // CLR type from generic argument
+                var clrType = GetColumnClrType(propType);
+                Console.WriteLine($"         CLR Type:    {GetTypeDisplayName(clrType)}");
+
+                // Custom attributes on the property
+                var customAttrs = prop.GetCustomAttributes(false);
+                if (customAttrs.Length > 0)
+                {
+                    Console.WriteLine($"         Attributes:  {customAttrs.Length}");
+                    foreach (var attr in customAttrs)
+                    {
+                        var attrName = attr.GetType().Name;
+                        var attrDetail = DescribeAttribute(attr);
+                        Console.WriteLine($"           [{attrName}]{attrDetail}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"         Attributes:  none");
+                }
+
+                // SqlTypeAttribute check
+                var sqlTypeAttr = prop.GetCustomAttributes(false)
+                    .FirstOrDefault(a => a.GetType().IsSubclassOf(typeof(SqlTypeAttribute)) 
+                                        || a.GetType() == typeof(SqlTypeAttribute));
+                
+                if (sqlTypeAttr != null)
+                {
+                    var stAttr = (SqlTypeAttribute)sqlTypeAttr;
+                    var sqlType = stAttr.ToSqlDataType();
+                    Console.WriteLine($"         SQL Type:    {sqlType.Sql} (from [{sqlTypeAttr.GetType().Name}])");
+                }
+                else
+                {
+                    // Will use CLR-to-SQL mapping
+                    var mappedSql = MapClrToSqlType(clrType, dialectType);
+                    Console.WriteLine($"         SQL Type:    {mappedSql} (mapped from CLR)");
+                }
+
+                // Nullability
+                var isNullable = IsClrNullableType(clrType);
+                Console.WriteLine($"         Nullable:    {isNullable}");
+            }
+
+            // Show non-column properties for context
+            if (!isColumn && prop.Name is "TableName" or "SchemaName")
+            {
+                Console.WriteLine($"         Value:       {prop.GetValue(null) ?? "(null)"}");
+            }
+        }
+
+        Console.WriteLine();
+    }
+
+    private static bool IsColumnType(Type type)
+    {
+        if (!type.IsGenericType) return false;
+        var checkType = type;
+        while (checkType != null)
+        {
+            if (checkType.IsGenericType && checkType.GetGenericTypeDefinition() == typeof(DbColumn<,,>))
+                return true;
+            checkType = checkType.BaseType;
+        }
+        return false;
+    }
+
+    private static Type GetColumnClrType(Type columnType)
+    {
+        var checkType = columnType;
+        while (checkType != null)
+        {
+            if (checkType.IsGenericType && checkType.GetGenericTypeDefinition() == typeof(DbColumn<,,>))
+                return checkType.GetGenericArguments()[0];
+            checkType = checkType.BaseType;
+        }
+        return typeof(string);
+    }
+
+    private static bool IsClrNullableType(Type type)
+    {
+        if (!type.IsValueType) return true;
+        return Nullable.GetUnderlyingType(type) != null;
+    }
+
+    private static string GetTypeDisplayName(Type type)
+    {
+        if (!type.IsGenericType) return type.Name;
+        var name = type.Name.Split('`')[0];
+        var args = string.Join(", ", type.GetGenericArguments().Select(GetTypeDisplayName));
+        return $"{name}<{args}>";
+    }
+
+    private static string DescribeAttribute(object attr)
+    {
+        try
+        {
+            var type = attr.GetType();
+            var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.Name is not "TypeId" && p.CanRead)
+                .ToList();
+
+            if (props.Count == 0) return "";
+
+            var parts = new List<string>();
+            foreach (var prop in props)
+            {
+                var val = prop.GetValue(attr);
+                if (val != null && prop.Name is not "TypeId")
+                {
+                    parts.Add($"{prop.Name}={val}");
+                }
+            }
+
+            return parts.Count > 0 ? $" ({string.Join(", ", parts)})" : "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private static string MapClrToSqlType(Type clrType, Type dialectType)
+    {
+        try
+        {
+            var typeMapProp = dialectType.GetProperty("ClrToSqlTypeMap", BindingFlags.Public | BindingFlags.Static);
+            if (typeMapProp == null) return "?";
+
+            var typeMap = typeMapProp.GetValue(null) as Dictionary<Type, ISqlDataType>;
+            if (typeMap == null) return "?";
+
+            // Handle nullable
+            var underlyingType = Nullable.GetUnderlyingType(clrType);
+            var checkType = underlyingType ?? clrType;
+
+            if (typeMap.TryGetValue(checkType, out var sqlType))
+                return sqlType.Sql;
+
+            foreach (var (key, value) in typeMap)
+            {
+                if (key.IsAssignableFrom(checkType))
+                    return value.Sql;
+            }
+
+            return "TEXT (default)";
+        }
+        catch
+        {
+            return "?";
+        }
     }
 }

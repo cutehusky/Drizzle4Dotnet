@@ -23,12 +23,16 @@ public static class SnapshotCommand
             Console.WriteLine($"  Tables:       {options.TableTypes.Count} type(s)");
             Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-            // Generate the snapshot
+            // Generate the snapshot (extracts table definitions)
             var snapshot = generator.GenerateSnapshot(
                 options.SnapshotName,
                 options.TableTypes,
                 options.AssemblyPath
             );
+
+            // Print detailed schema info when verbose
+            if (options.Verbose)
+                SchemaDebugPrinter.PrintSchema("📊 Schema Details (verbose)", snapshot);
 
             // Serialize and write
             var json = snapshot.Serialize();

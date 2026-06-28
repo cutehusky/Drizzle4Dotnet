@@ -40,6 +40,10 @@ public class Program
             case "st":
                 return HandleStatus(args.Skip(1).ToArray());
 
+            case "debug":
+            case "d":
+                return HandleDebug(args.Skip(1).ToArray());
+
             case "--help":
             case "-h":
             case "help":
@@ -278,6 +282,71 @@ public class Program
         return StatusCommand.Execute(options);
     }
 
+    private static int HandleDebug(string[] args)
+    {
+        var options = new DebugOptions();
+        var errors = new List<string>();
+
+        for (var i = 0; i < args.Length; i++)
+        {
+            switch (args[i].ToLowerInvariant())
+            {
+                case "--provider":
+                case "-p":
+                    if (++i < args.Length) options.Provider = args[i];
+                    else errors.Add("--provider requires a value");
+                    break;
+
+                case "--types":
+                case "-t":
+                    if (++i < args.Length)
+                    {
+                        options.TableTypes = args[i]
+                            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                            .ToList();
+                    }
+                    else errors.Add("--types requires a value");
+                    break;
+
+                case "--assembly":
+                case "-a":
+                    if (++i < args.Length) options.AssemblyPath = args[i];
+                    else errors.Add("--assembly requires a value");
+                    break;
+
+                case "--verbose":
+                case "-V":
+                    options.Verbose = true;
+                    break;
+
+                default:
+                    errors.Add($"Unknown option: '{args[i]}'");
+                    break;
+            }
+        }
+
+        if (options.TableTypes.Count == 0)
+            errors.Add("--types is required (comma-separated list of fully qualified type names)");
+
+        if (errors.Count > 0)
+        {
+            Console.Error.WriteLine("❌ Invalid arguments:");
+            foreach (var error in errors)
+                Console.Error.WriteLine($"  - {error}");
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("Usage: drizzle4net debug --provider pgsql --types \"Type1,Type2\" [options]");
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("Options:");
+            Console.Error.WriteLine("  --provider, -p    Database provider (pgsql, mysql, mssql, sqlite, oracle)");
+            Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
+            Console.Error.WriteLine("  --assembly, -a    Path to assembly containing table types");
+            Console.Error.WriteLine("  --verbose, -V     Enable verbose output");
+            return 1;
+        }
+
+        return DebugCommand.Execute(options);
+    }
+
     private static void PrintUsage()
     {
         Console.WriteLine("Drizzle4Dotnet CLI - SQL Migration Generator");
@@ -286,6 +355,7 @@ public class Program
         Console.WriteLine("  drizzle4net generate [options]    Generate a new SQL migration script");
         Console.WriteLine("  drizzle4net snapshot [options]    Generate a schema snapshot JSON");
         Console.WriteLine("  drizzle4net status [options]      Show migration journal status");
+        Console.WriteLine("  drizzle4net debug [options]       Print detailed schema information");
         Console.WriteLine("  drizzle4net --help                Show this help message");
         Console.WriteLine("  drizzle4net --version             Show version information");
         Console.WriteLine();

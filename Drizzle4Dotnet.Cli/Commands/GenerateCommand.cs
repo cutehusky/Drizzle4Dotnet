@@ -54,6 +54,14 @@ public static class GenerateCommand
 
             Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
+            // Print detailed schema info when verbose
+            if (options.Verbose)
+            {
+                var snapshot = generator.GenerateSnapshot(
+                    options.MigrationName, options.TableTypes, options.AssemblyPath);
+                SchemaDebugPrinter.PrintSchema("📊 Schema Details (verbose)", snapshot);
+            }
+
             // Generate the migration
             var result = generator.GenerateMigration(
                 options.MigrationName,
