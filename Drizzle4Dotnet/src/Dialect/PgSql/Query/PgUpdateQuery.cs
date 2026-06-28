@@ -33,10 +33,7 @@ public class PgUpdateQuery<TTable> : UpdateQuery<TTable, PgSqlSqlDialectImpl, Pg
 
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (SetValues.Count == 0)
-        {
-            throw new InvalidOperationException("No columns set for update.");
-        }
+        ValidateQuery();
 
         SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 

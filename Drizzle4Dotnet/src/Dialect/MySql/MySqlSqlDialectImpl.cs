@@ -111,6 +111,26 @@ public class MySqlSqlDialectImpl : ISqlDialect
     /// </summary>
     public static bool SupportsFilteredAggregates => false;
     
+    /// <summary>
+    /// MySQL does not support FULL OUTER JOIN.
+    /// </summary>
+    public static bool SupportsFullOuterJoin => false;
+    
+    /// <summary>
+    /// MySQL supports NATURAL JOIN and NATURAL LEFT JOIN.
+    /// </summary>
+    public static bool SupportsNaturalJoin => true;
+    
+    /// <summary>
+    /// MySQL 8.0.14+ supports LATERAL joins.
+    /// </summary>
+    public static bool SupportsLateralJoin => true;
+    
+    /// <summary>
+    /// MySQL does not support CROSS/OUTER APPLY.
+    /// </summary>
+    public static bool SupportsApplyJoin => false;
+    
     // ======================================================================
     // String Escaping
     // ======================================================================

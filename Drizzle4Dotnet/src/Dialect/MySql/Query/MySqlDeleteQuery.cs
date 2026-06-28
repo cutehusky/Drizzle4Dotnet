@@ -51,6 +51,17 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
     public MySqlDeleteQuery<TTable> CrossJoin(IGenericTable<MySqlSqlDialectImpl> table)
         => JoinInternal(table, null, "CROSS");
 
+    // ====== MySQL-specific validation ======
+
+    protected override void ValidateQuery()
+    {
+        base.ValidateQuery();
+        if (_offset.HasValue && !_limit.HasValue)
+        {
+            throw new InvalidOperationException("OFFSET cannot be used without LIMIT in MySQL DELETE.");
+        }
+    }
+
     // ====== MySQL LIMIT and ORDER BY on DELETE ======
 
     public MySqlDeleteQuery<TTable> Limit(int limit)
@@ -102,11 +113,6 @@ public class MySqlDeleteQuery<TTable> : DeleteQuery<TTable, MySqlSqlDialectImpl,
 
         // ORDER BY (MySQL-specific on DELETE)
         SqlStatics.BuildSqlOrderBy(sqlBuilder, _orderBys);
-
-        if (_offset.HasValue && !_limit.HasValue)
-        {
-            throw new InvalidOperationException("OFFSET cannot be used without LIMIT in MySQL DELETE.");
-        }
         
         // LIMIT limit or LIMIT offset, limit (MySQL-specific on DELETE)
         if (_limit.HasValue)

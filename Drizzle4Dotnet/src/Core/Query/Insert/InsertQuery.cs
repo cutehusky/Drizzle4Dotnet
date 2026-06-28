@@ -97,11 +97,10 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
 
     
     /// <summary>
-    /// Builds the INSERT statement without the VALUES clause.
-    /// Produces: INSERT INTO table (col1, col2, ...)
-    /// Subclasses can override BuildInsertValues to customize the VALUES / DEFAULT VALUES / FROM clause.
+    /// Validates the query state before building SQL.
+    /// Override in dialect-specific subclasses to add custom validation.
     /// </summary>
-    public override void BuildSql(ISqlBuilder sqlBuilder)
+    protected virtual void ValidateQuery()
     {
         var hasValues = ValuesToInsert.Count > 0;
         var hasFrom = FromQuery != null;
@@ -117,6 +116,16 @@ public class InsertQuery<TTable, TDialect, TSelf> : Query<TDialect>,
         
         if (!hasValues && !hasFrom && !UseDefaultValues)
             throw new InvalidOperationException("No values provided for insert. Use Value(s), DefaultValues(), or From().");
+    }
+
+    /// <summary>
+    /// Builds the INSERT statement without the VALUES clause.
+    /// Produces: INSERT INTO table (col1, col2, ...)
+    /// Subclasses can override BuildInsertValues to customize the VALUES / DEFAULT VALUES / FROM clause.
+    /// </summary>
+    public override void BuildSql(ISqlBuilder sqlBuilder)
+    {
+        ValidateQuery();
         
         SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 

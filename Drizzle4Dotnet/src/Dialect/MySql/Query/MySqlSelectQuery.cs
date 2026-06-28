@@ -10,7 +10,8 @@ namespace Drizzle4Dotnet.MySql;
 /// MySQL-specific SELECT query builder with virtual table support.
 /// </summary>
 public class MySqlSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, MySqlSqlDialectImpl, TVirtualTable, MySqlSelectQuery<TReturn, TVirtualTable>>,
-    ILateralJoin<MySqlSelectQuery<TReturn, TVirtualTable>, MySqlSqlDialectImpl>
+    ILateralJoin<MySqlSelectQuery<TReturn, TVirtualTable>, MySqlSqlDialectImpl>,
+    INaturalJoin<MySqlSelectQuery<TReturn, TVirtualTable>, MySqlSqlDialectImpl>
     where TVirtualTable : IVirtualTable<MySqlSqlDialectImpl>
 {
     protected string? _lockClause;
@@ -34,6 +35,14 @@ public class MySqlSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, MyS
 
     public MySqlSelectQuery<TReturn, TVirtualTable> CrossLateralJoin(IGenericTable<MySqlSqlDialectImpl> table)
         => JoinInternal(table, null, "CROSS LATERAL");
+
+    // ====== NATURAL JOINS (not supported by SQL Server) ======
+
+    public MySqlSelectQuery<TReturn, TVirtualTable> NaturalJoin(IGenericTable<MySqlSqlDialectImpl> table)
+        => JoinInternal(table, null, "NATURAL");
+
+    public MySqlSelectQuery<TReturn, TVirtualTable> NaturalLeftJoin(IGenericTable<MySqlSqlDialectImpl> table)
+        => JoinInternal(table, null, "NATURAL LEFT");
 
     // ====== MySQL Lock Clauses ======
 

@@ -35,6 +35,8 @@ public readonly struct PgLockSpec
 /// </summary>
 public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlSqlDialectImpl, TVirtualTable, PgSelectQuery<TReturn, TVirtualTable>>,
     ILateralJoin<PgSelectQuery<TReturn, TVirtualTable>, PgSqlSqlDialectImpl>,
+    IFullOuterJoin<PgSelectQuery<TReturn, TVirtualTable>, PgSqlSqlDialectImpl>,
+    INaturalJoin<PgSelectQuery<TReturn, TVirtualTable>, PgSqlSqlDialectImpl>,
     ISupportDistinctOn<PgSelectQuery<TReturn, TVirtualTable>>
     where TVirtualTable : IVirtualTable<PgSqlSqlDialectImpl>
 {
@@ -57,7 +59,28 @@ public class PgSelectQuery<TReturn, TVirtualTable> : SelectQuery<TReturn, PgSqlS
 
     public PgSelectQuery<TReturn, TVirtualTable> CrossLateralJoin(IGenericTable<PgSqlSqlDialectImpl> table)
         => JoinInternal(table, null, "CROSS LATERAL");
-    
+
+    // ====== FULL OUTER JOIN (not supported by MySQL) ======
+
+    public PgSelectQuery<TReturn, TVirtualTable> FullJoin(IGenericTable<PgSqlSqlDialectImpl> table, IGenericSql on)
+        => JoinInternal(table, on, "FULL");
+
+    // ====== NATURAL JOINS (not supported by SQL Server) ======
+
+    public PgSelectQuery<TReturn, TVirtualTable> NaturalJoin(IGenericTable<PgSqlSqlDialectImpl> table)
+        => JoinInternal(table, null, "NATURAL");
+
+    public PgSelectQuery<TReturn, TVirtualTable> NaturalLeftJoin(IGenericTable<PgSqlSqlDialectImpl> table)
+        => JoinInternal(table, null, "NATURAL LEFT");
+
+    // ====== PostgreSQL-specific NATURAL RIGHT JOIN ======
+    // Supported only by PostgreSQL among major databases.
+
+    /// <summary>NATURAL RIGHT JOIN (automatically joins on matching column names, no ON condition).
+    /// PostgreSQL-only; not available in most other databases.</summary>
+    public PgSelectQuery<TReturn, TVirtualTable> NaturalRightJoin(IGenericTable<PgSqlSqlDialectImpl> table)
+        => JoinInternal(table, null, "NATURAL RIGHT");
+
     // ====== PostgreSQL Lock Clauses ======
 
     /// <summary>FOR UPDATE</summary>

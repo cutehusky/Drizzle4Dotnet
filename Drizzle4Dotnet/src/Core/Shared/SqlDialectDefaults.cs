@@ -48,4 +48,8 @@ public static class SqlDialectDefaults
     public static bool SupportsDeleteUsing => false;
     public static bool SupportsIsDistinctFrom => false;
     public static bool SupportsFilteredAggregates => false;
+    public static bool SupportsFullOuterJoin => false;
+    public static bool SupportsNaturalJoin => false;
+    public static bool SupportsLateralJoin => false;
+    public static bool SupportsApplyJoin => false;
 }

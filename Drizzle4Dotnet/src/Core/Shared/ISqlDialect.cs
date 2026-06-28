@@ -35,6 +35,10 @@ public interface ISqlDialect
     static abstract bool SupportsDeleteUsing { get; }
     static abstract bool SupportsIsDistinctFrom { get; }
     static abstract bool SupportsFilteredAggregates { get; }
+    static abstract bool SupportsFullOuterJoin { get; }
+    static abstract bool SupportsNaturalJoin { get; }
+    static abstract bool SupportsLateralJoin { get; }
+    static abstract bool SupportsApplyJoin { get; }
     
     // ======================================================================
     // String Escaping

@@ -37,8 +37,18 @@ public class DeleteQuery<TTable, TDialect, TSelf> : Query<TDialect>,
         return (TSelf)this;
     }
     
+    /// <summary>
+    /// Validates the query state before building SQL.
+    /// Override in dialect-specific subclasses to add custom validation.
+    /// </summary>
+    protected virtual void ValidateQuery()
+    {
+    }
+
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        ValidateQuery();
+
         SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         sqlBuilder.Append("DELETE FROM ");

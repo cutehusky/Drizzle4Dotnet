@@ -167,9 +167,15 @@ public class PgInsertQuery<TTable> : InsertQuery<TTable, PgSqlSqlDialectImpl, Pg
     // BuildSql
     // ======================================================================
 
+    protected override void ValidateQuery()
+    {
+        base.ValidateQuery();
+        ValidateConflictSettings();
+    }
+
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        ValidateConflictSettings();
+        ValidateQuery();
         base.BuildSql(sqlBuilder);
         PgConflictHelper.BuildOnConflictSql(sqlBuilder, 
             _conflictTargetColumns, 

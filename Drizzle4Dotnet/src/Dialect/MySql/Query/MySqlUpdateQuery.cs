@@ -75,12 +75,20 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
         return this;
     }
 
+    // ====== MySQL-specific validation ======
+
+    protected override void ValidateQuery()
+    {
+        base.ValidateQuery();
+        if (_offset.HasValue && !_limit.HasValue)
+        {
+            throw new InvalidOperationException("OFFSET cannot be used without LIMIT in MySQL UPDATE.");
+        }
+    }
+
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (SetValues.Count == 0)
-        {
-            throw new InvalidOperationException("No columns set for update.");
-        }
+        ValidateQuery();
 
         SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
@@ -97,12 +105,7 @@ public class MySqlUpdateQuery<TTable> : UpdateQuery<TTable, MySqlSqlDialectImpl,
         // ORDER BY (MySQL-specific on UPDATE)
         SqlStatics.BuildSqlOrderBy(sqlBuilder, _orderBys);
         
-        if (_offset.HasValue && !_limit.HasValue)
-        {
-            throw new InvalidOperationException("OFFSET cannot be used without LIMIT in MySQL UPDATE.");
-        }
-        
-        // LIMIT limit or LIMIT offset, limit (MySQL-specific on DELETE)
+        // LIMIT limit or LIMIT offset, limit (MySQL-specific on UPDATE)
         if (_limit.HasValue)
         {
             if (_offset.HasValue)

@@ -69,12 +69,21 @@ public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>,
         return (TSelf)this;
     }
     
-    public override void BuildSql(ISqlBuilder sqlBuilder)
+    /// <summary>
+    /// Validates the query state before building SQL.
+    /// Override in dialect-specific subclasses to add custom validation.
+    /// </summary>
+    protected virtual void ValidateQuery()
     {
         if (SetValues.Count == 0)
         {
             throw new InvalidOperationException("No columns set for update.");
         }
+    }
+
+    public override void BuildSql(ISqlBuilder sqlBuilder)
+    {
+        ValidateQuery();
         
         SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 

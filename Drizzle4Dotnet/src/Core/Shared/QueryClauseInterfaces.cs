@@ -61,7 +61,10 @@ public interface ISupportCte<TQuery, TDialect> where TDialect : ISqlDialect
 }
 
 /// <summary>
-/// Marks a query as supporting standard JOIN clauses.
+/// Marks a query as supporting standard JOIN clauses universally supported by all major databases
+/// (INNER, LEFT, RIGHT, CROSS).
+/// Supported by: PostgreSQL, MySQL, SQLite, SQL Server, Oracle.
+/// FULL OUTER JOIN is not included here — see <see cref="IFullOuterJoin{TQuery, TDialect}"/>.
 /// </summary>
 public interface IJoin<TQuery, TDialect> where TDialect : ISqlDialect
 {
@@ -74,11 +77,35 @@ public interface IJoin<TQuery, TDialect> where TDialect : ISqlDialect
     /// <summary>RIGHT JOIN with ON condition.</summary>
     TQuery RightJoin(IGenericTable<TDialect> table, IGenericSql on);
 
-    /// <summary>FULL JOIN with ON condition.</summary>
-    TQuery FullJoin(IGenericTable<TDialect> table, IGenericSql on);
-
     /// <summary>CROSS JOIN (no ON condition).</summary>
     TQuery CrossJoin(IGenericTable<TDialect> table);
+}
+
+/// <summary>
+/// Marks a query as supporting FULL OUTER JOIN.
+/// Not supported by MySQL; supported by PostgreSQL, SQLite (3.39+), SQL Server, Oracle.
+/// </summary>
+public interface IFullOuterJoin<TQuery, TDialect> where TDialect : ISqlDialect
+{
+    /// <summary>FULL OUTER JOIN with ON condition.</summary>
+    TQuery FullJoin(IGenericTable<TDialect> table, IGenericSql on);
+}
+
+/// <summary>
+/// Marks a query as supporting NATURAL JOIN clauses.
+/// Natural joins automatically join on columns with the same name — no ON condition needed.
+/// Supported by: PostgreSQL, MySQL, SQLite, Oracle.
+/// Not supported by: SQL Server.
+/// NATURAL RIGHT JOIN is PostgreSQL-only and is provided as a direct method
+/// on PgSelectQuery, not through this interface.
+/// </summary>
+public interface INaturalJoin<TQuery, TDialect> where TDialect : ISqlDialect
+{
+    /// <summary>NATURAL JOIN (automatically joins on matching column names, no ON condition).</summary>
+    TQuery NaturalJoin(IGenericTable<TDialect> table);
+
+    /// <summary>NATURAL LEFT JOIN (automatically joins on matching column names, no ON condition).</summary>
+    TQuery NaturalLeftJoin(IGenericTable<TDialect> table);
 }
 
 /// <summary>

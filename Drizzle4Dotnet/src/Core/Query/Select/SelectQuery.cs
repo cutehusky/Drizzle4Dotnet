@@ -44,8 +44,18 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
         return (TSelf)this;
     }
     
+    /// <summary>
+    /// Validates the query state before building SQL.
+    /// Override in dialect-specific subclasses to add custom validation.
+    /// </summary>
+    protected virtual void ValidateQuery()
+    {
+    }
+
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
+        ValidateQuery();
+
         SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
         
         sqlBuilder.Append("SELECT ");
@@ -166,6 +176,8 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
         return (TSelf)this;
     }
 
+    // ====== STANDARD JOINS (supported by all major databases) ======
+
     public TSelf InnerJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "INNER");
 
@@ -174,9 +186,6 @@ public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn
 
     public TSelf RightJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "RIGHT");
-
-    public TSelf FullJoin(IGenericTable<TDialect> table, IGenericSql on)
-        => JoinInternal(table, on, "FULL");
 
     public TSelf CrossJoin(IGenericTable<TDialect> table)
         => JoinInternal(table, null, "CROSS");

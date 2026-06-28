@@ -1227,18 +1227,6 @@ public class MySqlSelectTests
     }
 
     [Test]
-    public void Select_WithFullJoin()
-    {
-        var query = _db
-            .Select(MySqlUserSelect.Record)
-            .From(users)
-            .FullJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id));
-
-        var (sql, parameters) = query.Build();
-        Print("MySQL FULL JOIN", sql, parameters);
-    }
-
-    [Test]
     public void Select_WithForUpdate()
     {
         var query = _db

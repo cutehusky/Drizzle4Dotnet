@@ -53,6 +53,10 @@ public class PgSqlSqlDialectImpl: ISqlDialect
     public static bool SupportsDeleteUsing => true;
     public static bool SupportsIsDistinctFrom => true;
     public static bool SupportsFilteredAggregates => true;
+    public static bool SupportsFullOuterJoin => true;
+    public static bool SupportsNaturalJoin => true;
+    public static bool SupportsLateralJoin => true;
+    public static bool SupportsApplyJoin => false;
     
     // ======================================================================
     // String Escaping

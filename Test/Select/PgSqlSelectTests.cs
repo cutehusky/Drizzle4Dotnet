@@ -1862,23 +1862,6 @@ public class PgSqlSelectTests
         Print("PgSQL IIF function", sql, parameters);
     }
 
-    // =========================================================================
-    // SELECT INTO
-    // =========================================================================
-
-    [Test]
-    public void Select_Into()
-    {
-        var query = _db
-            .Select(PgUserSelect.Record)
-            .From(users)
-            .Where(Eq(UsersTable.IsActive, true))
-            .Into("users_backup");
-
-        var (sql, parameters) = query.Build();
-        Print("PgSQL SELECT INTO", sql, parameters);
-    }
-
     [Test]
     public void Select_ForNoKeyUpdate_WithOptions()
     {
