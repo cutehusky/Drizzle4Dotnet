@@ -181,32 +181,18 @@ public class MigrationGenerator
         var snapshotJson = targetSnapshot.Serialize();
         File.WriteAllText(snapshotFilePath, snapshotJson);
 
-        // Check if migration already exists in journal
-        if (journal.Migrations.Any(m => m.Name == migrationName))
+        // Always push a new entry to the journal array (each generation gets a distinct entry)
+        journal.Migrations.Add(new MigrationJournalEntry
         {
-            // Update existing entry
-            var entry = journal.Migrations.First(m => m.Name == migrationName);
-            entry.GeneratedAt = DateTime.UtcNow;
-            entry.Checksum = checksum;
-            entry.SqlFileName = sqlFileName;
-            entry.DownSqlFileName = downSqlFileName;
-            entry.SnapshotFileName = snapshotFileName;
-            entry.Description = description;
-        }
-        else
-        {
-            journal.Migrations.Add(new MigrationJournalEntry
-            {
-                Name = migrationName,
-                GeneratedAt = DateTime.UtcNow,
-                Checksum = checksum,
-                SqlFileName = sqlFileName,
-                DownSqlFileName = downSqlFileName,
-                SnapshotFileName = snapshotFileName,
-                Description = description,
-                IncrementalId = incrementalId
-            });
-        }
+            Name = migrationName,
+            GeneratedAt = DateTime.UtcNow,
+            Checksum = checksum,
+            SqlFileName = sqlFileName,
+            DownSqlFileName = downSqlFileName,
+            SnapshotFileName = snapshotFileName,
+            Description = description,
+            IncrementalId = incrementalId
+        });
 
         journal.Save(journalPath);
 

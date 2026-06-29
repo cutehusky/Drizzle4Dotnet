@@ -27,17 +27,16 @@ public class SchemaSnapshot
     }
 
     /// <summary>
-/// Deserializes a snapshot from a JSON string.
-/// Uses case-insensitive property matching for robustness with manually edited snapshots.
-/// </summary>
-public static SchemaSnapshot Deserialize(string json)
-{
-    return JsonSerializer.Deserialize<SchemaSnapshot>(json, new JsonSerializerOptions
+    /// Deserializes a snapshot from a JSON string.
+    /// Uses case-insensitive property matching for robustness with manually edited snapshots.
+    /// </summary>
+    public static SchemaSnapshot Deserialize(string json)
     {
-        PropertyNameCaseInsensitive = true
-    }) 
-        ?? throw new InvalidOperationException("Failed to deserialize schema snapshot");
-}
+        return JsonSerializer.Deserialize<SchemaSnapshot>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? throw new InvalidOperationException("Failed to deserialize schema snapshot");
+    }
 
     /// <summary>
     /// Creates a snapshot from a list of <see cref="TableDefinition"/> objects.

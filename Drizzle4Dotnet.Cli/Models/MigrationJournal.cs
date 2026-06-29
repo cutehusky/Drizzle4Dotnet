@@ -34,6 +34,29 @@ public class MigrationJournalEntry
 
     /// <summary>The filename of the rollback (down) SQL migration script.</summary>
     public string DownSqlFileName { get; set; } = "";
+
+    /// <summary>
+    /// Validates that all required fields have values.
+    /// Throws if any required field is missing or empty.
+    /// </summary>
+    public void Validate()
+    {
+        var missing = new List<string>();
+        if (string.IsNullOrWhiteSpace(Name)) missing.Add("Name");
+        if (string.IsNullOrWhiteSpace(IncrementalId)) missing.Add("IncrementalId");
+        if (string.IsNullOrWhiteSpace(Checksum)) missing.Add("Checksum");
+        if (string.IsNullOrWhiteSpace(SqlFileName)) missing.Add("SqlFileName");
+        if (string.IsNullOrWhiteSpace(DownSqlFileName)) missing.Add("DownSqlFileName");
+        if (string.IsNullOrWhiteSpace(SnapshotFileName)) missing.Add("SnapshotFileName");
+
+        if (missing.Count > 0)
+        {
+            var label = string.IsNullOrWhiteSpace(Name) ? "(unnamed)" : Name;
+            throw new InvalidOperationException(
+                $"Migration journal entry '{label}' is missing required fields: {string.Join(", ", missing)}. " +
+                "The journal file may be corrupted or from an incompatible version.");
+        }
+    }
 }
 
 /// <summary>
@@ -60,16 +83,29 @@ public class MigrationJournal
     }
 
     /// <summary>
-    /// Deserializes a journal from a JSON string.
+    /// Deserializes a journal from a JSON string and validates all entries.
+    /// Throws if any required field is missing.
     /// </summary>
     public static MigrationJournal Deserialize(string json)
     {
-        return JsonSerializer.Deserialize<MigrationJournal>(json)
+        var journal = JsonSerializer.Deserialize<MigrationJournal>(json)
             ?? throw new InvalidOperationException("Failed to deserialize migration journal");
+        journal.Validate();
+        return journal;
+    }
+
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Provider))
+            throw new InvalidOperationException("Migration journal is missing required field 'Provider'");
+
+        foreach (var entry in Migrations)
+            entry.Validate();
     }
 
     /// <summary>
     /// Loads the journal from a file path, or returns a new empty journal if the file doesn't exist.
+    /// Validates all entries after loading.
     /// </summary>
     public static MigrationJournal Load(string filePath)
     {

@@ -10,9 +10,11 @@ namespace Drizzle4Dotnet.Cli;
 /// Usage:
 ///   drizzle4net generate --provider pgsql --name v1 --types "SharedDemo.PgSql.UsersTable,SharedDemo.PgSql.DepartmentsTable"
 ///   drizzle4net generate --provider pgsql --name v1                                    (auto-discovers all table types)
+///   drizzle4net generate --provider pgsql                                              (auto-name + auto-types)
 ///   drizzle4net generate --provider mysql --name v1 --types "SharedDemo.MySql.UsersTable" --assembly ./path/to/assembly.dll
 ///   drizzle4net snapshot --provider pgsql --name v1 --types "SharedDemo.PgSql.UsersTable" --output ./snapshot.json
-///   drizzle4net snapshot --provider pgsql --name v1                                    (auto-discovers all table types)
+///   drizzle4net snapshot --provider pgsql                                              (auto-name + auto-types)
+///   drizzle4net apply --provider pgsql --connection "Host=localhost;Database=mydb"
 ///   drizzle4net generate --help
 /// </remarks>
 public class Program
@@ -42,6 +44,10 @@ public class Program
             case "status":
             case "st":
                 return HandleStatus(args.Skip(1).ToArray());
+
+            case "apply":
+            case "a":
+                return HandleApply(args.Skip(1).ToArray());
 
             case "debug":
             case "d":
@@ -139,7 +145,11 @@ public class Program
 
         // Validate required options
         if (string.IsNullOrWhiteSpace(options.MigrationName))
-            errors.Add("--name is required");
+        {
+            // Generate a random migration name when --name is omitted
+            options.MigrationName = GenerateRandomMigrationName();
+            Console.WriteLine($"  Name:         {options.MigrationName} (auto-generated)");
+        }
 
         if (errors.Count > 0)
         {
@@ -147,11 +157,12 @@ public class Program
             foreach (var error in errors)
                 Console.Error.WriteLine($"  - {error}");
             Console.Error.WriteLine();
-            Console.Error.WriteLine("Usage: drizzle4net generate --provider pgsql --name <name> [options]");
+            Console.Error.WriteLine("Usage: drizzle4net generate --provider pgsql [options]");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Options:");
             Console.Error.WriteLine("  --provider, -p    Database provider (pgsql, mysql, mssql, sqlite, oracle)");
             Console.Error.WriteLine("  --name, -n        Migration name (e.g., 'v1.0.0', 'add_users_table')");
+            Console.Error.WriteLine("                    (if omitted, a random name is auto-generated)");
             Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
             Console.Error.WriteLine("                    (if omitted, auto-discovers all table types for the provider)");
             Console.Error.WriteLine("  --output, -o      Output directory (default: ./Migrations/{provider})");
@@ -232,7 +243,11 @@ public class Program
 
         // Validate required options
         if (string.IsNullOrWhiteSpace(options.SnapshotName))
-            errors.Add("--name is required");
+        {
+            // Generate a random snapshot name when --name is omitted
+            options.SnapshotName = GenerateRandomMigrationName();
+            Console.WriteLine($"  Name:         {options.SnapshotName} (auto-generated)");
+        }
 
         if (options.TableTypes.Count == 0 && errors.Count == 0)
         {
@@ -245,11 +260,12 @@ public class Program
             foreach (var error in errors)
                 Console.Error.WriteLine($"  - {error}");
             Console.Error.WriteLine();
-            Console.Error.WriteLine("Usage: drizzle4net snapshot --provider pgsql --name <name> [options]");
+            Console.Error.WriteLine("Usage: drizzle4net snapshot --provider pgsql [options]");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Options:");
             Console.Error.WriteLine("  --provider, -p    Database provider (pgsql, mysql, mssql, sqlite, oracle)");
             Console.Error.WriteLine("  --name, -n        Snapshot name (e.g., 'v1.0.0')");
+            Console.Error.WriteLine("                    (if omitted, a random name is auto-generated)");
             Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
             Console.Error.WriteLine("                    (if omitted, auto-discovers all table types for the provider)");
             Console.Error.WriteLine("  --output, -o      Output file path (default: ./snapshot.json)");
@@ -443,6 +459,126 @@ public class Program
         return DebugCommand.Execute(options);
     }
 
+    private static int HandleApply(string[] args)
+    {
+        var options = new ApplyOptions();
+        var errors = new List<string>();
+
+        for (var i = 0; i < args.Length; i++)
+        {
+            switch (args[i].ToLowerInvariant())
+            {
+                case "--provider":
+                case "-p":
+                    if (++i < args.Length) options.Provider = args[i];
+                    else errors.Add("--provider requires a value");
+                    break;
+
+                case "--connection":
+                case "-c":
+                    if (++i < args.Length) options.ConnectionString = args[i];
+                    else errors.Add("--connection requires a value");
+                    break;
+
+                case "--output":
+                case "-o":
+                    if (++i < args.Length) options.OutputDir = args[i];
+                    else errors.Add("--output requires a value");
+                    break;
+
+                case "--migration-schema":
+                    if (++i < args.Length) options.MigrationSchema = args[i];
+                    else errors.Add("--migration-schema requires a value");
+                    break;
+
+                case "--migration-table":
+                    if (++i < args.Length) options.MigrationTable = args[i];
+                    else errors.Add("--migration-table requires a value");
+                    break;
+
+                default:
+                    errors.Add($"Unknown option: '{args[i]}'");
+                    break;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(options.ConnectionString))
+            errors.Add("--connection (-c) is required (database connection string)");
+
+        if (errors.Count > 0)
+        {
+            Console.Error.WriteLine("❌ Invalid arguments:");
+            foreach (var error in errors)
+                Console.Error.WriteLine($"  - {error}");
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("Usage: drizzle4net apply --provider pgsql --connection \"Host=...\" [options]");
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("Options:");
+            Console.Error.WriteLine("  --provider, -p       Database provider (pgsql, mysql, mssql, sqlite, oracle)");
+            Console.Error.WriteLine("  --connection, -c     Database connection string");
+            Console.Error.WriteLine("  --output, -o         Migrations directory (default: ./Migrations/{provider})");
+            Console.Error.WriteLine("  --migration-schema   Schema for migration tracking table (default: public)");
+            Console.Error.WriteLine("  --migration-table    Table name for migration tracking (default: __Migrations)");
+            return 1;
+        }
+
+        // Execute synchronously — wait for the async task
+        return ApplyCommand.Execute(options).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Generates a random migration name using adjective_noun[ noun] format,
+    /// inspired by Drizzle ORM's naming convention.
+    /// Examples: "mature_champions", "fuzzy_hitman", "busy_professor_monster"
+    /// </summary>
+    private static string GenerateRandomMigrationName()
+    {
+        var random = Random.Shared;
+        var adj = _adjectives[random.Next(_adjectives.Length)];
+        var noun1 = _nouns[random.Next(_nouns.Length)];
+        var noun2 = _nouns[random.Next(_nouns.Length)];
+
+        // Sometimes 2 words (adj_noun), sometimes 3 words (adj_noun_noun)
+        return random.Next(2) == 0
+            ? $"{adj}_{noun1}"
+            : $"{adj}_{noun1}_{noun2}";
+    }
+
+    private static readonly string[] _adjectives =
+    [
+        "aged", "ancient", "autumn", "billowing", "bitter", "black", "blue", "bold",
+        "broad", "broken", "calm", "cold", "cool", "crimson", "curly", "damp",
+        "dark", "dawn", "delicate", "divine", "dry", "empty", "falling", "fancy",
+        "flat", "floral", "fragrant", "frosty", "fuzzy", "gentle", "green", "growing",
+        "hidden", "holy", "icy", "jolly", "late", "lingering", "little", "lively",
+        "long", "lucky", "misty", "mature", "morning", "muddy", "mute", "nameless",
+        "noisy", "odd", "old", "orange", "patient", "plain", "polished", "proud",
+        "purple", "quiet", "rapid", "raspy", "red", "restless", "rough", "round",
+        "royal", "shiny", "shrill", "shy", "silent", "small", "snowy", "solemn",
+        "spring", "square", "steep", "still", "summer", "super", "sweet", "thawing",
+        "tight", "tiny", "twilight", "wandering", "warm", "weathered", "white", "wild",
+        "winter", "wispy", "young"
+    ];
+
+    private static readonly string[] _nouns =
+    [
+        "waterfall", "river", "breeze", "moon", "rain", "wind", "sea", "morning",
+        "snow", "lake", "sunset", "pine", "shadow", "leaf", "dawn", "glitter",
+        "forest", "hill", "cloud", "meadow", "sun", "glade", "bird", "brook",
+        "butterfly", "bush", "campfire", "canyon", "cave", "coast", "creek", "desert",
+        "diamond", "dust", "feather", "fire", "flower", "fog", "frog", "frost",
+        "garden", "gem", "grass", "haze", "island", "lagoon", "light", "mountain",
+        "mushroom", "oak", "ocean", "peak", "petal", "pond", "rainbow", "reed",
+        "rift", "rock", "sand", "sapphire", "savanna", "seed", "sky", "spring",
+        "star", "storm", "sunlight", "swamp", "thorn", "thunder", "trail", "valley",
+        "violet", "water", "wave", "wildflower", "wood", "castle", "king", "queen",
+        "knight", "wizard", "dragon", "phoenix", "tiger", "lion", "eagle", "hawk",
+        "falcon", "wolf", "bear", "deer", "fox", "rabbit", "horse", "panda",
+        "koala", "dolphin", "whale", "shark", "turtle", "snake", "spider", "scorpion",
+        "raven", "crow", "swan", "owl", "heron", "crane", "robin", "finch",
+        "captain", "professor", "champion", "hitman", "midlands", "monster"
+    ];
+
     private static void PrintUsage()
     {
         Console.WriteLine("Drizzle4Dotnet CLI - SQL Migration Generator");
@@ -450,6 +586,7 @@ public class Program
         Console.WriteLine("Usage:");
         Console.WriteLine("  drizzle4net generate [options]    Generate a new SQL migration script");
         Console.WriteLine("  drizzle4net snapshot [options]    Generate a schema snapshot JSON");
+        Console.WriteLine("  drizzle4net apply [options]       Apply pending migrations to database");
         Console.WriteLine("  drizzle4net status [options]      Show migration journal status");
         Console.WriteLine("  drizzle4net debug [options]       Print detailed schema information");
         Console.WriteLine("  drizzle4net --help                Show this help message");
@@ -462,12 +599,22 @@ public class Program
         Console.WriteLine();
         Console.WriteLine("  drizzle4net generate --provider pgsql --name v1 --types \"Namespace.TableA,Namespace.TableB\"");
         Console.WriteLine("  drizzle4net generate --provider pgsql --name v1                (auto-discovers all table types)");
+        Console.WriteLine("  drizzle4net generate --provider pgsql                          (auto-name + auto-types)");
         Console.WriteLine();
         Console.WriteLine("Snapshot Command:");
         Console.WriteLine("  Creates a snapshot JSON from ORM table types without generating SQL.");
         Console.WriteLine();
         Console.WriteLine("  drizzle4net snapshot --provider pgsql --name v1 --types \"Namespace.TableA\" --output ./schema.json");
         Console.WriteLine("  drizzle4net snapshot --provider pgsql --name v1                  (auto-discovers all table types)");
+        Console.WriteLine("  drizzle4net snapshot --provider pgsql                            (auto-name + auto-types)");
+        Console.WriteLine();
+        Console.WriteLine("Apply Command:");
+        Console.WriteLine("  Applies pending SQL migration scripts from the journal to a database.");
+        Console.WriteLine("  Uses MigrationManager to track applied migrations in a configurable table.");
+        Console.WriteLine("  Validates checksums from journal.json against SQL file content.");
+        Console.WriteLine();
+        Console.WriteLine("  drizzle4net apply --provider pgsql --connection \"Host=localhost;Database=mydb\"");
+        Console.WriteLine("  drizzle4net apply --provider pgsql --connection \"...\" --migration-schema myapp --migration-table __SchemaMigrations");
         Console.WriteLine();
         Console.WriteLine("Status Command:");
         Console.WriteLine("  Shows the migration journal with all tracked migrations and snapshots.");
@@ -477,11 +624,15 @@ public class Program
         Console.WriteLine("Options:");
         Console.WriteLine("  --provider, -p    Database provider: pgsql, mysql, mssql, sqlite, oracle");
         Console.WriteLine("  --name, -n        Migration or snapshot name");
+        Console.WriteLine("                    (if omitted, a random name is auto-generated)");
         Console.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
         Console.WriteLine("                    (if omitted, auto-discovers all table types for the provider)");
         Console.WriteLine("  --output, -o      Output directory or file path");
         Console.WriteLine("  --snapshot, -s    Path to current snapshot JSON (for generate)");
         Console.WriteLine("  --assembly, -a    Path to assembly containing table types");
+        Console.WriteLine("  --connection, -c  Database connection string (for apply)");
+        Console.WriteLine("  --migration-schema Schema for migration tracking table (default: public)");
+        Console.WriteLine("  --migration-table  Table name for migration tracking (default: __Migrations)");
         Console.WriteLine("  --verbose, -V     Enable verbose output");
     }
 
