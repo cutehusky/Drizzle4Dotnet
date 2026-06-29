@@ -12,6 +12,7 @@ public static class StatusCommand
 {
     /// <summary>
     /// Maps provider names to known DbConnection type names for automatic creation.
+    /// Used to instantiate the correct ADO.NET connection for checking database migration status.
     /// </summary>
     private static readonly Dictionary<string, string> ConnectionTypeMap = new()
     {
@@ -22,14 +23,21 @@ public static class StatusCommand
         ["oracle"] = "Oracle.ManagedDataAccess.Client.OracleConnection, Oracle.ManagedDataAccess",
     };
 
+    /// <summary>
+    /// Executes the status display: loads the migration journal from the output directory,
+    /// displays all tracked migrations with their metadata, and optionally connects to the
+    /// database to show applied vs. pending migration status and checksum verification.
+    /// </summary>
+    /// <param name="options">Parsed CLI options including output directory, provider, connection string, etc.</param>
+    /// <returns>Exit code: 0 on success, 1 on error.</returns>
     public static async Task<int> Execute(StatusOptions options)
     {
         try
         {
             var outputDir = Path.GetFullPath(options.OutputDir);
             var journalPath = Path.Combine(outputDir, "migration-journal.json");
-            Console.WriteLine($"📋 Migration Status");
-            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            Console.WriteLine($"  📋 Migration Status");
+            CliOptionParser.PrintSeparator();
 
             // --- Journal status ---
             if (!File.Exists(journalPath))
@@ -68,13 +76,13 @@ public static class StatusCommand
                     }
                 }
 
-                Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                CliOptionParser.PrintSeparator();
 
                 // --- Database status (if connection string provided) ---
                 if (!string.IsNullOrWhiteSpace(options.ConnectionString))
                 {
                     Console.WriteLine();
-                    Console.WriteLine($"🔌 Checking database status...");
+                    Console.WriteLine($"  🔌 Checking database status...");
 
                     // Resolve provider connection type
                     var provider = options.Provider.ToLowerInvariant();
@@ -176,22 +184,26 @@ public static class StatusCommand
                 }
             }
 
-            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            CliOptionParser.PrintSeparator();
 
             return 0;
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"❌ Error: {ex.Message}");
+            Console.Error.WriteLine($"  Error: {ex.Message}");
             if (options.Verbose)
-                Console.Error.WriteLine(ex.StackTrace);
+                Console.Error.WriteLine($"  {ex.StackTrace}");
             return 1;
         }
     }
 
     /// <summary>
     /// Creates a DbConnection from the given assembly-qualified type name and connection string.
+    /// Attempts to resolve the type via Type.GetType first, then falls back to scanning loaded assemblies.
     /// </summary>
+    /// <param name="connectionTypeName">Assembly-qualified type name (e.g., "Npgsql.NpgsqlConnection, Npgsql").</param>
+    /// <param name="connectionString">Database connection string.</param>
+    /// <returns>An initialized DbConnection instance with the connection string set.</returns>
     private static DbConnection CreateConnection(string connectionTypeName, string connectionString)
     {
         var type = Type.GetType(connectionTypeName);

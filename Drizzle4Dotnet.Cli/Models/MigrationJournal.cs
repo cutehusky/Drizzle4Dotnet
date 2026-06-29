@@ -4,40 +4,42 @@ namespace Drizzle4Dotnet.Cli.Models;
 
 /// <summary>
 /// Represents the journal entry for a single migration.
-/// This is the metadata stored in the journal JSON file.
+/// Stores metadata in the migration-journal.json file including
+/// the migration name, SQL filenames, checksum, snapshot reference, and description.
 /// </summary>
 public class MigrationJournalEntry
 {
-    /// <summary>The unique migration name/version.</summary>
+    /// <summary>The unique migration name or version identifier.</summary>
     public string Name { get; set; } = "";
 
-    /// <summary>Timestamp when the migration was generated.</summary>
+    /// <summary>Timestamp (UTC) when the migration was generated.</summary>
     public DateTime GeneratedAt { get; set; }
 
-    /// <summary>SHA256 checksum of the migration SQL content.</summary>
+    /// <summary>SHA256 checksum of the up SQL migration content, used for integrity verification.</summary>
     public string Checksum { get; set; } = "";
 
-    /// <summary>The filename of the SQL migration script.</summary>
+    /// <summary>Filename of the up SQL migration script.</summary>
     public string SqlFileName { get; set; } = "";
 
-    /// <summary>The filename of the snapshot JSON (state after this migration).</summary>
+    /// <summary>Filename of the snapshot JSON file capturing the schema state after this migration.</summary>
     public string SnapshotFileName { get; set; } = "";
 
-    /// <summary>Description of what this migration does.</summary>
+    /// <summary>Description of the schema changes this migration makes.</summary>
     public string Description { get; set; } = "";
 
     /// <summary>
     /// Sequential incremental ID for this migration (e.g., "0001", "0002").
-    /// Used in file naming to ensure uniqueness and ordering.
+    /// Used in file naming to ensure uniqueness and ordering of migrations.
     /// </summary>
     public string IncrementalId { get; set; } = "";
 
-    /// <summary>The filename of the rollback (down) SQL migration script.</summary>
+    /// <summary>Filename of the rollback (down) SQL migration script.</summary>
     public string DownSqlFileName { get; set; } = "";
 
     /// <summary>
-    /// Validates that all required fields have values.
-    /// Throws if any required field is missing or empty.
+    /// Validates that all required fields (Name, IncrementalId, Checksum, SqlFileName,
+    /// DownSqlFileName, SnapshotFileName) have non-empty values.
+    /// Throws an InvalidOperationException if any required field is missing.
     /// </summary>
     public void Validate()
     {
@@ -72,7 +74,7 @@ public class MigrationJournal
     public List<MigrationJournalEntry> Migrations { get; set; } = new();
 
     /// <summary>
-    /// Serializes the journal to a JSON string.
+    /// Serializes the journal to a JSON string with indentation for readability.
     /// </summary>
     public string Serialize()
     {
@@ -94,6 +96,9 @@ public class MigrationJournal
         return journal;
     }
 
+    /// <summary>
+    /// Validates the journal by checking that the Provider is set and all migration entries are valid.
+    /// </summary>
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(Provider))
@@ -104,7 +109,7 @@ public class MigrationJournal
     }
 
     /// <summary>
-    /// Loads the journal from a file path, or returns a new empty journal if the file doesn't exist.
+    /// Loads the journal from a file path, or returns a new empty journal if the file does not exist.
     /// Validates all entries after loading.
     /// </summary>
     public static MigrationJournal Load(string filePath)
@@ -117,7 +122,7 @@ public class MigrationJournal
     }
 
     /// <summary>
-    /// Saves the journal to a file path.
+    /// Saves the journal to a file path as indented JSON. Creates the directory if it does not exist.
     /// </summary>
     public void Save(string filePath)
     {

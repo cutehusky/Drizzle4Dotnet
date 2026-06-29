@@ -5,6 +5,8 @@ namespace Drizzle4Dotnet.Cli;
 
 /// <summary>
 /// Drizzle4Dotnet CLI - SQL migration script and journal JSON generator.
+/// Supports generate, snapshot, apply, status, and debug commands
+/// for multiple database providers (pgsql, mysql, mssql, sqlite, oracle).
 /// </summary>
 /// <remarks>
 /// Usage:
@@ -19,6 +21,12 @@ namespace Drizzle4Dotnet.Cli;
 /// </remarks>
 public class Program
 {
+    /// <summary>
+    /// Entry point for the Drizzle4Dotnet CLI application.
+    /// Parses the command name from the first argument and dispatches to the appropriate handler.
+    /// </summary>
+    /// <param name="args">Command-line arguments. The first argument is the command name.</param>
+    /// <returns>Exit code: 0 on success, 1 on error.</returns>
     public static int Main(string[] args)
     {
         if (args.Length == 0)
@@ -66,12 +74,16 @@ public class Program
                 return 0;
 
             default:
-                Console.Error.WriteLine($"Unknown command: '{command}'");
+                Console.Error.WriteLine($"Error: Unknown command: '{command}'");
                 Console.Error.WriteLine("Use 'drizzle4net --help' to see available commands.");
                 return 1;
         }
     }
 
+    /// <summary>
+    /// Handles the 'generate' command: parses CLI options, resolves assembly/project paths,
+    /// and delegates to GenerateCommand.Execute().
+    /// </summary>
     private static int HandleGenerate(string[] args)
     {
         var options = new GenerateOptions();
@@ -84,48 +96,43 @@ public class Program
                 case "--provider":
                 case "-p":
                     if (++i < args.Length) options.Provider = args[i];
-                    else errors.Add("--provider requires a value");
+                    else errors.Add("'--provider' requires a value");
                     break;
 
                 case "--name":
                 case "-n":
                     if (++i < args.Length) options.MigrationName = args[i];
-                    else errors.Add("--name requires a value");
+                    else errors.Add("'--name' requires a value");
                     break;
 
                 case "--types":
                 case "-t":
-                    if (++i < args.Length)
-                    {
-                        options.TableTypes = args[i]
-                            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                            .ToList();
-                    }
-                    else errors.Add("--types requires a value");
+                    if (++i < args.Length) options.TableTypes = CliOptionParser.ParseTypeList(args[i]);
+                    else errors.Add("'--types' requires a value");
                     break;
 
                 case "--output":
                 case "-o":
                     if (++i < args.Length) options.OutputDir = args[i];
-                    else errors.Add("--output requires a value");
+                    else errors.Add("'--output' requires a value");
                     break;
 
                 case "--snapshot":
                 case "-s":
                     if (++i < args.Length) options.SnapshotPath = args[i];
-                    else errors.Add("--snapshot requires a value");
+                    else errors.Add("'--snapshot' requires a value");
                     break;
 
                 case "--assembly":
                 case "-a":
                     if (++i < args.Length) options.AssemblyPath = args[i];
-                    else errors.Add("--assembly requires a value");
+                    else errors.Add("'--assembly' requires a value");
                     break;
 
                 case "--project":
                 case "--proj":
                     if (++i < args.Length) options.ProjectPath = args[i];
-                    else errors.Add("--project requires a value");
+                    else errors.Add("'--project' requires a value");
                     break;
 
                 case "--verbose":
@@ -143,39 +150,36 @@ public class Program
         if (!ResolveAssemblyPath(options, errors))
             return 1;
 
-        // Validate required options
+        // Auto-generate name if not specified
         if (string.IsNullOrWhiteSpace(options.MigrationName))
         {
-            // Generate a random migration name when --name is omitted
             options.MigrationName = GenerateRandomMigrationName();
             Console.WriteLine($"  Name:         {options.MigrationName} (auto-generated)");
         }
 
         if (errors.Count > 0)
         {
-            Console.Error.WriteLine("❌ Invalid arguments:");
-            foreach (var error in errors)
-                Console.Error.WriteLine($"  - {error}");
-            Console.Error.WriteLine();
-            Console.Error.WriteLine("Usage: drizzle4net generate --provider pgsql [options]");
+            CliOptionParser.PrintErrors(errors, "generate --provider pgsql [options]");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Options:");
-            Console.Error.WriteLine("  --provider, -p    Database provider (pgsql, mysql, mssql, sqlite, oracle)");
-            Console.Error.WriteLine("  --name, -n        Migration name (e.g., 'v1.0.0', 'add_users_table')");
-            Console.Error.WriteLine("                    (if omitted, a random name is auto-generated)");
-            Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
-            Console.Error.WriteLine("                    (if omitted, auto-discovers all table types for the provider)");
-            Console.Error.WriteLine("  --output, -o      Output directory (default: ./Migrations/{provider})");
-            Console.Error.WriteLine("  --snapshot, -s    Path to current snapshot JSON file");
-            Console.Error.WriteLine("  --project, --proj Path to .csproj file (builds automatically)");
-            Console.Error.WriteLine("  --assembly, -a    Path to pre-built assembly DLL");
-            Console.Error.WriteLine("  --verbose, -V     Enable verbose output");
+            Console.Error.WriteLine("  --provider, -p    {0}", CliOptionParser.Descriptions.Provider);
+            Console.Error.WriteLine("  --name, -n        {0}", CliOptionParser.Descriptions.Name);
+            Console.Error.WriteLine("  --types, -t       {0}", CliOptionParser.Descriptions.Types);
+            Console.Error.WriteLine("  --output, -o      {0}  (default: ./Migrations/{{provider}})", CliOptionParser.Descriptions.Output);
+            Console.Error.WriteLine("  --snapshot, -s    Path to existing snapshot JSON file for diff comparison");
+            Console.Error.WriteLine("  --project, --proj {0}", CliOptionParser.Descriptions.Project);
+            Console.Error.WriteLine("  --assembly, -a    {0}", CliOptionParser.Descriptions.Assembly);
+            Console.Error.WriteLine("  --verbose, -V     {0}", CliOptionParser.Descriptions.Verbose);
             return 1;
         }
 
         return GenerateCommand.Execute(options);
     }
 
+    /// <summary>
+    /// Handles the 'snapshot' command: parses CLI options, resolves assembly/project paths,
+    /// and delegates to SnapshotCommand.Execute().
+    /// </summary>
     private static int HandleSnapshot(string[] args)
     {
         var options = new SnapshotOptions();
@@ -188,42 +192,37 @@ public class Program
                 case "--provider":
                 case "-p":
                     if (++i < args.Length) options.Provider = args[i];
-                    else errors.Add("--provider requires a value");
+                    else errors.Add("'--provider' requires a value");
                     break;
 
                 case "--name":
                 case "-n":
                     if (++i < args.Length) options.SnapshotName = args[i];
-                    else errors.Add("--name requires a value");
+                    else errors.Add("'--name' requires a value");
                     break;
 
                 case "--types":
                 case "-t":
-                    if (++i < args.Length)
-                    {
-                        options.TableTypes = args[i]
-                            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                            .ToList();
-                    }
-                    else errors.Add("--types requires a value");
+                    if (++i < args.Length) options.TableTypes = CliOptionParser.ParseTypeList(args[i]);
+                    else errors.Add("'--types' requires a value");
                     break;
 
                 case "--output":
                 case "-o":
                     if (++i < args.Length) options.OutputFile = args[i];
-                    else errors.Add("--output requires a value");
+                    else errors.Add("'--output' requires a value");
                     break;
 
                 case "--assembly":
                 case "-a":
                     if (++i < args.Length) options.AssemblyPath = args[i];
-                    else errors.Add("--assembly requires a value");
+                    else errors.Add("'--assembly' requires a value");
                     break;
 
                 case "--project":
                 case "--proj":
                     if (++i < args.Length) options.ProjectPath = args[i];
-                    else errors.Add("--project requires a value");
+                    else errors.Add("'--project' requires a value");
                     break;
 
                 case "--verbose":
@@ -241,10 +240,9 @@ public class Program
         if (!ResolveAssemblyPath(options, errors))
             return 1;
 
-        // Validate required options
+        // Auto-generate name if not specified
         if (string.IsNullOrWhiteSpace(options.SnapshotName))
         {
-            // Generate a random snapshot name when --name is omitted
             options.SnapshotName = GenerateRandomMigrationName();
             Console.WriteLine($"  Name:         {options.SnapshotName} (auto-generated)");
         }
@@ -256,22 +254,16 @@ public class Program
 
         if (errors.Count > 0)
         {
-            Console.Error.WriteLine("❌ Invalid arguments:");
-            foreach (var error in errors)
-                Console.Error.WriteLine($"  - {error}");
-            Console.Error.WriteLine();
-            Console.Error.WriteLine("Usage: drizzle4net snapshot --provider pgsql [options]");
+            CliOptionParser.PrintErrors(errors, "snapshot --provider pgsql [options]");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Options:");
-            Console.Error.WriteLine("  --provider, -p    Database provider (pgsql, mysql, mssql, sqlite, oracle)");
-            Console.Error.WriteLine("  --name, -n        Snapshot name (e.g., 'v1.0.0')");
-            Console.Error.WriteLine("                    (if omitted, a random name is auto-generated)");
-            Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
-            Console.Error.WriteLine("                    (if omitted, auto-discovers all table types for the provider)");
-            Console.Error.WriteLine("  --output, -o      Output file path (default: ./snapshot.json)");
-            Console.Error.WriteLine("  --project, --proj Path to .csproj file (builds automatically)");
-            Console.Error.WriteLine("  --assembly, -a    Path to pre-built assembly DLL");
-            Console.Error.WriteLine("  --verbose, -V     Enable verbose output");
+            Console.Error.WriteLine("  --provider, -p    {0}", CliOptionParser.Descriptions.Provider);
+            Console.Error.WriteLine("  --name, -n        Snapshot name; if omitted, a random name is auto-generated");
+            Console.Error.WriteLine("  --types, -t       {0}", CliOptionParser.Descriptions.Types);
+            Console.Error.WriteLine("  --output, -o      {0}  (default: ./snapshot.json)", CliOptionParser.Descriptions.OutputFile);
+            Console.Error.WriteLine("  --project, --proj {0}", CliOptionParser.Descriptions.Project);
+            Console.Error.WriteLine("  --assembly, -a    {0}", CliOptionParser.Descriptions.Assembly);
+            Console.Error.WriteLine("  --verbose, -V     {0}", CliOptionParser.Descriptions.Verbose);
             return 1;
         }
 
@@ -281,8 +273,12 @@ public class Program
     /// <summary>
     /// Resolves the assembly path from either --project (builds the project) or --assembly (direct path).
     /// Modifies the options object in place, setting AssemblyPath if --project was provided.
-    /// Returns false if there was a resolution error.
+    /// If neither is provided, attempts to auto-discover a single .csproj in the current directory.
     /// </summary>
+    /// <typeparam name="T">Options type that must have ProjectPath and AssemblyPath properties.</typeparam>
+    /// <param name="options">The options object to populate.</param>
+    /// <param name="errors">List to collect error messages.</param>
+    /// <returns>True if assembly was resolved successfully; false if errors occurred.</returns>
     private static bool ResolveAssemblyPath<T>(T options, List<string> errors) where T : class
     {
         // Try to get ProjectPath and AssemblyPath via reflection (works for all options types)
@@ -339,6 +335,9 @@ public class Program
         return true;
     }
 
+    /// <summary>
+    /// Handles the 'status' command: parses CLI options and delegates to StatusCommand.Execute().
+    /// </summary>
     private static int HandleStatus(string[] args)
     {
         var options = new StatusOptions();
@@ -351,29 +350,29 @@ public class Program
                 case "--output":
                 case "-o":
                     if (++i < args.Length) options.OutputDir = args[i];
-                    else errors.Add("--output requires a value");
+                    else errors.Add("'--output' requires a value");
                     break;
 
                 case "--provider":
                 case "-p":
                     if (++i < args.Length) options.Provider = args[i];
-                    else errors.Add("--provider requires a value");
+                    else errors.Add("'--provider' requires a value");
                     break;
 
                 case "--connection":
                 case "-c":
                     if (++i < args.Length) options.ConnectionString = args[i];
-                    else errors.Add("--connection requires a value");
+                    else errors.Add("'--connection' requires a value");
                     break;
 
                 case "--migration-schema":
                     if (++i < args.Length) options.MigrationSchema = args[i];
-                    else errors.Add("--migration-schema requires a value");
+                    else errors.Add("'--migration-schema' requires a value");
                     break;
 
                 case "--migration-table":
                     if (++i < args.Length) options.MigrationTable = args[i];
-                    else errors.Add("--migration-table requires a value");
+                    else errors.Add("'--migration-table' requires a value");
                     break;
 
                 case "--verbose":
@@ -392,15 +391,17 @@ public class Program
 
         if (errors.Count > 0)
         {
-            Console.Error.WriteLine("❌ Invalid arguments:");
-            foreach (var error in errors)
-                Console.Error.WriteLine($"  - {error}");
+            CliOptionParser.PrintErrors(errors, "status --output ./Migrations/{provider} [options]");
             return 1;
         }
 
         return StatusCommand.Execute(options).GetAwaiter().GetResult();
     }
 
+    /// <summary>
+    /// Handles the 'debug' command: parses CLI options, resolves assembly/project paths,
+    /// and delegates to DebugCommand.Execute().
+    /// </summary>
     private static int HandleDebug(string[] args)
     {
         var options = new DebugOptions();
@@ -413,30 +414,25 @@ public class Program
                 case "--provider":
                 case "-p":
                     if (++i < args.Length) options.Provider = args[i];
-                    else errors.Add("--provider requires a value");
+                    else errors.Add("'--provider' requires a value");
                     break;
 
                 case "--types":
                 case "-t":
-                    if (++i < args.Length)
-                    {
-                        options.TableTypes = args[i]
-                            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                            .ToList();
-                    }
-                    else errors.Add("--types requires a value");
+                    if (++i < args.Length) options.TableTypes = CliOptionParser.ParseTypeList(args[i]);
+                    else errors.Add("'--types' requires a value");
                     break;
 
                 case "--assembly":
                 case "-a":
                     if (++i < args.Length) options.AssemblyPath = args[i];
-                    else errors.Add("--assembly requires a value");
+                    else errors.Add("'--assembly' requires a value");
                     break;
 
                 case "--project":
                 case "--proj":
                     if (++i < args.Length) options.ProjectPath = args[i];
-                    else errors.Add("--project requires a value");
+                    else errors.Add("'--project' requires a value");
                     break;
 
                 case "--verbose":
@@ -456,25 +452,24 @@ public class Program
 
         if (errors.Count > 0)
         {
-            Console.Error.WriteLine("❌ Invalid arguments:");
-            foreach (var error in errors)
-                Console.Error.WriteLine($"  - {error}");
-            Console.Error.WriteLine();
-            Console.Error.WriteLine("Usage: drizzle4net debug --provider pgsql [options]");
+            CliOptionParser.PrintErrors(errors, "debug --provider pgsql [options]");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Options:");
-            Console.Error.WriteLine("  --provider, -p    Database provider (pgsql, mysql, mssql, sqlite, oracle)");
-            Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
-            Console.Error.WriteLine("                    (if omitted, auto-discovers all table types for the provider)");
-            Console.Error.WriteLine("  --project, --proj Path to .csproj file (builds automatically)");
-            Console.Error.WriteLine("  --assembly, -a    Path to pre-built assembly DLL");
-            Console.Error.WriteLine("  --verbose, -V     Enable verbose output");
+            Console.Error.WriteLine("  --provider, -p    {0}", CliOptionParser.Descriptions.Provider);
+            Console.Error.WriteLine("  --types, -t       {0}", CliOptionParser.Descriptions.Types);
+            Console.Error.WriteLine("  --project, --proj {0}", CliOptionParser.Descriptions.Project);
+            Console.Error.WriteLine("  --assembly, -a    {0}", CliOptionParser.Descriptions.Assembly);
+            Console.Error.WriteLine("  --verbose, -V     {0}", CliOptionParser.Descriptions.Verbose);
             return 1;
         }
 
         return DebugCommand.Execute(options);
     }
 
+    /// <summary>
+    /// Handles the 'apply' command: parses CLI options, validates required --connection,
+    /// and delegates to ApplyCommand.Execute().
+    /// </summary>
     private static int HandleApply(string[] args)
     {
         var options = new ApplyOptions();
@@ -487,29 +482,34 @@ public class Program
                 case "--provider":
                 case "-p":
                     if (++i < args.Length) options.Provider = args[i];
-                    else errors.Add("--provider requires a value");
+                    else errors.Add("'--provider' requires a value");
                     break;
 
                 case "--connection":
                 case "-c":
                     if (++i < args.Length) options.ConnectionString = args[i];
-                    else errors.Add("--connection requires a value");
+                    else errors.Add("'--connection' requires a value");
                     break;
 
                 case "--output":
                 case "-o":
                     if (++i < args.Length) options.OutputDir = args[i];
-                    else errors.Add("--output requires a value");
+                    else errors.Add("'--output' requires a value");
                     break;
 
                 case "--migration-schema":
                     if (++i < args.Length) options.MigrationSchema = args[i];
-                    else errors.Add("--migration-schema requires a value");
+                    else errors.Add("'--migration-schema' requires a value");
                     break;
 
                 case "--migration-table":
                     if (++i < args.Length) options.MigrationTable = args[i];
-                    else errors.Add("--migration-table requires a value");
+                    else errors.Add("'--migration-table' requires a value");
+                    break;
+
+                case "--verbose":
+                case "-V":
+                    options.Verbose = true;
                     break;
 
                 default:
@@ -519,22 +519,19 @@ public class Program
         }
 
         if (string.IsNullOrWhiteSpace(options.ConnectionString))
-            errors.Add("--connection (-c) is required (database connection string)");
+            errors.Add("'--connection' (-c) is required (database connection string)");
 
         if (errors.Count > 0)
         {
-            Console.Error.WriteLine("❌ Invalid arguments:");
-            foreach (var error in errors)
-                Console.Error.WriteLine($"  - {error}");
-            Console.Error.WriteLine();
-            Console.Error.WriteLine("Usage: drizzle4net apply --provider pgsql --connection \"Host=...\" [options]");
+            CliOptionParser.PrintErrors(errors, "apply --provider pgsql --connection \"Host=...\" [options]");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Options:");
-            Console.Error.WriteLine("  --provider, -p       Database provider (pgsql, mysql, mssql, sqlite, oracle)");
-            Console.Error.WriteLine("  --connection, -c     Database connection string");
-            Console.Error.WriteLine("  --output, -o         Migrations directory (default: ./Migrations/{provider})");
-            Console.Error.WriteLine("  --migration-schema   Schema for migration tracking table (default: public)");
-            Console.Error.WriteLine("  --migration-table    Table name for migration tracking (default: __Migrations)");
+            Console.Error.WriteLine("  --provider, -p       {0}", CliOptionParser.Descriptions.Provider);
+            Console.Error.WriteLine("  --connection, -c     {0}", CliOptionParser.Descriptions.Connection);
+            Console.Error.WriteLine("  --output, -o         {0}  (default: ./Migrations/{{provider}})", CliOptionParser.Descriptions.Output);
+            Console.Error.WriteLine("  --migration-schema   {0}", CliOptionParser.Descriptions.MigrationSchema);
+            Console.Error.WriteLine("  --migration-table    {0}", CliOptionParser.Descriptions.MigrationTable);
+            Console.Error.WriteLine("  --verbose, -V        {0}", CliOptionParser.Descriptions.Verbose);
             return 1;
         }
 
@@ -545,8 +542,9 @@ public class Program
     /// <summary>
     /// Generates a random migration name using adjective_noun[ noun] format,
     /// inspired by Drizzle ORM's naming convention.
-    /// Examples: "mature_champions", "fuzzy_hitman", "busy_professor_monster"
+    /// Examples: "mature_champions", "fuzzy_hitman", "busy_professor_monster".
     /// </summary>
+    /// <returns>A randomly generated migration name string.</returns>
     private static string GenerateRandomMigrationName()
     {
         var random = Random.Shared;
@@ -595,6 +593,9 @@ public class Program
         "captain", "professor", "champion", "hitman", "midlands", "monster"
     ];
 
+    /// <summary>
+    /// Prints the full usage/help message to stdout, showing all available commands and options.
+    /// </summary>
     private static void PrintUsage()
     {
         Console.WriteLine("Drizzle4Dotnet CLI - SQL Migration Generator");
@@ -641,20 +642,21 @@ public class Program
         Console.WriteLine("  drizzle4net status --provider pgsql --connection \"...\" --migration-schema myapp --migration-table __SchemaMigrations");
         Console.WriteLine();
         Console.WriteLine("Options:");
-        Console.WriteLine("  --provider, -p    Database provider: pgsql, mysql, mssql, sqlite, oracle");
-        Console.WriteLine("  --name, -n        Migration or snapshot name");
-        Console.WriteLine("                    (if omitted, a random name is auto-generated)");
-        Console.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
-        Console.WriteLine("                    (if omitted, auto-discovers all table types for the provider)");
-        Console.WriteLine("  --output, -o      Output directory or file path");
-        Console.WriteLine("  --snapshot, -s    Path to current snapshot JSON (for generate)");
-        Console.WriteLine("  --assembly, -a    Path to assembly containing table types");
-        Console.WriteLine("  --connection, -c  Database connection string (for apply)");
-        Console.WriteLine("  --migration-schema Schema for migration tracking table (default: public)");
-        Console.WriteLine("  --migration-table  Table name for migration tracking (default: __Migrations)");
-        Console.WriteLine("  --verbose, -V     Enable verbose output");
+        Console.WriteLine("  --provider, -p    {0}", CliOptionParser.Descriptions.Provider);
+        Console.WriteLine("  --name, -n        {0}", CliOptionParser.Descriptions.Name);
+        Console.WriteLine("  --types, -t       {0}", CliOptionParser.Descriptions.Types);
+        Console.WriteLine("  --output, -o      Output directory or file path (use {{provider}} placeholder for provider name)");
+        Console.WriteLine("  --snapshot, -s    Path to existing snapshot JSON file (for generate)");
+        Console.WriteLine("  --assembly, -a    {0}", CliOptionParser.Descriptions.Assembly);
+        Console.WriteLine("  --connection, -c  {0}", CliOptionParser.Descriptions.Connection);
+        Console.WriteLine("  --migration-schema {0}", CliOptionParser.Descriptions.MigrationSchema);
+        Console.WriteLine("  --migration-table  {0}", CliOptionParser.Descriptions.MigrationTable);
+        Console.WriteLine("  --verbose, -V     {0}", CliOptionParser.Descriptions.Verbose);
     }
 
+    /// <summary>
+    /// Prints the CLI version information to stdout.
+    /// </summary>
     private static void PrintVersion()
     {
         var version = typeof(Program).Assembly.GetName().Version;

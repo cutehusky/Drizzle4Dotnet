@@ -5,7 +5,6 @@ using Drizzle4Dotnet.Cli.Models;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Schema.Migration;
-using Drizzle4Dotnet.Core.Schema.Migration.Query;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.PgSql;
 using Drizzle4Dotnet.MySql;
@@ -48,11 +47,17 @@ public record MigrationGenerationResult(
 /// </summary>
 public class MigrationGenerator
 {
-    // Static guard to prevent duplicate reflection debug output
+    // Static guard to prevent duplicate reflection debug output when verbose
     private static readonly HashSet<string> ReflectionDebugPrinted = new();
 
     private readonly DatabaseProvider _provider;
     private readonly Type _dialectType;
+
+    /// <summary>
+    /// Enables verbose debug output, including detailed reflection information
+    /// for each table type during schema extraction.
+    /// </summary>
+    public bool Verbose { get; set; }
 
     
     public static DatabaseProvider ParseCliOptionProvider(string provider)
@@ -449,8 +454,9 @@ public class MigrationGenerator
                     $"Ensure the assembly is referenced and the type name is correct.");
             }
 
-            // DEBUG: Print reflection details when verbose
-            PrintReflectionDebug(type, _dialectType);
+            // Print reflection details only when verbose mode is enabled
+            if (Verbose)
+                PrintReflectionDebug(type, _dialectType);
 
             // Build the closed generic method: OrmSchemaExporter.GetTableDefinition<TTable, TDialect>()
             var method = exporterType.GetMethods(BindingFlags.Public | BindingFlags.Static)
@@ -674,16 +680,15 @@ public class MigrationGenerator
         var tableAttrs = tableType.GetCustomAttributes(false);
         var tableCustomAttrs = tableAttrs
             .Where(a => a.GetType().Namespace != null
-                && !a.GetType().Namespace.StartsWith("System.")
-                && !a.GetType().Namespace.StartsWith("Microsoft.")
+                && !a.GetType().Namespace!.StartsWith("System.")
+                && !a.GetType().Namespace!.StartsWith("Microsoft.")
                 && a.GetType().Name is not "CompilerGeneratedAttribute"
                 and not "NullableContextAttribute"
                 and not "NullableAttribute")
             .ToList();
 
         // Separate indexes, constraints, and other attributes
-        var indexAttrs = tableCustomAttrs
-            .Where(a => a is IndexAttribute).Cast<IndexAttribute>().ToList();
+        var indexAttrs = tableCustomAttrs.OfType<IndexAttribute>().ToList();
         var constraintAttrs = tableCustomAttrs
             .Where(a => a is ForeignKeyConstraintAttribute
                      or UniqueConstraintAttribute

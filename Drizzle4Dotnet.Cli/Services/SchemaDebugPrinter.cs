@@ -4,11 +4,18 @@ using Drizzle4Dotnet.Core.Schema.Migration;
 namespace Drizzle4Dotnet.Cli.Services;
 
 /// <summary>
-/// Shared helper to print detailed schema information (used by debug command
-/// and by generate/snapshot with --verbose).
+/// Shared helper to print detailed schema information including tables, columns,
+/// data types, constraints, and indexes. Used by the debug command and by
+/// generate/snapshot commands when --verbose is enabled.
 /// </summary>
 public static class SchemaDebugPrinter
 {
+    /// <summary>
+    /// Prints a formatted schema summary to the console, showing all tables with
+    /// their columns (name, type, attributes), constraints, and indexes.
+    /// </summary>
+    /// <param name="label">Section header label (e.g., "📊 Schema Summary").</param>
+    /// <param name="snapshot">The schema snapshot containing table definitions to print.</param>
     public static void PrintSchema(string label, SchemaSnapshot snapshot)
     {
         Console.WriteLine();

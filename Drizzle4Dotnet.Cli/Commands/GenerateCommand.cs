@@ -5,9 +5,16 @@ namespace Drizzle4Dotnet.Cli.Commands;
 /// <summary>
 /// Handles the 'generate' command: generates a new SQL migration script
 /// and updates the migration journal JSON.
+/// Creates .sql files (up/down), snapshot JSON, and updates migration-journal.json.
 /// </summary>
 public static class GenerateCommand
 {
+    /// <summary>
+    /// Executes the migration generation process: creates a schema snapshot from ORM table types,
+    /// diffs against the previous snapshot, generates SQL migration scripts, and updates the journal.
+    /// </summary>
+    /// <param name="options">Parsed CLI options including provider, migration name, table types, etc.</param>
+    /// <returns>Exit code: 0 on success, 1 on error.</returns>
     public static int Execute(GenerateOptions options)
     {
         MigrationLogger? migrationLog = null;
@@ -16,28 +23,33 @@ public static class GenerateCommand
             // Create file logger for this generation
             var logDir = Path.Combine(Directory.GetCurrentDirectory(), "logs");
             migrationLog = new MigrationLogger(logDir);
-            
+
             var provider = MigrationGenerator.ParseCliOptionProvider(options.Provider);
-            var generator = new MigrationGenerator(provider);
+            var generator = new MigrationGenerator(provider)
+            {
+                Verbose = options.Verbose
+            };
 
             // Resolve the output directory and ensure it exists
             var outputDir = ResolveOutputDirectory(options.OutputDir, generator.ProviderName);
             if (!Directory.Exists(outputDir))
                 Directory.CreateDirectory(outputDir);
 
-            Console.WriteLine($"📦 Drizzle4Dotnet Migration Generator");
-            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine($"  Provider:     {generator.ProviderName}");
-            Console.WriteLine($"  Migration:    {options.MigrationName}");
-            Console.WriteLine($"  Output:       {Path.GetFullPath(outputDir)}");
-            Console.WriteLine($"  Tables:       {options.TableTypes.Count} type(s)");
-            Console.WriteLine($"  Log:          {Path.GetFullPath(logDir)}");
-            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            // Standardized banner
+            CliOptionParser.PrintBanner(
+                "📦 Drizzle4Dotnet Migration Generator",
+                ("Provider:", generator.ProviderName),
+                ("Migration:", options.MigrationName),
+                ("Output:", Path.GetFullPath(outputDir)),
+                ("Tables:", $"{options.TableTypes.Count} type(s)"),
+                ("Log:", Path.GetFullPath(logDir))
+            );
 
-            migrationLog.Log("PROVIDER", $"Provider: {generator.ProviderName}");
-            migrationLog.Log("MIGRATION", $"Migration name: {options.MigrationName}");
-            migrationLog.Log("TABLES", $"Table types: {(options.TableTypes.Count > 0 ? string.Join(", ", options.TableTypes) : "auto-discover")}");
-            migrationLog.LogSeparator();
+            CliOptionParser.LogBanner(migrationLog, "Migration Generator",
+                ("PROVIDER", generator.ProviderName),
+                ("MIGRATION", options.MigrationName),
+                ("TABLES", options.TableTypes.Count > 0 ? string.Join(", ", options.TableTypes) : "auto-discover")
+            );
 
             // Find the latest snapshot
             var snapshotPath = options.SnapshotPath;
@@ -66,7 +78,7 @@ public static class GenerateCommand
                 migrationLog.Log("SNAPSHOT", $"Using snapshot: {snapshotPath}");
             }
 
-            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            CliOptionParser.PrintSeparator();
 
             // Print detailed schema info when verbose
             if (options.Verbose)
@@ -91,15 +103,15 @@ public static class GenerateCommand
 
             if (string.IsNullOrEmpty(result.SqlFilePath))
             {
-                Console.WriteLine($"⏭️  No schema changes detected. Nothing to generate.");
+                Console.WriteLine("  ⏭️  No schema changes detected. Nothing to generate.");
                 Console.WriteLine();
                 Console.WriteLine($"  Description:  {result.Description}");
                 Console.WriteLine();
-                migrationLog.Log("NO-CHANGES", $"No schema changes detected. {result.Description}");
+                migrationLog.Log("CHANGES", $"No schema changes detected. {result.Description}");
             }
             else
             {
-                Console.WriteLine($"✅ Migration generated successfully!");
+                Console.WriteLine("  ✅ Migration generated successfully!");
                 Console.WriteLine();
                 Console.WriteLine($"  Up SQL:       {result.SqlFilePath}");
                 Console.WriteLine($"  Down SQL:     {result.DownSqlFilePath}");
@@ -110,11 +122,11 @@ public static class GenerateCommand
                 Console.WriteLine($"    {result.Description}");
                 Console.WriteLine();
 
-                migrationLog.Log("SUCCESS", $"Migration generated successfully");
-                migrationLog.Log("SQL-FILE", $"Up SQL: {result.SqlFilePath}");
-                migrationLog.Log("DOWN-SQL-FILE", $"Down SQL: {result.DownSqlFilePath}");
-                migrationLog.Log("SNAPSHOT-FILE", $"Snapshot: {result.SnapshotFilePath}");
-                migrationLog.Log("CHECKSUM", $"Checksum: {result.Checksum}");
+                migrationLog.Log("SUCCESS", "Migration generated successfully");
+                migrationLog.Log("OUTPUT", $"Up SQL: {result.SqlFilePath}");
+                migrationLog.Log("OUTPUT", $"Down SQL: {result.DownSqlFilePath}");
+                migrationLog.Log("OUTPUT", $"Snapshot: {result.SnapshotFilePath}");
+                migrationLog.Log("CHECKSUM", result.Checksum);
                 migrationLog.Log("DESCRIPTION", result.Description ?? "");
             }
 
@@ -122,9 +134,9 @@ public static class GenerateCommand
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"❌ Error: {ex.Message}");
+            Console.Error.WriteLine($"  Error: {ex.Message}");
             if (options.Verbose)
-                Console.Error.WriteLine(ex.StackTrace);
+                Console.Error.WriteLine($"  {ex.StackTrace}");
             migrationLog?.LogError(ex);
             return 1;
         }
@@ -134,16 +146,21 @@ public static class GenerateCommand
         }
     }
 
+    /// <summary>
+    /// Resolves the output directory path, substituting the {provider} placeholder with the actual provider name.
+    /// </summary>
+    /// <param name="outputDir">Output directory template (may contain {provider}).</param>
+    /// <param name="providerName">The provider name to substitute.</param>
+    /// <returns>Fully qualified output directory path.</returns>
     private static string ResolveOutputDirectory(string outputDir, string providerName)
     {
-        // If the output dir contains {provider}, substitute it
         var resolved = outputDir.Replace("{provider}", providerName);
         return Path.GetFullPath(resolved);
     }
 }
 
 /// <summary>
-/// Options for the 'generate' command.
+/// Options for the 'generate' command, parsed from CLI arguments.
 /// </summary>
 public class GenerateOptions
 {
@@ -153,13 +170,13 @@ public class GenerateOptions
     /// <summary>Name for the migration (e.g., "v1.0.0", "add_users_table").</summary>
     public string MigrationName { get; set; } = "";
 
-    /// <summary>Fully qualified type names of ORM table classes.</summary>
+    /// <summary>Fully qualified type names of ORM table classes to include in the migration.</summary>
     public List<string> TableTypes { get; set; } = new();
 
-    /// <summary>Output directory for migration files.</summary>
+    /// <summary>Output directory for migration files. Use {provider} placeholder for provider name substitution.</summary>
     public string OutputDir { get; set; } = "./Migrations/{provider}";
 
-    /// <summary>Path to the current snapshot JSON file.</summary>
+    /// <summary>Path to the current snapshot JSON file for diff comparison.</summary>
     public string? SnapshotPath { get; set; }
 
     /// <summary>Path to the assembly containing the table types.</summary>
@@ -168,6 +185,6 @@ public class GenerateOptions
     /// <summary>Path to the .csproj file. If set, the project will be built and AssemblyPath resolved automatically.</summary>
     public string? ProjectPath { get; set; }
 
-    /// <summary>Enable verbose output.</summary>
+    /// <summary>Enable verbose output with detailed debug information.</summary>
     public bool Verbose { get; set; }
 }

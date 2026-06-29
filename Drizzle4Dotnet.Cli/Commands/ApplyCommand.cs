@@ -10,11 +10,14 @@ namespace Drizzle4Dotnet.Cli.Commands;
 /// Migrations are recorded only after successful execution, and detailed
 /// execution logs (start, end, errors) are written to a shared local log file.
 /// Wraps each migration in a transaction when possible.
+/// Verifies checksums of already-applied migrations against the journal to detect tampering.
 /// </summary>
 public static class ApplyCommand
 {
     /// <summary>
     /// Maps provider names to known DbConnection type names for automatic creation.
+    /// Used to instantiate the correct ADO.NET connection without requiring a direct dependency
+    /// on each provider's NuGet package at compile time.
     /// </summary>
     private static readonly Dictionary<string, string> ConnectionTypeMap = new()
     {
@@ -25,6 +28,13 @@ public static class ApplyCommand
         ["oracle"] = "Oracle.ManagedDataAccess.Client.OracleConnection, Oracle.ManagedDataAccess",
     };
 
+    /// <summary>
+    /// Executes the migration apply process: loads the migration journal, connects to the database,
+    /// verifies checksums of already-applied migrations, determines pending migrations,
+    /// and applies each one in order within individual transactions.
+    /// </summary>
+    /// <param name="options">Parsed CLI options including provider, connection string, migration table, etc.</param>
+    /// <returns>Exit code: 0 on success, 1 on error.</returns>
     public static async Task<int> Execute(ApplyOptions options)
     {
         MigrationLogger? migrationLog = null;
@@ -47,27 +57,29 @@ public static class ApplyCommand
             var journal = MigrationJournal.Load(journalPath);
             if (journal.Migrations.Count == 0)
             {
-                Console.WriteLine("ℹ️  No migrations found in journal. Nothing to apply.");
-                migrationLog.Log("INFO", "No migrations found in journal. Nothing to apply.");
+                Console.WriteLine("  ✅ No migrations found in journal. Nothing to apply.");
+                migrationLog.Log("COMPLETE", "No migrations found in journal. Nothing to apply.");
                 return 0;
             }
 
-            Console.WriteLine($"📋 Migration Journal Loaded");
-            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine($"  Provider:     {options.Provider}");
-            Console.WriteLine($"  Total:        {journal.Migrations.Count} migration(s)");
-            Console.WriteLine($"  Directory:    {Path.GetFullPath(outputDir)}");
-            Console.WriteLine($"  Log:          {migrationLog.LogFilePath}");
-            Console.WriteLine($"  Tracking:     {options.MigrationSchema}.{options.MigrationTable}");
-            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            CliOptionParser.PrintBanner(
+                "📋 Migration Journal Loaded",
+                ("Provider:", options.Provider),
+                ("Total:", $"{journal.Migrations.Count} migration(s)"),
+                ("Directory:", Path.GetFullPath(outputDir)),
+                ("Log:", migrationLog.LogFilePath),
+                ("Tracking:", $"{options.MigrationSchema}.{options.MigrationTable}")
+            );
 
-            migrationLog.Log("PROVIDER", $"Provider: {options.Provider}");
-            migrationLog.Log("JOURNAL", $"Journal loaded from {journalPath}");
-            migrationLog.Log("MIGRATIONS", $"{journal.Migrations.Count} migration(s) in journal");
-            migrationLog.Log("TRACKING", $"Tracking table: {options.MigrationSchema}.{options.MigrationTable}");
+            CliOptionParser.LogBanner(migrationLog, "Migration Apply",
+                ("PROVIDER", options.Provider),
+                ("JOURNAL", $"loaded from {journalPath}"),
+                ("MIGRATIONS", $"{journal.Migrations.Count} migration(s)"),
+                ("TRACKING", $"{options.MigrationSchema}.{options.MigrationTable}")
+            );
 
             // Create database connection
-            Console.WriteLine($"🔌 Connecting to database...");
+            Console.WriteLine($"  🔌 Connecting to database...");
 
             DbConnection connection;
             try
@@ -82,6 +94,7 @@ public static class ApplyCommand
             await using (connection)
             {
                 await connection.OpenAsync();
+                Console.WriteLine($"  ✅ Connected to database");
                 migrationLog.Log("CONNECTED", "Connected to database");
 
                 // Create the CLI MigrationManager directly — no generics, no dynamic
@@ -93,7 +106,7 @@ public static class ApplyCommand
                 );
 
                 // Get already applied migrations from database
-                Console.WriteLine($"🔍 Checking applied migrations...");
+                Console.WriteLine($"  🔍 Checking applied migrations...");
                 var appliedMigrations = await manager.GetAppliedMigrationsAsync();
 
                 Console.WriteLine($"  Applied:      {appliedMigrations.Count} migration(s) in database");
@@ -109,11 +122,11 @@ public static class ApplyCommand
                     // Compare the database checksum with the journal checksum
                     if (!string.Equals(applied.Checksum, entry.Checksum, StringComparison.OrdinalIgnoreCase))
                     {
-                        Console.Error.WriteLine($"❌ Checksum mismatch for applied migration #{entry.IncrementalId} ({entry.Name})");
-                        Console.Error.WriteLine($"   Database:  {applied.Checksum}");
-                        Console.Error.WriteLine($"   Journal:   {entry.Checksum}");
-                        Console.Error.WriteLine("   The migration may have been tampered with after being applied.");
-                        migrationLog.Log("CHECKSUM-MISMATCH", $"#{entry.IncrementalId} ({entry.Name}): DB={applied.Checksum}, Journal={entry.Checksum}");
+                        Console.Error.WriteLine($"  Checksum mismatch for applied migration #{entry.IncrementalId} ({entry.Name})");
+                        Console.Error.WriteLine($"    Database:  {applied.Checksum}");
+                        Console.Error.WriteLine($"    Journal:   {entry.Checksum}");
+                        Console.Error.WriteLine("    The migration may have been tampered with after being applied.");
+                        migrationLog.Log("CHECKSUM", $"Mismatch for #{entry.IncrementalId} ({entry.Name}): DB={applied.Checksum}, Journal={entry.Checksum}");
                         checksumErrors = true;
                     }
                 }
@@ -134,7 +147,7 @@ public static class ApplyCommand
                     var sqlPath = Path.Combine(outputDir, entry.SqlFileName);
                     if (!File.Exists(sqlPath))
                     {
-                        Console.Error.WriteLine($"⚠️  SQL file not found: {entry.SqlFileName} — skipping");
+                        Console.Error.WriteLine($"  ⚠  SQL file not found: {entry.SqlFileName} — skipping");
                         migrationLog.Log("WARNING", $"SQL file not found: {entry.SqlFileName} — skipping");
                         continue;
                     }
@@ -145,13 +158,13 @@ public static class ApplyCommand
 
                 if (pending.Count == 0)
                 {
-                    Console.WriteLine($"✅ All {journal.Migrations.Count} migration(s) already applied. Database is up to date.");
+                    Console.WriteLine($"  ✅ All {journal.Migrations.Count} migration(s) already applied. Database is up to date.");
                     migrationLog.Log("COMPLETE", $"All {journal.Migrations.Count} migration(s) already applied. Database is up to date.");
                     return 0;
                 }
 
                 Console.WriteLine($"  Pending:      {pending.Count} migration(s) to apply");
-                Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                CliOptionParser.PrintSeparator();
                 migrationLog.Log("PENDING", $"{pending.Count} migration(s) to apply");
 
                 // Apply pending migrations in order
@@ -159,7 +172,7 @@ public static class ApplyCommand
                 foreach (var (entry, sqlContent) in pending)
                 {
                     Console.WriteLine();
-                    Console.WriteLine($"⚡ Applying:    {entry.Name} ({entry.SqlFileName})");
+                    Console.WriteLine($"  ⚡ Applying:    {entry.Name} ({entry.SqlFileName})");
 
                     migrationLog.LogSeparator();
                     migrationLog.Log("EXECUTE", $"Applying migration #{entry.IncrementalId}: '{entry.Name}' ({entry.SqlFileName}), CHECKSUM={entry.Checksum}");
@@ -205,7 +218,7 @@ public static class ApplyCommand
                     }
                     catch (Exception ex)
                     {
-                        Console.Error.WriteLine($"❌ Failed:      {entry.IncrementalId}: {entry.Name} — {ex.Message}");
+                        Console.Error.WriteLine($"  Failed:      {entry.IncrementalId}: {entry.Name} — {ex.Message}");
 
                         // Rollback transaction
                         if (migrationTx != null)
@@ -215,19 +228,19 @@ public static class ApplyCommand
                         }
                         
                         migrationLog.Log("FAILED", $"Migration #{entry.IncrementalId} '{entry.Name}' failed: {ex.Message}");
-                        migrationLog.LogSQLError(sqlContent, ex);
+                        migrationLog.LogSqlError(sqlContent, ex);
                         
                         throw new InvalidOperationException($"Migration #{entry.IncrementalId} '{entry.Name}' failed. See log at '{migrationLog.LogFilePath}' for details.", ex);
                     }
                     
                     migrationLog.Log("SUCCESS", $"Migration #{entry.IncrementalId} '{entry.Name}' applied successfully.");
-                    Console.WriteLine($"✅ Applied:     {entry.IncrementalId}: {entry.Name}");
+                    Console.WriteLine($"  ✅ Applied:     {entry.IncrementalId}: {entry.Name}");
                 }
 
                 migrationLog.LogSeparator();
                 Console.WriteLine();
-                Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                Console.WriteLine($"✅ Successfully applied all {totalApplied} migration(s)!");
+                CliOptionParser.PrintSeparator();
+                Console.WriteLine($"  ✅ Successfully applied all {totalApplied} migration(s)!");
                 
                 migrationLog.Log("COMPLETE", $"Successfully applied all {totalApplied} migration(s)!");
             }
@@ -235,9 +248,9 @@ public static class ApplyCommand
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"❌ Error: {ex.Message}");
+            Console.Error.WriteLine($"  Error: {ex.Message}");
             if (options.Verbose)
-                Console.Error.WriteLine(ex.StackTrace);
+                Console.Error.WriteLine($"  {ex.StackTrace}");
             migrationLog?.LogError(ex);
             return 1;
         }
@@ -249,8 +262,11 @@ public static class ApplyCommand
     }
 
     /// <summary>
-    /// Resolves the output directory, substituting {provider} placeholder.
+    /// Resolves the output directory path, substituting the {provider} placeholder with the actual provider name.
     /// </summary>
+    /// <param name="outputDir">Output directory template (may contain {provider}).</param>
+    /// <param name="provider">The provider name to substitute (e.g., "pgsql", "mysql").</param>
+    /// <returns>Fully qualified output directory path.</returns>
     private static string ResolveOutputDir(string outputDir, string provider)
     {
         var resolved = outputDir.Replace("{provider}", provider);
@@ -259,7 +275,11 @@ public static class ApplyCommand
 
     /// <summary>
     /// Creates a DbConnection from the given assembly-qualified type name and connection string.
+    /// Attempts to resolve the type via Type.GetType first, then falls back to scanning loaded assemblies.
     /// </summary>
+    /// <param name="connectionTypeName">Assembly-qualified type name (e.g., "Npgsql.NpgsqlConnection, Npgsql").</param>
+    /// <param name="connectionString">Database connection string.</param>
+    /// <returns>An initialized DbConnection instance with the connection string set.</returns>
     private static DbConnection CreateConnection(string connectionTypeName, string connectionString)
     {
         var type = Type.GetType(connectionTypeName);
@@ -302,6 +322,7 @@ public class ApplyOptions
 
     /// <summary>Table name for the migration tracking table.</summary>
     public string MigrationTable { get; set; } = "__Migrations";
-    
+
+    /// <summary>Enable verbose output with detailed debug information.</summary>
     public bool Verbose { get; set; }
 }
