@@ -7,13 +7,13 @@ namespace Drizzle4Dotnet.Core;
 
 public abstract class DbClient<TDialect>: IAsyncDisposable, IQueryExecutor<TDialect> where TDialect : ISqlDialect
 {
-    protected readonly DbConnection _conn;
-    protected readonly DbTransaction? _transaction;
+    protected readonly DbConnection Conn;
+    protected readonly DbTransaction? Transaction;
 
     protected DbClient(DbConnection conn,  DbTransaction? transaction = null)
     {
-        _conn = conn;
-        _transaction = transaction;
+        Conn = conn;
+        Transaction = transaction;
     }
 
     // ======================================================================
@@ -26,8 +26,8 @@ public abstract class DbClient<TDialect>: IAsyncDisposable, IQueryExecutor<TDial
     /// </summary>
     protected async Task<DbCommand> CreateCommandAsync(IGenericSql query)
     {
-        var cmd = _conn.CreateCommand();
-        cmd.Transaction = _transaction;
+        var cmd = Conn.CreateCommand();
+        cmd.Transaction = Transaction;
         
         var sqlBuilder = new SqlBuilder<TDialect>();
         query.BuildSql(sqlBuilder);
@@ -91,9 +91,9 @@ public abstract class DbClient<TDialect>: IAsyncDisposable, IQueryExecutor<TDial
     
     public async ValueTask DisposeAsync()
     {
-        if (_transaction != null)
+        if (Transaction != null)
         {
-            await _transaction.DisposeAsync();
+            await Transaction.DisposeAsync();
         }
     }
 }
@@ -114,13 +114,13 @@ where TInstance : DbClientWithTransaction<TInstance, TDialect>
     protected abstract TInstance CreateInstance(DbConnection conn, DbTransaction? transaction);
 
     
-    public async Task CommitAsync() => await (_transaction?.CommitAsync() ?? Task.CompletedTask);
-    public async Task RollbackAsync() => await (_transaction?.RollbackAsync() ?? Task.CompletedTask);
+    public async Task CommitAsync() => await (Transaction?.CommitAsync() ?? Task.CompletedTask);
+    public async Task RollbackAsync() => await (Transaction?.RollbackAsync() ?? Task.CompletedTask);
 
     public async Task<TInstance> BeginTransactionAsync()
     {
-        var transaction = await _conn.BeginTransactionAsync();
-        return CreateInstance(_conn, transaction);
+        var transaction = await Conn.BeginTransactionAsync();
+        return CreateInstance(Conn, transaction);
     }
     
     public async Task RunInTransactionAsync(Func<TInstance, Task> action)

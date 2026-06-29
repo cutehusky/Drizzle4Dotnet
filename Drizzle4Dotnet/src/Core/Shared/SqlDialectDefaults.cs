@@ -38,23 +38,4 @@ public static class SqlDialectDefaults
     {
         return value.Replace("'", "''");
     }
-
-    // ======================================================================
-    // Default Feature Flags
-    // ======================================================================
-
-    public static bool SupportsReturning => false;
-    public static bool SupportsArrays => false;
-    public static bool SupportsJson => true;
-    public static bool SupportsWindowFunctions => true;
-    public static bool SupportsCte => true;
-    public static bool SupportsRecursiveCte => true;
-    public static bool SupportsDeleteUsing => false;
-    public static bool SupportsIsDistinctFrom => false;
-    public static bool SupportsFilteredAggregates => false;
-    public static bool SupportsFullOuterJoin => false;
-    public static bool SupportsNaturalJoin => false;
-    public static bool SupportsLateralJoin => false;
-    public static bool SupportsApplyJoin => false;
-    public static bool UseLimitPairMode => false;
 }
