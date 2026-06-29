@@ -3,10 +3,8 @@ using System.Data.Common;
 namespace Drizzle4Dotnet.Cli.Services;
 
 /// <summary>
-/// CLI-specific migration manager that tracks applied migrations in a database table
-/// with status (running/success/failed) and execution logs.
-/// Matches migrations by their sequential MigrationId (e.g., "0001") rather than name,
-/// so auto-generated random names don't affect which migrations are considered applied.
+/// CLI-specific migration manager that tracks applied migrations in a database table.
+/// Migrations are recorded only after successful execution (no "running" status).
 /// Schema and table names are configurable.
 /// </summary>
 public class MigrationManager
@@ -40,8 +38,6 @@ public class MigrationManager
     ///   Name         TEXT NOT NULL       — human-readable migration name
     ///   AppliedAt    TIMESTAMP DEFAULT NOW()
     ///   Checksum     TEXT NOT NULL
-    ///   Status       TEXT NOT NULL DEFAULT 'running'  (running/success/failed)
-    ///   Log          TEXT (nullable, stores error details)
     /// </summary>
     public async Task EnsureMigrationTableAsync()
     {
@@ -51,9 +47,7 @@ CREATE TABLE IF NOT EXISTS {_schemaName}.{_tableName} (
     ""MigrationId"" TEXT NOT NULL,
     ""Name"" TEXT NOT NULL,
     ""AppliedAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
-    ""Checksum"" TEXT NOT NULL,
-    ""Status"" TEXT NOT NULL DEFAULT 'running',
-    ""Log"" TEXT
+    ""Checksum"" TEXT NOT NULL
 )";
 
         await using var cmd = _connection.CreateCommand();
@@ -63,8 +57,7 @@ CREATE TABLE IF NOT EXISTS {_schemaName}.{_tableName} (
     }
 
     /// <summary>
-    /// Gets a list of successfully applied migrations from the database, ordered by Id.
-    /// Only returns records with Status = 'success' so failed/running ones are re-attempted.
+    /// Gets a list of applied migrations from the database, ordered by Id.
     /// </summary>
     public async Task<List<AppliedMigration>> GetAppliedMigrationsAsync()
     {
@@ -73,7 +66,7 @@ CREATE TABLE IF NOT EXISTS {_schemaName}.{_tableName} (
         var result = new List<AppliedMigration>();
         await using var cmd = _connection.CreateCommand();
         cmd.Transaction = _transaction;
-        cmd.CommandText = $@"SELECT ""Id"", ""MigrationId"", ""Name"", ""AppliedAt"", ""Checksum"", ""Status"", ""Log"" FROM {_schemaName}.{_tableName} WHERE ""Status"" = 'success' ORDER BY ""Id"" ASC";
+        cmd.CommandText = $@"SELECT ""Id"", ""MigrationId"", ""Name"", ""AppliedAt"", ""Checksum"" FROM {_schemaName}.{_tableName} ORDER BY ""Id"" ASC";
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
@@ -82,53 +75,16 @@ CREATE TABLE IF NOT EXISTS {_schemaName}.{_tableName} (
                 reader.GetString(1),
                 reader.GetString(2),
                 reader.GetDateTime(3),
-                reader.GetString(4),
-                reader.GetString(5),
-                reader.IsDBNull(6) ? null : reader.GetString(6)
+                reader.GetString(4)
             ));
         }
         return result;
     }
 
     /// <summary>
-    /// Gets migration records by MigrationId regardless of status.
-    /// Used for failure recovery to check if a "running" record exists.
+    /// Inserts a migration record after successful execution.
     /// </summary>
-    public async Task<List<AppliedMigration>> GetMigrationsByMigrationIdAsync(string migrationId)
-    {
-        await EnsureMigrationTableAsync();
-
-        var result = new List<AppliedMigration>();
-        await using var cmd = _connection.CreateCommand();
-        cmd.Transaction = _transaction;
-        cmd.CommandText = $@"SELECT ""Id"", ""MigrationId"", ""Name"", ""AppliedAt"", ""Checksum"", ""Status"", ""Log"" FROM {_schemaName}.{_tableName} WHERE ""MigrationId"" = @migrationId ORDER BY ""Id"" DESC";
-
-        var idParam = cmd.CreateParameter();
-        idParam.ParameterName = "migrationId";
-        idParam.Value = migrationId;
-        cmd.Parameters.Add(idParam);
-
-        await using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
-            result.Add(new AppliedMigration(
-                reader.GetInt64(0),
-                reader.GetString(1),
-                reader.GetString(2),
-                reader.GetDateTime(3),
-                reader.GetString(4),
-                reader.GetString(5),
-                reader.IsDBNull(6) ? null : reader.GetString(6)
-            ));
-        }
-        return result;
-    }
-
-    /// <summary>
-    /// Inserts a "running" migration record before execution.
-    /// Returns the auto-generated Id of the new record.
-    /// </summary>
-    public async Task<long> StartMigrationAsync(string migrationId, string name, string checksum)
+    public async Task<long> InsertMigrationAsync(string migrationId, string name, string checksum)
     {
         await EnsureMigrationTableAsync();
 
@@ -136,8 +92,8 @@ CREATE TABLE IF NOT EXISTS {_schemaName}.{_tableName} (
         cmd.Transaction = _transaction;
 
         cmd.CommandText = $@"
-INSERT INTO {_schemaName}.{_tableName} (""MigrationId"", ""Name"", ""Checksum"", ""Status"")
-VALUES (@migrationId, @name, @checksum, 'running')
+INSERT INTO {_schemaName}.{_tableName} (""MigrationId"", ""Name"", ""Checksum"")
+VALUES (@migrationId, @name, @checksum)
 RETURNING ""Id""";
 
         var midParam = cmd.CreateParameter();
@@ -158,50 +114,6 @@ RETURNING ""Id""";
         var result = await cmd.ExecuteScalarAsync();
         return Convert.ToInt64(result);
     }
-
-    /// <summary>
-    /// Updates a migration record after execution with final status and optional log.
-    /// </summary>
-    public async Task CompleteMigrationAsync(long id, string status, string? log = null)
-    {
-        await using var cmd = _connection.CreateCommand();
-        cmd.Transaction = _transaction;
-
-        if (log != null)
-        {
-            cmd.CommandText = $@"
-UPDATE {_schemaName}.{_tableName}
-SET ""Status"" = @status, ""Log"" = @log
-WHERE ""Id"" = @id";
-        }
-        else
-        {
-            cmd.CommandText = $@"
-UPDATE {_schemaName}.{_tableName}
-SET ""Status"" = @status
-WHERE ""Id"" = @id";
-        }
-
-        var statusParam = cmd.CreateParameter();
-        statusParam.ParameterName = "status";
-        statusParam.Value = status;
-        cmd.Parameters.Add(statusParam);
-
-        if (log != null)
-        {
-            var logParam = cmd.CreateParameter();
-            logParam.ParameterName = "log";
-            logParam.Value = log;
-            cmd.Parameters.Add(logParam);
-        }
-
-        var idParam = cmd.CreateParameter();
-        idParam.ParameterName = "id";
-        idParam.Value = id;
-        cmd.Parameters.Add(idParam);
-
-        await cmd.ExecuteNonQueryAsync();
-    }
 }
 
 /// <summary>
@@ -214,17 +126,13 @@ public readonly struct AppliedMigration
     public string Name { get; }
     public DateTime AppliedAt { get; }
     public string Checksum { get; }
-    public string Status { get; }
-    public string? Log { get; }
 
-    public AppliedMigration(long id, string migrationId, string name, DateTime appliedAt, string checksum, string status, string? log = null)
+    public AppliedMigration(long id, string migrationId, string name, DateTime appliedAt, string checksum)
     {
         Id = id;
         MigrationId = migrationId;
         Name = name;
         AppliedAt = appliedAt;
         Checksum = checksum;
-        Status = status;
-        Log = log;
     }
 }

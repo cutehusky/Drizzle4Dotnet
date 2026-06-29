@@ -49,11 +49,26 @@ public record MigrationGenerationResult(
 public class MigrationGenerator
 {
     // Static guard to prevent duplicate reflection debug output
-    private static readonly HashSet<string> _reflectionDebugPrinted = new();
+    private static readonly HashSet<string> ReflectionDebugPrinted = new();
 
     private readonly DatabaseProvider _provider;
     private readonly Type _dialectType;
 
+    
+    public static DatabaseProvider ParseCliOptionProvider(string provider)
+    {
+        return provider.ToLowerInvariant() switch
+        {
+            "pgsql" or "postgres" or "postgresql" or "npgsql" => DatabaseProvider.PgSql,
+            "mysql" or "mariadb" => DatabaseProvider.MySql,
+            "mssql" or "sqlserver" or "sql-server" => DatabaseProvider.Mssql,
+            "sqlite" or "sqlite3" => DatabaseProvider.Sqlite,
+            "oracle" => DatabaseProvider.Oracle,
+            _ => throw new ArgumentException(
+                $"Unknown provider '{provider}'. Supported providers: pgsql, mysql, mssql, sqlite, oracle")
+        };
+    }
+    
     private static readonly Dictionary<DatabaseProvider, Type> DialectMap = new()
     {
         [DatabaseProvider.PgSql] = typeof(PgSqlSqlDialectImpl),
@@ -637,7 +652,7 @@ public class MigrationGenerator
     {
         // Only print reflection debug once per type per process run
         var key = $"{tableType.FullName}@{dialectType.FullName}";
-        if (!_reflectionDebugPrinted.Add(key))
+        if (!ReflectionDebugPrinted.Add(key))
             return;
 
         Console.WriteLine();

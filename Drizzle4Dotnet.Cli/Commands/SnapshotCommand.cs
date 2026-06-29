@@ -10,18 +10,35 @@ public static class SnapshotCommand
 {
     public static int Execute(SnapshotOptions options)
     {
+        MigrationLogger? migrationLog = null;
         try
         {
-            var provider = ParseProvider(options.Provider);
+            // Create file logger in the common logs folder
+            var logDir = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+            migrationLog = new MigrationLogger(logDir);
+            
+            var outputFile = Path.GetFullPath(options.OutputFile);
+            var outputDir = Path.GetDirectoryName(outputFile) ?? ".";
+            
+            var provider = MigrationGenerator.ParseCliOptionProvider(options.Provider);
             var generator = new MigrationGenerator(provider);
 
             Console.WriteLine($"📸 Drizzle4Dotnet Schema Snapshot Generator");
             Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             Console.WriteLine($"  Provider:     {generator.ProviderName}");
             Console.WriteLine($"  Snapshot:     {options.SnapshotName}");
-            Console.WriteLine($"  Output:       {Path.GetFullPath(options.OutputFile)}");
+            Console.WriteLine($"  Output:       {outputFile}");
             Console.WriteLine($"  Tables:       {options.TableTypes.Count} type(s)");
+            Console.WriteLine($"  Log:          {Path.GetFullPath(logDir)}");
             Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+            migrationLog.Log("PROVIDER", $"Provider: {generator.ProviderName}");
+            migrationLog.Log("SNAPSHOT", $"Snapshot name: {options.SnapshotName}");
+            migrationLog.Log("OUTPUT", $"Output file: {outputFile}");
+            migrationLog.Log("TABLES", $"Table types: {(options.TableTypes.Count > 0 ? string.Join(", ", options.TableTypes) : "auto-discover")}");
+            migrationLog.LogSeparator();
+
+            migrationLog.Log("GENERATE", "Starting snapshot generation...");
 
             // Generate the snapshot (extracts table definitions)
             var snapshot = generator.GenerateSnapshot(
@@ -30,6 +47,8 @@ public static class SnapshotCommand
                 options.AssemblyPath
             );
 
+            migrationLog.Log("TABLES-COUNT", $"Extracted {snapshot.Tables.Count} table(s) from schema");
+
             // Print detailed schema info when verbose
             if (options.Verbose)
                 SchemaDebugPrinter.PrintSchema("📊 Schema Details (verbose)", snapshot);
@@ -37,8 +56,6 @@ public static class SnapshotCommand
             // Serialize and write
             var json = snapshot.Serialize();
 
-            var outputFile = Path.GetFullPath(options.OutputFile);
-            var outputDir = Path.GetDirectoryName(outputFile);
             if (!string.IsNullOrEmpty(outputDir))
                 Directory.CreateDirectory(outputDir);
 
@@ -52,6 +69,10 @@ public static class SnapshotCommand
             Console.WriteLine($"  Tables:       {snapshot.Tables.Count}");
             Console.WriteLine();
 
+            migrationLog.Log("SUCCESS", $"Snapshot generated successfully");
+            migrationLog.Log("FILE", outputFile);
+            migrationLog.Log("TABLES-COUNT", snapshot.Tables.Count.ToString());
+
             return 0;
         }
         catch (Exception ex)
@@ -59,22 +80,13 @@ public static class SnapshotCommand
             Console.Error.WriteLine($"❌ Error: {ex.Message}");
             if (options.Verbose)
                 Console.Error.WriteLine(ex.StackTrace);
+            migrationLog?.LogError(ex);
             return 1;
         }
-    }
-
-    private static DatabaseProvider ParseProvider(string provider)
-    {
-        return provider.ToLowerInvariant() switch
+        finally
         {
-            "pgsql" or "postgres" or "postgresql" or "npgsql" => DatabaseProvider.PgSql,
-            "mysql" or "mariadb" => DatabaseProvider.MySql,
-            "mssql" or "sqlserver" or "sql-server" => DatabaseProvider.Mssql,
-            "sqlite" or "sqlite3" => DatabaseProvider.Sqlite,
-            "oracle" => DatabaseProvider.Oracle,
-            _ => throw new ArgumentException(
-                $"Unknown provider '{provider}'. Supported providers: pgsql, mysql, mssql, sqlite, oracle")
-        };
+            migrationLog?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
     }
 }
 

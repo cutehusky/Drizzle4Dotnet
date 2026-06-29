@@ -1,6 +1,4 @@
 using System.Data.Common;
-using System.Security.Cryptography;
-using System.Text;
 using Drizzle4Dotnet.Cli.Models;
 using Drizzle4Dotnet.Cli.Services;
 
@@ -9,8 +7,9 @@ namespace Drizzle4Dotnet.Cli.Commands;
 /// <summary>
 /// Handles the 'apply' command: applies pending SQL migration scripts
 /// from the migration journal to a database using the CLI's MigrationManager.
-/// Each migration is tracked with status (running/success/failed) and
-/// execution logs. Wraps each migration in a transaction when possible.
+/// Migrations are recorded only after successful execution, and detailed
+/// execution logs (start, end, errors) are written to a shared local log file.
+/// Wraps each migration in a transaction when possible.
 /// </summary>
 public static class ApplyCommand
 {
@@ -28,33 +27,28 @@ public static class ApplyCommand
 
     public static async Task<int> Execute(ApplyOptions options)
     {
+        MigrationLogger? migrationLog = null;
         try
         {
-            // Resolve provider connection type
+            var logDir = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+            migrationLog = new MigrationLogger(logDir);
+            
             var provider = options.Provider.ToLowerInvariant();
             if (!ConnectionTypeMap.TryGetValue(provider, out var connectionTypeName))
-            {
-                Console.Error.WriteLine($"❌ Unknown provider '{options.Provider}'.");
-                Console.Error.WriteLine($"   Supported providers: {string.Join(", ", ConnectionTypeMap.Keys)}");
-                return 1;
-            }
+                throw new ArgumentException($"Unknown provider '{options.Provider}'. Supported providers: {string.Join(", ", ConnectionTypeMap.Keys)}");
 
             // Resolve migrations directory
             var outputDir = ResolveOutputDir(options.OutputDir, provider);
             var journalPath = Path.Combine(outputDir, "migration-journal.json");
-
             if (!File.Exists(journalPath))
-            {
-                Console.Error.WriteLine($"❌ Migration journal not found at: {journalPath}");
-                Console.Error.WriteLine("   Generate migrations first using 'drizzle4net generate'.");
-                return 1;
-            }
+                throw new FileNotFoundException($"Migration journal not found at '{journalPath}'. Ensure migrations have been generated before applying.");
 
             // Load journal
             var journal = MigrationJournal.Load(journalPath);
             if (journal.Migrations.Count == 0)
             {
                 Console.WriteLine("ℹ️  No migrations found in journal. Nothing to apply.");
+                migrationLog.Log("INFO", "No migrations found in journal. Nothing to apply.");
                 return 0;
             }
 
@@ -63,8 +57,14 @@ public static class ApplyCommand
             Console.WriteLine($"  Provider:     {options.Provider}");
             Console.WriteLine($"  Total:        {journal.Migrations.Count} migration(s)");
             Console.WriteLine($"  Directory:    {Path.GetFullPath(outputDir)}");
+            Console.WriteLine($"  Log:          {migrationLog.LogFilePath}");
             Console.WriteLine($"  Tracking:     {options.MigrationSchema}.{options.MigrationTable}");
             Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+            migrationLog.Log("PROVIDER", $"Provider: {options.Provider}");
+            migrationLog.Log("JOURNAL", $"Journal loaded from {journalPath}");
+            migrationLog.Log("MIGRATIONS", $"{journal.Migrations.Count} migration(s) in journal");
+            migrationLog.Log("TRACKING", $"Tracking table: {options.MigrationSchema}.{options.MigrationTable}");
 
             // Create database connection
             Console.WriteLine($"🔌 Connecting to database...");
@@ -76,14 +76,13 @@ public static class ApplyCommand
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"❌ Failed to create database connection: {ex.Message}");
-                Console.Error.WriteLine($"   Ensure the ADO.NET provider package is installed.");
-                return 1;
+                throw new InvalidOperationException($"Failed to create database connection for provider '{options.Provider}': {ex.Message}", ex);
             }
 
             await using (connection)
             {
                 await connection.OpenAsync();
+                migrationLog.Log("CONNECTED", "Connected to database");
 
                 // Create the CLI MigrationManager directly — no generics, no dynamic
                 var manager = new MigrationManager(
@@ -93,11 +92,12 @@ public static class ApplyCommand
                     options.MigrationTable
                 );
 
-                // Get already successful applied migrations from database
+                // Get already applied migrations from database
                 Console.WriteLine($"🔍 Checking applied migrations...");
                 var appliedMigrations = await manager.GetAppliedMigrationsAsync();
 
                 Console.WriteLine($"  Applied:      {appliedMigrations.Count} migration(s) in database");
+                migrationLog.Log("APPLIED", $"{appliedMigrations.Count} migration(s) already applied in database");
 
                 // Verify checksums of already-applied migrations against the journal
                 var checksumErrors = false;
@@ -113,15 +113,14 @@ public static class ApplyCommand
                         Console.Error.WriteLine($"   Database:  {applied.Checksum}");
                         Console.Error.WriteLine($"   Journal:   {entry.Checksum}");
                         Console.Error.WriteLine("   The migration may have been tampered with after being applied.");
+                        migrationLog.Log("CHECKSUM-MISMATCH", $"#{entry.IncrementalId} ({entry.Name}): DB={applied.Checksum}, Journal={entry.Checksum}");
                         checksumErrors = true;
                     }
                 }
                 
                 if (checksumErrors)
                 {
-                    Console.Error.WriteLine();
-                    Console.Error.WriteLine("❌ Checksum verification failed. Aborting to prevent data inconsistency.");
-                    return 1;
+                    throw new InvalidOperationException("Checksum mismatch detected for one or more applied migrations. Aborting to prevent potential data corruption.");
                 }
 
                 // Determine pending migrations — match by MigrationId (IncrementalId)
@@ -136,6 +135,7 @@ public static class ApplyCommand
                     if (!File.Exists(sqlPath))
                     {
                         Console.Error.WriteLine($"⚠️  SQL file not found: {entry.SqlFileName} — skipping");
+                        migrationLog.Log("WARNING", $"SQL file not found: {entry.SqlFileName} — skipping");
                         continue;
                     }
 
@@ -146,20 +146,23 @@ public static class ApplyCommand
                 if (pending.Count == 0)
                 {
                     Console.WriteLine($"✅ All {journal.Migrations.Count} migration(s) already applied. Database is up to date.");
+                    migrationLog.Log("COMPLETE", $"All {journal.Migrations.Count} migration(s) already applied. Database is up to date.");
                     return 0;
                 }
 
                 Console.WriteLine($"  Pending:      {pending.Count} migration(s) to apply");
                 Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                migrationLog.Log("PENDING", $"{pending.Count} migration(s) to apply");
 
                 // Apply pending migrations in order
                 var totalApplied = 0;
-                var totalFailed = 0;
-
                 foreach (var (entry, sqlContent) in pending)
                 {
                     Console.WriteLine();
                     Console.WriteLine($"⚡ Applying:    {entry.Name} ({entry.SqlFileName})");
+
+                    migrationLog.LogSeparator();
+                    migrationLog.Log("EXECUTE", $"Applying migration #{entry.IncrementalId}: '{entry.Name}' ({entry.SqlFileName}), CHECKSUM={entry.Checksum}");
 
                     // Try to begin a transaction for this migration
                     DbTransaction? migrationTx = null;
@@ -170,46 +173,39 @@ public static class ApplyCommand
                     catch
                     {
                         Console.WriteLine("  ⚠  Transaction not supported, running without transaction");
+                        migrationLog.Log("WARNING", "Transaction not supported, running without transaction");
                     }
 
                     try
                     {
-                        // Create a manager WITH the transaction (if any)
-                        var txManager = new MigrationManager(
-                            connection,
-                            migrationTx,
-                            options.MigrationSchema,
-                            options.MigrationTable
-                        );
-
-                        // Step 1: Insert "running" record (use IncrementalId as MigrationId)
-                        var recordId = await txManager.StartMigrationAsync(entry.IncrementalId, entry.Name, entry.Checksum);
-                        Console.WriteLine($"  📝 Record:     #{recordId} [{entry.IncrementalId}] (status: running)");
-
-                        // Step 2: Execute the raw SQL
+                        // Execute the raw SQL
                         await using var cmd = connection.CreateCommand();
                         cmd.Transaction = migrationTx;
                         cmd.CommandText = sqlContent;
                         await cmd.ExecuteNonQueryAsync();
 
-                        // Step 3: Update to "success"
-                        await txManager.CompleteMigrationAsync(recordId, "success");
-
-                        // Commit transaction
+                        // Commit transaction first (so the migration record insert is outside the migration's transaction)
                         if (migrationTx != null)
                             await migrationTx.CommitAsync();
 
-                        Console.WriteLine($"✅ Applied:     {entry.Name}");
+                        // Only insert record on success
+                        var txManager = new MigrationManager(
+                            connection,
+                            null, // no transaction for recording (already committed)
+                            options.MigrationSchema,
+                            options.MigrationTable
+                        );
+                        
+                        await txManager.InsertMigrationAsync(
+                            entry.IncrementalId,
+                            entry.Name,
+                            entry.Checksum
+                        );
                         totalApplied++;
                     }
                     catch (Exception ex)
                     {
-                        // Build error log
-                        var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC] ERROR: {ex.Message}";
-                        if (ex.InnerException != null)
-                            errorLog += $"\n  → {ex.InnerException.Message}";
-
-                        Console.Error.WriteLine($"❌ Failed:      {entry.Name} — {ex.Message}");
+                        Console.Error.WriteLine($"❌ Failed:      {entry.IncrementalId}: {entry.Name} — {ex.Message}");
 
                         // Rollback transaction
                         if (migrationTx != null)
@@ -217,61 +213,38 @@ public static class ApplyCommand
                             try { await migrationTx.RollbackAsync(); }
                             catch { /* best effort rollback */ }
                         }
-
-                        // Record the failure (without transaction)
-                        try
-                        {
-                            var failManager = new MigrationManager(
-                                connection,
-                                null, // no transaction for the failure record
-                                options.MigrationSchema,
-                                options.MigrationTable
-                            );
-
-                            // Check if we already inserted the running record via MigrationId
-                            var existing = await failManager.GetMigrationsByMigrationIdAsync(entry.IncrementalId);
-                            var running = existing.FirstOrDefault(e => e.Status == "running");
-
-                            if (running.Id > 0)
-                            {
-                                await failManager.CompleteMigrationAsync(running.Id, "failed", errorLog);
-                            }
-                            else
-                            {
-                                // No running record found — insert a failed record
-                                var failedId = await failManager.StartMigrationAsync(entry.IncrementalId, entry.Name, entry.Checksum);
-                                await failManager.CompleteMigrationAsync(failedId, "failed", errorLog);
-                            }
-                        }
-                        catch (Exception recordEx)
-                        {
-                            Console.Error.WriteLine($"⚠️  Could not record failure: {recordEx.Message}");
-                        }
-
-                        totalFailed++;
+                        
+                        migrationLog.Log("FAILED", $"Migration #{entry.IncrementalId} '{entry.Name}' failed: {ex.Message}");
+                        migrationLog.LogSQLError(sqlContent, ex);
+                        
+                        throw new InvalidOperationException($"Migration #{entry.IncrementalId} '{entry.Name}' failed. See log at '{migrationLog.LogFilePath}' for details.", ex);
                     }
+                    
+                    migrationLog.Log("SUCCESS", $"Migration #{entry.IncrementalId} '{entry.Name}' applied successfully.");
+                    Console.WriteLine($"✅ Applied:     {entry.IncrementalId}: {entry.Name}");
                 }
 
+                migrationLog.LogSeparator();
                 Console.WriteLine();
                 Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                if (totalFailed == 0)
-                {
-                    Console.WriteLine($"✅ Successfully applied all {totalApplied} migration(s)!");
-                }
-                else
-                {
-                    Console.WriteLine($"⚠️  Applied {totalApplied}, Failed {totalFailed} migration(s).");
-                    Console.WriteLine($"   Check {options.MigrationSchema}.{options.MigrationTable} table for error logs.");
-                    return 1;
-                }
+                Console.WriteLine($"✅ Successfully applied all {totalApplied} migration(s)!");
+                
+                migrationLog.Log("COMPLETE", $"Successfully applied all {totalApplied} migration(s)!");
             }
-
             return 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"❌ Error: {ex.Message}");
+            if (options.Verbose)
+                Console.Error.WriteLine(ex.StackTrace);
+            migrationLog?.LogError(ex);
             return 1;
+        }
+        finally
+        {
+            if (migrationLog != null)
+                await migrationLog.DisposeAsync();
         }
     }
 
@@ -329,4 +302,6 @@ public class ApplyOptions
 
     /// <summary>Table name for the migration tracking table.</summary>
     public string MigrationTable { get; set; } = "__Migrations";
+    
+    public bool Verbose { get; set; }
 }

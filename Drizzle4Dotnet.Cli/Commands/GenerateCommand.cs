@@ -10,23 +10,34 @@ public static class GenerateCommand
 {
     public static int Execute(GenerateOptions options)
     {
+        MigrationLogger? migrationLog = null;
         try
         {
-            var provider = ParseProvider(options.Provider);
+            // Create file logger for this generation
+            var logDir = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+            migrationLog = new MigrationLogger(logDir);
+            
+            var provider = MigrationGenerator.ParseCliOptionProvider(options.Provider);
             var generator = new MigrationGenerator(provider);
-
-            Console.WriteLine($"📦 Drizzle4Dotnet Migration Generator");
-            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine($"  Provider:     {generator.ProviderName}");
-            Console.WriteLine($"  Migration:    {options.MigrationName}");
-            Console.WriteLine($"  Output:       {Path.GetFullPath(options.OutputDir)}");
-            Console.WriteLine($"  Tables:       {options.TableTypes.Count} type(s)");
-            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
             // Resolve the output directory and ensure it exists
             var outputDir = ResolveOutputDirectory(options.OutputDir, generator.ProviderName);
             if (!Directory.Exists(outputDir))
                 Directory.CreateDirectory(outputDir);
+
+            Console.WriteLine($"📦 Drizzle4Dotnet Migration Generator");
+            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            Console.WriteLine($"  Provider:     {generator.ProviderName}");
+            Console.WriteLine($"  Migration:    {options.MigrationName}");
+            Console.WriteLine($"  Output:       {Path.GetFullPath(outputDir)}");
+            Console.WriteLine($"  Tables:       {options.TableTypes.Count} type(s)");
+            Console.WriteLine($"  Log:          {Path.GetFullPath(logDir)}");
+            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+            migrationLog.Log("PROVIDER", $"Provider: {generator.ProviderName}");
+            migrationLog.Log("MIGRATION", $"Migration name: {options.MigrationName}");
+            migrationLog.Log("TABLES", $"Table types: {(options.TableTypes.Count > 0 ? string.Join(", ", options.TableTypes) : "auto-discover")}");
+            migrationLog.LogSeparator();
 
             // Find the latest snapshot
             var snapshotPath = options.SnapshotPath;
@@ -41,15 +52,18 @@ public static class GenerateCommand
                 {
                     snapshotPath = snapshots[0];
                     Console.WriteLine($"  Snapshot:     {Path.GetFileName(snapshotPath)} (auto-discovered)");
+                    migrationLog.Log("SNAPSHOT", $"Using snapshot: {snapshotPath} (auto-discovered)");
                 }
                 else
                 {
                     Console.WriteLine($"  Snapshot:     None (initial migration)");
+                    migrationLog.Log("SNAPSHOT", "No existing snapshot found (initial migration)");
                 }
             }
             else
             {
                 Console.WriteLine($"  Snapshot:     {snapshotPath}");
+                migrationLog.Log("SNAPSHOT", $"Using snapshot: {snapshotPath}");
             }
 
             Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -61,6 +75,8 @@ public static class GenerateCommand
                     options.MigrationName, options.TableTypes, options.AssemblyPath);
                 SchemaDebugPrinter.PrintSchema("📊 Schema Details (verbose)", snapshot);
             }
+
+            migrationLog.Log("GENERATE", "Starting migration generation...");
 
             // Generate the migration
             var result = generator.GenerateMigration(
@@ -79,6 +95,7 @@ public static class GenerateCommand
                 Console.WriteLine();
                 Console.WriteLine($"  Description:  {result.Description}");
                 Console.WriteLine();
+                migrationLog.Log("NO-CHANGES", $"No schema changes detected. {result.Description}");
             }
             else
             {
@@ -92,6 +109,13 @@ public static class GenerateCommand
                 Console.WriteLine($"  Description:");
                 Console.WriteLine($"    {result.Description}");
                 Console.WriteLine();
+
+                migrationLog.Log("SUCCESS", $"Migration generated successfully");
+                migrationLog.Log("SQL-FILE", $"Up SQL: {result.SqlFilePath}");
+                migrationLog.Log("DOWN-SQL-FILE", $"Down SQL: {result.DownSqlFilePath}");
+                migrationLog.Log("SNAPSHOT-FILE", $"Snapshot: {result.SnapshotFilePath}");
+                migrationLog.Log("CHECKSUM", $"Checksum: {result.Checksum}");
+                migrationLog.Log("DESCRIPTION", result.Description ?? "");
             }
 
             return 0;
@@ -101,22 +125,13 @@ public static class GenerateCommand
             Console.Error.WriteLine($"❌ Error: {ex.Message}");
             if (options.Verbose)
                 Console.Error.WriteLine(ex.StackTrace);
+            migrationLog?.LogError(ex);
             return 1;
         }
-    }
-
-    private static DatabaseProvider ParseProvider(string provider)
-    {
-        return provider.ToLowerInvariant() switch
+        finally
         {
-            "pgsql" or "postgres" or "postgresql" or "npgsql" => DatabaseProvider.PgSql,
-            "mysql" or "mariadb" => DatabaseProvider.MySql,
-            "mssql" or "sqlserver" or "sql-server" => DatabaseProvider.Mssql,
-            "sqlite" or "sqlite3" => DatabaseProvider.Sqlite,
-            "oracle" => DatabaseProvider.Oracle,
-            _ => throw new ArgumentException(
-                $"Unknown provider '{provider}'. Supported providers: pgsql, mysql, mssql, sqlite, oracle")
-        };
+            migrationLog?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
     }
 
     private static string ResolveOutputDirectory(string outputDir, string providerName)

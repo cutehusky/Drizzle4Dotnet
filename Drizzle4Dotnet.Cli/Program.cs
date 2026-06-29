@@ -360,6 +360,22 @@ public class Program
                     else errors.Add("--provider requires a value");
                     break;
 
+                case "--connection":
+                case "-c":
+                    if (++i < args.Length) options.ConnectionString = args[i];
+                    else errors.Add("--connection requires a value");
+                    break;
+
+                case "--migration-schema":
+                    if (++i < args.Length) options.MigrationSchema = args[i];
+                    else errors.Add("--migration-schema requires a value");
+                    break;
+
+                case "--migration-table":
+                    if (++i < args.Length) options.MigrationTable = args[i];
+                    else errors.Add("--migration-table requires a value");
+                    break;
+
                 case "--verbose":
                 case "-V":
                     options.Verbose = true;
@@ -382,7 +398,7 @@ public class Program
             return 1;
         }
 
-        return StatusCommand.Execute(options);
+        return StatusCommand.Execute(options).GetAwaiter().GetResult();
     }
 
     private static int HandleDebug(string[] args)
@@ -618,8 +634,11 @@ public class Program
         Console.WriteLine();
         Console.WriteLine("Status Command:");
         Console.WriteLine("  Shows the migration journal with all tracked migrations and snapshots.");
+        Console.WriteLine("  If --connection is provided, also checks database migration status.");
         Console.WriteLine();
         Console.WriteLine("  drizzle4net status --output ./Migrations/pgsql");
+        Console.WriteLine("  drizzle4net status --provider pgsql --connection \"Host=localhost;Database=mydb\"");
+        Console.WriteLine("  drizzle4net status --provider pgsql --connection \"...\" --migration-schema myapp --migration-table __SchemaMigrations");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --provider, -p    Database provider: pgsql, mysql, mssql, sqlite, oracle");
