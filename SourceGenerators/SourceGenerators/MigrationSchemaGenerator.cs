@@ -388,7 +388,7 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
             sb.AppendLine();
 
             // Build column definitions
-            var columnTypeName = $"ColumnDefinition<{dialect.DialectImplType}>";
+            var columnTypeName = $"ColumnDefinition";
             sb.AppendLine("            IColumnDefinition[] columns = new IColumnDefinition[]");
             sb.AppendLine("            {");
             foreach (var col in table.Columns)

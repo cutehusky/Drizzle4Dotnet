@@ -56,7 +56,7 @@ public static class DebugCommand
 /// <summary>
 /// Options for the 'debug' command, parsed from CLI arguments.
 /// </summary>
-public class DebugOptions
+public class DebugOptions : IAssemblyOptions
 {
     /// <summary>The database provider (pgsql, mysql, mssql, sqlite, oracle).</summary>
     public string Provider { get; set; } = "pgsql";

@@ -1,5 +1,3 @@
-using Drizzle4Dotnet.Core.Shared;
-
 namespace Drizzle4Dotnet.Core.Schema.Migration;
 
 /// <summary>
@@ -38,36 +36,34 @@ public interface IColumnDefinition
 
 /// <summary>
 /// Represents a column definition for DDL generation (CREATE TABLE, ALTER TABLE, etc.).
-/// Generic over <typeparamref name="TDialect"/> for compile-time dialect enforcement.
 /// Stores the SQL data type as an <see cref="ISqlDataType"/> for type-safe dialect-specific types.
 /// </summary>
-/// <typeparam name="TDialect">The SQL dialect implementation (e.g., <c>PgSqlSqlDialectImpl</c>).</typeparam>
-public class ColumnDefinition<TDialect> : IColumnDefinition where TDialect : ISqlDialect
+public class ColumnDefinition : IColumnDefinition
 {
     /// <summary>The column name in the database.</summary>
     public string Name { get; }
-    
+
     /// <summary>The typed SQL data type.</summary>
     public ISqlDataType SqlDataType { get; }
-    
-    /// <summary>The raw SQL type name string (e.g., "BIGINT", "TEXT", "NUMERIC(18,2)").</summary>
+
+    /// <summary>The raw SQL type name string (e.g., "BIGINT", "VARCHAR(255)").</summary>
     public string RawDataType => SqlDataType.Sql;
-    
+
     /// <summary>Whether the column is nullable.</summary>
     public bool IsNullable { get; set; } = true;
-    
+
     /// <summary>Whether the column is a primary key.</summary>
     public bool IsPrimaryKey { get; set; }
-    
+
     /// <summary>Whether the column has an auto-increment/identity attribute.</summary>
     public bool IsAutoIncrement { get; set; }
-    
+
     /// <summary>A default value expression (e.g., "NOW()", "'default'").</summary>
     public string? DefaultValue { get; set; }
-    
+
     /// <summary>A CHECK constraint expression.</summary>
     public string? CheckExpression { get; set; }
-    
+
     /// <summary>Column comment/description.</summary>
     public string? Comment { get; set; }
 
@@ -90,45 +86,45 @@ public class ColumnDefinition<TDialect> : IColumnDefinition where TDialect : ISq
         : this(name, new RawSqlDataType(dataType))
     {
     }
-
-    public ColumnDefinition<TDialect> NotNull()
+    
+    public ColumnDefinition NotNull()
     {
         IsNullable = false;
         return this;
     }
 
-    public ColumnDefinition<TDialect> Nullable()
+    public ColumnDefinition Nullable()
     {
         IsNullable = true;
         return this;
     }
 
-    public ColumnDefinition<TDialect> PrimaryKey()
+    public ColumnDefinition PrimaryKey()
     {
         IsPrimaryKey = true;
         IsNullable = false;
         return this;
     }
 
-    public ColumnDefinition<TDialect> AutoIncrement()
+    public ColumnDefinition AutoIncrement()
     {
         IsAutoIncrement = true;
         return this;
     }
 
-    public ColumnDefinition<TDialect> WithDefault(string defaultValue)
+    public ColumnDefinition WithDefault(string defaultValue)
     {
         DefaultValue = defaultValue;
         return this;
     }
 
-    public ColumnDefinition<TDialect> WithCheck(string checkExpression)
+    public ColumnDefinition WithCheck(string checkExpression)
     {
         CheckExpression = checkExpression;
         return this;
     }
 
-    public ColumnDefinition<TDialect> WithComment(string comment)
+    public ColumnDefinition WithComment(string comment)
     {
         Comment = comment;
         return this;

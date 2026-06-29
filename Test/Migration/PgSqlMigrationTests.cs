@@ -3,7 +3,6 @@ using Drizzle4Dotnet.Core.Schema.Migration.Query;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.MySql;
 using Drizzle4Dotnet.PgSql;
-using ColumnDefinition = Drizzle4Dotnet.Core.Schema.Migration.ColumnDefinition<Drizzle4Dotnet.PgSql.PgSqlSqlDialectImpl>;
 using PgSql = SharedDemo.PgSql;
 using MySql = SharedDemo.MySql;
 

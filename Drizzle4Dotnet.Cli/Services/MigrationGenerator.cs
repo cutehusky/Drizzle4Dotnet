@@ -83,6 +83,19 @@ public class MigrationGenerator
         [DatabaseProvider.Oracle] = typeof(OracleSqlDialectImpl),
     };
 
+    /// <summary>
+    /// Maps each provider to its CLR-to-SQL type map, avoiding reflection to access
+    /// <c>ISqlDialect.ClrToSqlTypeMap</c> at runtime.
+    /// </summary>
+    private static readonly Dictionary<DatabaseProvider, Dictionary<Type, ISqlDataType>> TypeMapMap = new()
+    {
+        [DatabaseProvider.PgSql] = PgSqlSqlDialectImpl.ClrToSqlTypeMap,
+        [DatabaseProvider.MySql] = MySqlSqlDialectImpl.ClrToSqlTypeMap,
+        [DatabaseProvider.Mssql] = MssqlSqlDialectImpl.ClrToSqlTypeMap,
+        [DatabaseProvider.Sqlite] = SqliteSqlDialectImpl.ClrToSqlTypeMap,
+        [DatabaseProvider.Oracle] = OracleSqlDialectImpl.ClrToSqlTypeMap,
+    };
+
     private static readonly Dictionary<DatabaseProvider, string> ProviderNames = new()
     {
         [DatabaseProvider.PgSql] = "pgsql",
@@ -299,12 +312,10 @@ public class MigrationGenerator
 
     /// <summary>
     /// Generates the full SQL script for a migration plan.
-    /// Builds the SQL using the dialect-specific SqlBuilder.
+    /// Builds the SQL using the dialect-specific SqlBuilder via ISqlBuilder interface.
     /// </summary>
     private string GenerateSqlScript(MigrationPlan plan)
     {
-        var sqlBuilderType = typeof(SqlBuilder<>).MakeGenericType(_dialectType);
-
         var parts = new List<string>();
         parts.Add($"-- Migration: {plan.Name}");
         parts.Add($"-- Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
@@ -314,20 +325,13 @@ public class MigrationGenerator
         {
             parts.Add($"-- {step.Description}");
 
-            // Create SqlBuilder<TDialect> instance and call ISql.BuildSql(ISqlBuilder)
-            var builder = (ISqlBuilder)Activator.CreateInstance(sqlBuilderType)
+            // Create SqlBuilder<TDialect> and cast to ISqlBuilder
+            var sqlBuilderType = typeof(SqlBuilder<>).MakeGenericType(_dialectType);
+            var builder = (ISqlBuilder)Activator.CreateInstance(sqlBuilderType)!
                 ?? throw new InvalidOperationException("Failed to create SqlBuilder instance.");
 
             step.Sql.BuildSql(builder);
-
-            // Call Build() via reflection to get the (string, Dictionary) tuple
-            var buildMethod = sqlBuilderType.GetMethod("Build", Type.EmptyTypes)
-                ?? throw new InvalidOperationException("SqlBuilder.Build() method not found.");
-
-            var result = buildMethod.Invoke(builder, null)
-                ?? throw new InvalidOperationException("SqlBuilder.Build() returned null.");
-
-            var sql = ((ValueTuple<string, Dictionary<string, object?>>)result).Item1;
+            var (sql, _) = builder.Build();
             parts.Add(sql);
             parts.Add("");
         }
@@ -432,8 +436,8 @@ public class MigrationGenerator
                 loadedAssemblies.Add(asm);
         }
 
-        // Get OrmSchemaExporter type for reflection
-        var exporterType = typeof(OrmSchemaExporter);
+        // Get the CLR-to-SQL type map for the current dialect directly, avoiding reflection
+        var typeMap = TypeMapMap[_provider];
 
         foreach (var typeName in resolvedTypes)
         {
@@ -458,17 +462,8 @@ public class MigrationGenerator
             if (Verbose)
                 PrintReflectionDebug(type, _dialectType);
 
-            // Build the closed generic method: OrmSchemaExporter.GetTableDefinition<TTable, TDialect>()
-            var method = exporterType.GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .FirstOrDefault(m => m.Name == "GetTableDefinition" && m.IsGenericMethodDefinition &&
-                                     m.GetGenericArguments().Length == 2);
-
-            if (method == null)
-                throw new InvalidOperationException(
-                    "OrmSchemaExporter.GetTableDefinition<TTable, TDialect>() not found.");
-
-            var genericMethod = method.MakeGenericMethod(type, _dialectType);
-            var tableDef = genericMethod.Invoke(null, null) as TableDefinition;
+            // Call the non-generic OrmSchemaExporter directly - no reflection needed
+            var tableDef = OrmSchemaExporter.GetTableDefinition(type, typeMap);
 
             if (tableDef == null)
                 throw new InvalidOperationException(
@@ -654,7 +649,7 @@ public class MigrationGenerator
     /// Prints detailed reflection debug information for a table type.
     /// Shows assembly info, interfaces, static properties, column types, custom attributes.
     /// </summary>
-    private static void PrintReflectionDebug(Type tableType, Type dialectType)
+    private void PrintReflectionDebug(Type tableType, Type dialectType)
     {
         // Only print reflection debug once per type per process run
         var key = $"{tableType.FullName}@{dialectType.FullName}";
@@ -811,8 +806,13 @@ public class MigrationGenerator
                 }
                 else
                 {
-                    // Will use CLR-to-SQL mapping
-                    var mappedSql = MapClrToSqlType(clrType, dialectType);
+                    // Will use CLR-to-SQL mapping from the pre-built type map
+                    var typeMap = TypeMapMap[_provider];
+                    var underlyingType = Nullable.GetUnderlyingType(clrType);
+                    var checkType = underlyingType ?? clrType;
+                    var mappedSql = typeMap.TryGetValue(checkType, out var sqlType)
+                        ? sqlType.Sql
+                        : "TEXT (default)";
                     Console.WriteLine($"         SQL Type:    {mappedSql} (mapped from CLR)");
                 }
 
@@ -896,37 +896,6 @@ public class MigrationGenerator
         catch
         {
             return "";
-        }
-    }
-
-    private static string MapClrToSqlType(Type clrType, Type dialectType)
-    {
-        try
-        {
-            var typeMapProp = dialectType.GetProperty("ClrToSqlTypeMap", BindingFlags.Public | BindingFlags.Static);
-            if (typeMapProp == null) return "?";
-
-            var typeMap = typeMapProp.GetValue(null) as Dictionary<Type, ISqlDataType>;
-            if (typeMap == null) return "?";
-
-            // Handle nullable
-            var underlyingType = Nullable.GetUnderlyingType(clrType);
-            var checkType = underlyingType ?? clrType;
-
-            if (typeMap.TryGetValue(checkType, out var sqlType))
-                return sqlType.Sql;
-
-            foreach (var (key, value) in typeMap)
-            {
-                if (key.IsAssignableFrom(checkType))
-                    return value.Sql;
-            }
-
-            return "TEXT (default)";
-        }
-        catch
-        {
-            return "?";
         }
     }
 }

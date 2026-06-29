@@ -11,16 +11,13 @@ public interface ISqlBuilder
     public string AddParameter(object? value);
     public ISqlBuilder Append(string sql);
     public ISqlBuilder Append(char sql);
+    public (string, Dictionary<string, object?>) Build();
 }
 
 public class SqlBuilder<TDialect>: ISqlBuilder where TDialect : ISqlDialect
 {
     private readonly StringBuilder _sb = new();
     private readonly Dictionary<string, object?> _parameters = new();
-
-    public SqlBuilder()
-    {
-    }
 
     public string AddParameter(object? value)
     {

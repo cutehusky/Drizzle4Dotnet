@@ -1,6 +1,19 @@
 namespace Drizzle4Dotnet.Cli.Services;
 
 /// <summary>
+/// Interface for options classes that support assembly resolution from a project path.
+/// Replaces reflection-based property access in <c>Program.ResolveAssemblyPath</c>.
+/// </summary>
+public interface IAssemblyOptions
+{
+    /// <summary>Path to the .csproj file. If set, the project will be built and <see cref="AssemblyPath"/> resolved automatically.</summary>
+    string? ProjectPath { get; }
+
+    /// <summary>Path to the assembly containing the table types. Set by <c>ResolveAssemblyPath</c> after building.</summary>
+    string? AssemblyPath { get; set; }
+}
+
+/// <summary>
 /// Shared CLI option parsing utilities to reduce repetitive argument parsing code
 /// across all commands. Provides common option keys, aliases, and validation helpers.
 /// Includes standardized banner printing, error formatting, and centralized option descriptions

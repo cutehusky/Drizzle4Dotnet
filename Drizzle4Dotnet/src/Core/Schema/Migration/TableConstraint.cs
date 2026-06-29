@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Text;
 using Drizzle4Dotnet.Core.Shared;
 
@@ -302,6 +301,8 @@ internal sealed class StringBuilderSqlBuilder : ISqlBuilder
 
     public ISqlBuilder Append(string sql) { _sb.Append(sql); return this; }
     public ISqlBuilder Append(char sql) { _sb.Append(sql); return this; }
+
+    public (string, Dictionary<string, object?>) Build() => (_sb.ToString(), new Dictionary<string, object?>());
 
     public override string ToString() => _sb.ToString();
 }

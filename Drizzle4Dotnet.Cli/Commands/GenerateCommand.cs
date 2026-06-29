@@ -162,7 +162,7 @@ public static class GenerateCommand
 /// <summary>
 /// Options for the 'generate' command, parsed from CLI arguments.
 /// </summary>
-public class GenerateOptions
+public class GenerateOptions : IAssemblyOptions
 {
     /// <summary>The database provider (pgsql, mysql, mssql, sqlite, oracle).</summary>
     public string Provider { get; set; } = "pgsql";

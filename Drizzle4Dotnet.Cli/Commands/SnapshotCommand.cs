@@ -106,7 +106,7 @@ public static class SnapshotCommand
 /// <summary>
 /// Options for the 'snapshot' command, parsed from CLI arguments.
 /// </summary>
-public class SnapshotOptions
+public class SnapshotOptions : IAssemblyOptions
 {
     /// <summary>The database provider (pgsql, mysql, mssql, sqlite, oracle).</summary>
     public string Provider { get; set; } = "pgsql";

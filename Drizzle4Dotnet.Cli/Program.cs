@@ -272,19 +272,15 @@ public class Program
     /// Resolves the assembly path from either --project (builds the project) or --assembly (direct path).
     /// Modifies the options object in place, setting AssemblyPath if --project was provided.
     /// If neither is provided, attempts to auto-discover a single .csproj in the current directory.
+    /// Uses the <see cref="IAssemblyOptions"/> interface instead of reflection for type-safe access.
     /// </summary>
-    /// <typeparam name="T">Options type that must have ProjectPath and AssemblyPath properties.</typeparam>
-    /// <param name="options">The options object to populate.</param>
+    /// <param name="options">The options object to populate (must implement <see cref="IAssemblyOptions"/>).</param>
     /// <param name="errors">List to collect error messages.</param>
     /// <returns>True if assembly was resolved successfully; false if errors occurred.</returns>
-    private static bool ResolveAssemblyPath<T>(T options, List<string> errors) where T : class
+    private static bool ResolveAssemblyPath(IAssemblyOptions options, List<string> errors)
     {
-        // Try to get ProjectPath and AssemblyPath via reflection (works for all options types)
-        var projProp = typeof(T).GetProperty("ProjectPath");
-        var asmProp = typeof(T).GetProperty("AssemblyPath");
-
-        var projectPath = projProp?.GetValue(options) as string;
-        var assemblyPath = asmProp?.GetValue(options) as string;
+        var projectPath = options.ProjectPath;
+        var assemblyPath = options.AssemblyPath;
 
         // If both provided, project takes precedence
         if (!string.IsNullOrWhiteSpace(projectPath))
@@ -293,7 +289,7 @@ public class Program
             {
                 var builtDll = ProjectBuilder.Build(projectPath);
                 Console.WriteLine($"  Built DLL:    {builtDll}");
-                asmProp?.SetValue(options, builtDll);
+                options.AssemblyPath = builtDll;
             }
             catch (Exception ex)
             {
@@ -313,7 +309,7 @@ public class Program
                     var builtDll = ProjectBuilder.Build(csprojFiles[0]);
                     Console.WriteLine($"  Auto-discovered project: {Path.GetFileName(csprojFiles[0])}");
                     Console.WriteLine($"  Built DLL:    {builtDll}");
-                    asmProp?.SetValue(options, builtDll);
+                    options.AssemblyPath = builtDll;
                 }
                 catch (Exception ex)
                 {
