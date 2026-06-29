@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
-using Drizzle4Dotnet.Core.Default.Query;
 using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Query.Insert;
 using Drizzle4Dotnet.Core.Query.Select;
@@ -10,6 +9,8 @@ using Drizzle4Dotnet.Core.Query.Update;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Default;
+using Drizzle4Dotnet.Default.Query;
 
 namespace Drizzle4Dotnet.Core.Default;
 

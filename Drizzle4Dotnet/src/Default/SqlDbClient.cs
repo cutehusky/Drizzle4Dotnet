@@ -1,9 +1,10 @@
 using System.Data.Common;
-using Drizzle4Dotnet.Core.Default.Query;
+using Drizzle4Dotnet.Core;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Default.Query;
 
-namespace Drizzle4Dotnet.Core.Default;
+namespace Drizzle4Dotnet.Default;
 
 /// <summary>
 /// Default/generic SQL database client using <see cref="DefaultSqlDialectImpl"/>.

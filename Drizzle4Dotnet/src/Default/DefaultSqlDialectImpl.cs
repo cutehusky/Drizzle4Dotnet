@@ -1,7 +1,7 @@
 using Drizzle4Dotnet.Core.Schema.Migration;
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.Core.Default;
+namespace Drizzle4Dotnet.Default;
 
 /// <summary>
 /// Default/generic SQL dialect implementation following ANSI SQL standards.

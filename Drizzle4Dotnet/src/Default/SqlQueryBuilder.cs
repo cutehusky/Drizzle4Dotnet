@@ -1,8 +1,8 @@
-using Drizzle4Dotnet.Core.Default.Query;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
+using Drizzle4Dotnet.Default.Query;
 
-namespace Drizzle4Dotnet.Core.Default;
+namespace Drizzle4Dotnet.Default;
 
 /// <summary>
 /// Default/generic query builder for building SQL without a database connection.

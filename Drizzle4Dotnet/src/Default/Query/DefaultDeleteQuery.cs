@@ -2,7 +2,7 @@ using Drizzle4Dotnet.Core.Query.Delete;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
-namespace Drizzle4Dotnet.Core.Default.Query;
+namespace Drizzle4Dotnet.Default.Query;
 
 /// <summary>
 /// Default/generic DELETE query builder using <see cref="DefaultSqlDialectImpl"/>.
