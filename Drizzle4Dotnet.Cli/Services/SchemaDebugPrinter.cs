@@ -82,7 +82,8 @@ public static class SchemaDebugPrinter
                 Console.WriteLine($"     Indexes:      {table.IndexDefinitions.Count}");
                 foreach (var index in table.IndexDefinitions)
                 {
-                    Console.WriteLine($"       {index.IndexName} {index.SchemaName}.{index.TableName}({string.Join(", ", index.Columns)}) {index.IndexType} {(index.IsUnique ? "[UNIQUE]" : "")} where {index.IsUnique}");
+                    Console.WriteLine($"       {index.IndexName} {index.SchemaName}.{index.TableName}({string.Join(", ", index.Columns)}) {index.IndexType} {(index.IsUnique ? "[UNIQUE]" : "")}" +
+                                      (index.Where != null ? $" WHERE {index.Where}" : ""));
                 }
                 Console.WriteLine();
             }
