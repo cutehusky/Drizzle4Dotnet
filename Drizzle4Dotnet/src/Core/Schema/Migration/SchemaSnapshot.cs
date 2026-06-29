@@ -10,10 +10,10 @@ namespace Drizzle4Dotnet.Core.Schema.Migration;
 public class SchemaSnapshot
 {
     /// <summary>A descriptive name for this snapshot (e.g., "v1.0.0").</summary>
-    public string Name { get; set; } = "";
+    public string Name { get; init; } = "";
 
     /// <summary>Tables in this schema snapshot.</summary>
-    public List<SnapshotTable> Tables { get; set; } = new();
+    public List<SnapshotTable> Tables { get; init; } = new();
 
     /// <summary>
     /// Serializes the snapshot to a JSON string for storage.
@@ -72,12 +72,6 @@ public class SchemaSnapshot
     }
 
     /// <summary>
-    /// Compares this snapshot (the OLD/current state) with <paramref name="newerSnapshot"/> (the NEW/target state)
-    /// and returns the differences needed to migrate from this to the new state.
-    /// If <paramref name="newerSnapshot"/> is null, all tables in this snapshot are treated as added (first migration).
-    /// </summary>
-    /// <param name="newerSnapshot">The newer/target snapshot to compare against. Null means first migration.</param>
-    /// <summary>
     /// Creates a diff where all tables are marked as Added (used for first migration).
     /// </summary>
     public SchemaDiff CreateNew()
@@ -115,7 +109,12 @@ public class SchemaSnapshot
         }).ToList();
         return new SchemaDiff(tableChanges);
     }
-
+    
+    /// <summary>
+    /// Compares this snapshot (the OLD/current state) with <paramref name="newerSnapshot"/> (the NEW/target state)
+    /// and returns the differences needed to migrate from this to the new state.
+    /// </summary>
+    /// <param name="newerSnapshot">The newer/target snapshot to compare against.</param>
     public SchemaDiff Compare(SchemaSnapshot newerSnapshot)
     {
         var currentTables = Tables.ToDictionary(t => (t.SchemaName, t.TableName));
@@ -202,7 +201,7 @@ public class SchemaSnapshot
 
         return source.ConstraintDefinitions
             .Where(c => !targetKeys.Contains(GetConstraintKey(c)))
-            .Select(ToConstraint)
+            .Select(c => ToConstraint(source.TableName, c))
             .ToList();
     }
 
@@ -356,35 +355,35 @@ public class SchemaSnapshot
     /// Reconstructs a <see cref="TableConstraint"/> from a <see cref="SnapshotConstraint"/>.
     /// Falls back to <see cref="RawTableConstraint"/> for types that cannot be reconstructed.
     /// </summary>
-    private static TableConstraint ToConstraint(SnapshotConstraint sc)
+    private static TableConstraint ToConstraint(string tableName, SnapshotConstraint sc)
     {
         if (!string.IsNullOrEmpty(sc.RawSql) && sc.ConstraintType == "RAW")
-            return new RawTableConstraint(sc.RawSql);
+            return new RawTableConstraint(sc.RawSql, sc.ConstraintName ?? $"RAW_{tableName}_{sc.RawSql.GetHashCode():X8}");
 
         switch (sc.ConstraintType)
         {
             case "FOREIGN KEY":
                 return new ForeignKeyConstraint(
-                    sc.ConstraintName,
+                    sc.ConstraintName ?? $"FK_{tableName}_{string.Join("_", sc.Columns)}_{sc.ForeignTable}_{string.Join("_", sc.ForeignColumns)}",
                     sc.Columns.ToArray(),
                     sc.ForeignTable ?? "",
                     sc.ForeignColumns.ToArray(),
                     sc.ForeignSchema ?? "public");
             case "UNIQUE":
-                return new UniqueConstraint(sc.Columns.ToArray());
+                return new UniqueConstraint(sc.Columns.ToArray(), sc.ConstraintName ?? $"UQ_{tableName}_{string.Join("_", sc.Columns)}");
             case "PRIMARY KEY":
-                return new PrimaryKeyTableConstraint(sc.Columns.ToArray());
+                return new PrimaryKeyTableConstraint(sc.Columns.ToArray(), sc.ConstraintName ?? $"PK_{tableName}_{string.Join("_", sc.Columns)}");
             case "CHECK":
-                return new CheckTableConstraint(sc.Expression ?? "");
+                return new CheckTableConstraint(sc.Expression ?? "", sc.ConstraintName ?? $"CHK_{tableName}_{(sc.Expression?.GetHashCode() ?? 0):X8}");
             default:
-                return new RawTableConstraint(sc.RawSql ?? "");
+                return new RawTableConstraint(sc.RawSql ?? "", sc.ConstraintName ?? $"RAW_{tableName}_{(sc.RawSql?.GetHashCode() ?? 0):X8}");
         }
     }
 
     private static TableDefinition ToTableDef(SnapshotTable table)
     {
         var columns = table.Columns.Select(ToColDef).ToList();
-        var constraints = table.ConstraintDefinitions.Select(ToConstraint).ToList();
+        var constraints = table.ConstraintDefinitions.Select(constraint => ToConstraint(table.TableName, constraint)).ToList();
         var indexes = table.IndexDefinitions.Select(idx => new TableIndex(
             idx.IndexName, idx.SchemaName, idx.TableName,
             idx.Columns.ToArray(), idx.IsUnique, idx.IndexType, idx.Where
@@ -394,10 +393,9 @@ public class SchemaSnapshot
 
     /// <summary>
     /// Gets the name of a constraint from the typed <see cref="TableConstraint"/> definition.
-    /// All constraint types support an optional name via their <c>ConstraintName</c> property.
-    /// Returns null for unnamed constraints.
+    /// All constraint types have a non-null <c>ConstraintName</c> property.
     /// </summary>
-    public static string? GetConstraintName(TableConstraint constraint)
+    public static string GetConstraintName(TableConstraint constraint)
     {
         return constraint switch
         {
@@ -406,7 +404,7 @@ public class SchemaSnapshot
             PrimaryKeyTableConstraint pk => pk.ConstraintName,
             CheckTableConstraint cc => cc.ConstraintName,
             RawTableConstraint rc => rc.ConstraintName,
-            _ => null
+            _ => throw new InvalidOperationException($"Unknown constraint type: {constraint.GetType().Name}")
         };
     }
 }
@@ -416,21 +414,19 @@ public class SchemaSnapshot
 /// </summary>
 public class SnapshotTable
 {
-    public string SchemaName { get; set; } = "public";
-    public string TableName { get; set; } = "";
-    public List<SnapshotColumn> Columns { get; set; } = new();
+    public string SchemaName { get; init; } = "public";
+    public string TableName { get; init; } = "";
+    public List<SnapshotColumn> Columns { get; init; } = [];
 
     /// <summary>
     /// Structured index data for proper reconstruction during migration.
-    /// Populated alongside the string-based <see cref="Indexes"/> list.
     /// </summary>
-    public List<SnapshotIndex> IndexDefinitions { get; set; } = new();
+    public List<SnapshotIndex> IndexDefinitions { get; init; } = [];
 
     /// <summary>
     /// Structured constraint data for proper reconstruction during migration.
-    /// Populated alongside the string-based <see cref="Constraints"/> list.
     /// </summary>
-    public List<SnapshotConstraint> ConstraintDefinitions { get; set; } = new();
+    public List<SnapshotConstraint> ConstraintDefinitions { get; init; } = [];
 }
 
 /// <summary>
@@ -438,13 +434,13 @@ public class SnapshotTable
 /// </summary>
 public class SnapshotIndex
 {
-    public string IndexName { get; set; } = "";
-    public string SchemaName { get; set; } = "public";
-    public string TableName { get; set; } = "";
-    public List<string> Columns { get; set; } = new();
-    public bool IsUnique { get; set; }
-    public string? IndexType { get; set; }
-    public string? Where { get; set; }
+    public string IndexName { get; init; } = "";
+    public string SchemaName { get; init; } = "public";
+    public string TableName { get; init; } = "";
+    public List<string> Columns { get; init; } = [];
+    public bool IsUnique { get; init; }
+    public string? IndexType { get; init; }
+    public string? Where { get; init; }
 }
 
 /// <summary>
@@ -460,7 +456,7 @@ public class SnapshotConstraint
     public string ConstraintType { get; set; } = "";
 
     /// <summary>Columns involved (for FK, UNIQUE, PRIMARY KEY).</summary>
-    public List<string> Columns { get; set; } = new();
+    public List<string> Columns { get; set; } = [];
 
     /// <summary>Referenced table (for FOREIGN KEY).</summary>
     public string? ForeignTable { get; set; }
@@ -469,7 +465,7 @@ public class SnapshotConstraint
     public string? ForeignSchema { get; set; }
 
     /// <summary>Referenced columns (for FOREIGN KEY).</summary>
-    public List<string> ForeignColumns { get; set; } = new();
+    public List<string> ForeignColumns { get; set; } = [];
 
     /// <summary>CHECK expression (for CHECK constraints).</summary>
     public string? Expression { get; set; }
@@ -478,7 +474,7 @@ public class SnapshotConstraint
     /// Raw SQL fallback. Used for any constraint type that cannot be represented structurally,
     /// and as a backward-compatibility field for deserialized old-format snapshots.
     /// </summary>
-    public string? RawSql { get; set; }
+    public string? RawSql { get; init; }
 }
 
 /// <summary>
@@ -486,10 +482,10 @@ public class SnapshotConstraint
 /// by <see cref="SchemaSnapshot"/> to avoid coupling the snapshot system to any
 /// specific database dialect's generic type parameter.
 /// </summary>
-internal class RawColumnDefinition : IColumnDefinition
+internal class RawColumnDefinition(string name, string dataType) : IColumnDefinition
 {
-    public string Name { get; }
-    public ISqlDataType SqlDataType { get; }
+    public string Name { get; } = name;
+    public ISqlDataType SqlDataType { get; } = new RawSqlDataType(dataType);
     public string RawDataType => SqlDataType.Sql;
     public bool IsNullable { get; set; } = true;
     public bool IsPrimaryKey { get; set; }
@@ -497,12 +493,6 @@ internal class RawColumnDefinition : IColumnDefinition
     public string? DefaultValue { get; set; }
     public string? CheckExpression { get; set; }
     public string? Comment { get; set; }
-
-    public RawColumnDefinition(string name, string dataType)
-    {
-        Name = name;
-        SqlDataType = new RawSqlDataType(dataType);
-    }
 }
 
 /// <summary>
@@ -510,28 +500,23 @@ internal class RawColumnDefinition : IColumnDefinition
 /// </summary>
 public class SnapshotColumn
 {
-    public string Name { get; set; } = "";
-    public string RawDataType { get; set; } = "";
-    public bool IsNullable { get; set; } = true;
-    public bool IsPrimaryKey { get; set; }
-    public bool IsAutoIncrement { get; set; }
-    public string? DefaultValue { get; set; }
-    public string? CheckExpression { get; set; }
+    public string Name { get; init; } = "";
+    public string RawDataType { get; init; } = "";
+    public bool IsNullable { get; init; } = true;
+    public bool IsPrimaryKey { get; init; }
+    public bool IsAutoIncrement { get; init; }
+    public string? DefaultValue { get; init; }
+    public string? CheckExpression { get; init; }
 }
 
 /// <summary>
 /// Represents the differences between two schema snapshots.
 /// </summary>
-public class SchemaDiff
+public class SchemaDiff(IReadOnlyList<TableChange> tableChanges)
 {
-    public IReadOnlyList<TableChange> TableChanges { get; }
+    public IReadOnlyList<TableChange> TableChanges { get; } = tableChanges;
 
     public bool HasChanges => TableChanges.Count > 0;
-
-    public SchemaDiff(IReadOnlyList<TableChange> tableChanges)
-    {
-        TableChanges = tableChanges;
-    }
 
     /// <summary>
     /// Migrates the schema by generating the appropriate DDL statements.
@@ -572,7 +557,7 @@ public class SchemaDiff
                         addConstraint.AddConstraint(constraintSql.ToString());
                         steps.Add(new MigrationStep(
                             MigrationStepType.AlterTable,
-                            $"Add constraint {constraintName ?? "(unnamed)"} on {change.SchemaName}.{change.TableName}",
+                            $"Add constraint {constraintName} on {change.SchemaName}.{change.TableName}",
                             addConstraint
                         ));
                     }
@@ -636,7 +621,7 @@ public class SchemaDiff
                         addQuery.AddConstraint(constraint.ToString());
                         steps.Add(new MigrationStep(
                             MigrationStepType.AlterTable,
-                            $"Add constraint {constraintName ?? "(unnamed)"} on {change.SchemaName}.{change.TableName}",
+                            $"Add constraint {constraintName} on {change.SchemaName}.{change.TableName}",
                             addQuery
                         ));
                     }
@@ -644,20 +629,16 @@ public class SchemaDiff
                         descriptionParts.Add($"{change.AddedConstraints.Count} constraint(s) added");
 
                     // Removed constraints -> ALTER TABLE DROP CONSTRAINT
-                    // Use typed constraint's name property when available, fall back to SQL extraction
                     foreach (var constraint in change.RemovedConstraints)
                     {
                         var constraintName = SchemaSnapshot.GetConstraintName(constraint);
-                        if (constraintName != null)
-                        {
-                            var dropQuery = new AlterTableQuery(change.TableName, change.SchemaName);
-                            dropQuery.DropConstraint(constraintName);
-                            steps.Add(new MigrationStep(
-                                MigrationStepType.AlterTable,
-                                $"Drop constraint {constraintName} on {change.SchemaName}.{change.TableName}",
-                                dropQuery
-                            ));
-                        }
+                        var dropQuery = new AlterTableQuery(change.TableName, change.SchemaName);
+                        dropQuery.DropConstraint(constraintName);
+                        steps.Add(new MigrationStep(
+                            MigrationStepType.AlterTable,
+                            $"Drop constraint {constraintName} on {change.SchemaName}.{change.TableName}",
+                            dropQuery
+                        ));
                     }
                     if (change.RemovedConstraints.Count > 0)
                         descriptionParts.Add($"{change.RemovedConstraints.Count} constraint(s) removed");
@@ -716,18 +697,11 @@ public class SchemaDiff
 /// <summary>
 /// Represents a step in a migration plan.
 /// </summary>
-public class MigrationStep
+public class MigrationStep(MigrationStepType stepType, string description, ISql sql)
 {
-    public MigrationStepType StepType { get; }
-    public string Description { get; }
-    public ISql Sql { get; }
-
-    public MigrationStep(MigrationStepType stepType, string description, ISql sql)
-    {
-        StepType = stepType;
-        Description = description;
-        Sql = sql;
-    }
+    public MigrationStepType StepType { get; } = stepType;
+    public string Description { get; } = description;
+    public ISql Sql { get; } = sql;
 
     /// <summary>
     /// Builds the SQL string using the specified dialect.
@@ -752,26 +726,22 @@ public enum MigrationStepType
 /// <summary>
 /// A complete migration plan consisting of multiple steps.
 /// </summary>
-public class MigrationPlan
+public class MigrationPlan(string name, IReadOnlyList<MigrationStep> steps)
 {
-    public string Name { get; }
-    public IReadOnlyList<MigrationStep> Steps { get; }
-
-    public MigrationPlan(string name, IReadOnlyList<MigrationStep> steps)
-    {
-        Name = name;
-        Steps = steps;
-    }
+    public string Name { get; } = name;
+    public IReadOnlyList<MigrationStep> Steps { get; } = steps;
 
     /// <summary>
     /// Generates the full migration SQL script.
     /// </summary>
     public string ToSql<TDialect>() where TDialect : ISqlDialect
     {
-        var parts = new List<string>();
-        parts.Add($"-- Migration: {Name}");
-        parts.Add($"-- Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-        parts.Add("");
+        var parts = new List<string>
+        {
+            $"-- Migration: {Name}",
+            $"-- Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC",
+            ""
+        };
 
         foreach (var step in Steps)
         {

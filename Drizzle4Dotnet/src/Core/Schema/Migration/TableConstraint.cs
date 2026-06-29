@@ -7,8 +7,11 @@ namespace Drizzle4Dotnet.Core.Schema.Migration;
 /// Abstract base for typed table-level constraints (e.g., FOREIGN KEY, UNIQUE, CHECK).
 /// Each subclass knows how to build its SQL representation via <see cref="BuildSql"/>.
 /// </summary>
-public abstract class TableConstraint
+public abstract class TableConstraint(string constraintName)
 {
+    /// <summary>Constraint name (e.g., "FK_Users_Departments").</summary>
+    public string ConstraintName { get; } = constraintName;
+
     /// <summary>
     /// Appends the constraint SQL to the provided <see cref="ISqlBuilder"/>.
     /// </summary>
@@ -23,7 +26,6 @@ public abstract class TableConstraint
         BuildSql(builder);
         return builder.ToString();
     }
-
 }
 
 /// <summary>
@@ -31,18 +33,14 @@ public abstract class TableConstraint
 /// </summary>
 public class RawTableConstraint : TableConstraint
 {
-    /// <summary>Optional constraint name (e.g., "FK_Users_Departments").</summary>
-    public string? ConstraintName { get; }
-
     /// <summary>The raw constraint SQL.</summary>
     public string Sql { get; }
 
     /// <param name="sql">The raw constraint SQL string.</param>
-    /// <param name="constraintName">Optional constraint name.</param>
-    public RawTableConstraint(string sql, string? constraintName = null)
+    /// <param name="constraintName">Constraint name.</param>
+    public RawTableConstraint(string sql, string constraintName) : base(constraintName)
     {
         Sql = sql;
-        ConstraintName = constraintName;
     }
 
     /// <inheritdoc />
@@ -57,9 +55,6 @@ public class RawTableConstraint : TableConstraint
 /// </summary>
 public class ForeignKeyConstraint : TableConstraint
 {
-    /// <summary>Optional constraint name (e.g., "FK_Users_Departments").</summary>
-    public string? ConstraintName { get; }
-
     /// <summary>Source column names (database column names).</summary>
     public string[] Columns { get; }
 
@@ -74,14 +69,13 @@ public class ForeignKeyConstraint : TableConstraint
     /// </summary>
     public string ForeignSchema { get; }
 
-    /// <param name="constraintName">Optional constraint name.</param>
+    /// <param name="constraintName">Constraint name.</param>
     /// <param name="columns">Source column names (DB column names).</param>
     /// <param name="foreignTable">Referenced table name (DB table name).</param>
     /// <param name="foreignColumns">Referenced column names (DB column names).</param>
     /// <param name="foreignSchema">Schema name of the referenced table.</param>
-    public ForeignKeyConstraint(string? constraintName, string[] columns, string foreignTable, string[] foreignColumns, string foreignSchema)
+    public ForeignKeyConstraint(string constraintName, string[] columns, string foreignTable, string[] foreignColumns, string foreignSchema) : base(constraintName)
     {
-        ConstraintName = constraintName;
         Columns = columns;
         ForeignTable = foreignTable;
         ForeignColumns = foreignColumns;
@@ -91,13 +85,9 @@ public class ForeignKeyConstraint : TableConstraint
     /// <inheritdoc />
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (!string.IsNullOrEmpty(ConstraintName))
-        {
-            sqlBuilder.Append("CONSTRAINT ");
-            sqlBuilder.Append(ConstraintName);
-            sqlBuilder.Append(' ');
-        }
-        sqlBuilder.Append("FOREIGN KEY (");
+        sqlBuilder.Append("CONSTRAINT ");
+        sqlBuilder.Append(ConstraintName);
+        sqlBuilder.Append(" FOREIGN KEY (");
         sqlBuilder.Append(string.Join(", ", Columns.Select(c => $"\"{c}\"")));
         sqlBuilder.Append(") REFERENCES ");
 
@@ -115,30 +105,22 @@ public class ForeignKeyConstraint : TableConstraint
 /// </summary>
 public class UniqueConstraint : TableConstraint
 {
-    /// <summary>Optional constraint name (e.g., "UQ_Users_Email").</summary>
-    public string? ConstraintName { get; }
-
     /// <summary>Column names that form the unique constraint.</summary>
     public string[] Columns { get; }
 
     /// <param name="columns">Column names (DB column names).</param>
-    /// <param name="constraintName">Optional constraint name.</param>
-    public UniqueConstraint(string[] columns, string? constraintName = null)
+    /// <param name="constraintName">Constraint name.</param>
+    public UniqueConstraint(string[] columns, string constraintName) : base(constraintName)
     {
         Columns = columns;
-        ConstraintName = constraintName;
     }
 
     /// <inheritdoc />
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (!string.IsNullOrEmpty(ConstraintName))
-        {
-            sqlBuilder.Append("CONSTRAINT ");
-            sqlBuilder.Append(ConstraintName);
-            sqlBuilder.Append(' ');
-        }
-        sqlBuilder.Append("UNIQUE (");
+        sqlBuilder.Append("CONSTRAINT ");
+        sqlBuilder.Append(ConstraintName);
+        sqlBuilder.Append(" UNIQUE (");
         sqlBuilder.Append(string.Join(", ", Columns.Select(c => $"\"{c}\"")));
         sqlBuilder.Append(')');
     }
@@ -149,30 +131,22 @@ public class UniqueConstraint : TableConstraint
 /// </summary>
 public class PrimaryKeyTableConstraint : TableConstraint
 {
-    /// <summary>Optional constraint name (e.g., "PK_Users").</summary>
-    public string? ConstraintName { get; }
-
     /// <summary>Column names that form the primary key.</summary>
     public string[] Columns { get; }
 
     /// <param name="columns">Column names (DB column names).</param>
-    /// <param name="constraintName">Optional constraint name.</param>
-    public PrimaryKeyTableConstraint(string[] columns, string? constraintName = null)
+    /// <param name="constraintName">Constraint name.</param>
+    public PrimaryKeyTableConstraint(string[] columns, string constraintName) : base(constraintName)
     {
         Columns = columns;
-        ConstraintName = constraintName;
     }
 
     /// <inheritdoc />
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (!string.IsNullOrEmpty(ConstraintName))
-        {
-            sqlBuilder.Append("CONSTRAINT ");
-            sqlBuilder.Append(ConstraintName);
-            sqlBuilder.Append(' ');
-        }
-        sqlBuilder.Append("PRIMARY KEY (");
+        sqlBuilder.Append("CONSTRAINT ");
+        sqlBuilder.Append(ConstraintName);
+        sqlBuilder.Append(" PRIMARY KEY (");
         sqlBuilder.Append(string.Join(", ", Columns.Select(c => $"\"{c}\"")));
         sqlBuilder.Append(')');
     }
@@ -183,30 +157,22 @@ public class PrimaryKeyTableConstraint : TableConstraint
 /// </summary>
 public class CheckTableConstraint : TableConstraint
 {
-    /// <summary>Optional constraint name (e.g., "CHK_Age_Positive").</summary>
-    public string? ConstraintName { get; }
-
     /// <summary>The CHECK expression (e.g., "value > 0").</summary>
     public string Expression { get; }
 
     /// <param name="expression">The CHECK constraint expression.</param>
-    /// <param name="constraintName">Optional constraint name.</param>
-    public CheckTableConstraint(string expression, string? constraintName = null)
+    /// <param name="constraintName">Constraint name.</param>
+    public CheckTableConstraint(string expression, string constraintName) : base(constraintName)
     {
         Expression = expression;
-        ConstraintName = constraintName;
     }
 
     /// <inheritdoc />
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (!string.IsNullOrEmpty(ConstraintName))
-        {
-            sqlBuilder.Append("CONSTRAINT ");
-            sqlBuilder.Append(ConstraintName);
-            sqlBuilder.Append(' ');
-        }
-        sqlBuilder.Append("CHECK (");
+        sqlBuilder.Append("CONSTRAINT ");
+        sqlBuilder.Append(ConstraintName);
+        sqlBuilder.Append(" CHECK (");
         sqlBuilder.Append(Expression);
         sqlBuilder.Append(')');
     }

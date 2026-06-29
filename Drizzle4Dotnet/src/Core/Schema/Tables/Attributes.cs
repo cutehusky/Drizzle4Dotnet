@@ -74,6 +74,9 @@ public class ForeignKeyConstraintAttribute(string? constraintName, string[] colu
 public class UniqueConstraintAttribute(string[] columns) : Attribute
 {
     public string[] Columns { get; } = columns;
+
+    /// <summary>Optional constraint name (e.g., "UQ_Users_Email").</summary>
+    public string? ConstraintName { get; set; }
 }
 
 /// <summary>
@@ -85,6 +88,9 @@ public class UniqueConstraintAttribute(string[] columns) : Attribute
 public class PrimaryKeyTableConstraintAttribute(string[] columns) : Attribute
 {
     public string[] Columns { get; } = columns;
+
+    /// <summary>Optional constraint name (e.g., "PK_Users").</summary>
+    public string? ConstraintName { get; set; }
 }
 
 /// <summary>
@@ -96,6 +102,9 @@ public class PrimaryKeyTableConstraintAttribute(string[] columns) : Attribute
 public class CheckTableConstraintAttribute(string expression) : Attribute
 {
     public string Expression { get; } = expression;
+
+    /// <summary>Optional constraint name (e.g., "CHK_Age_Positive").</summary>
+    public string? ConstraintName { get; set; }
 }
 
 /// <summary>

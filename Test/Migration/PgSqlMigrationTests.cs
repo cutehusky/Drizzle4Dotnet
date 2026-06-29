@@ -133,7 +133,7 @@ public class PgSqlMigrationTests
             new ColumnDefinition("Email", "TEXT").NotNull(),
         }, new[]
         {
-            new UniqueConstraint(["Email"])
+            new UniqueConstraint(["Email"], "UQ_Users_Email")
         });
 
         var query = new CreateTableQuery(table);

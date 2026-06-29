@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Reflection;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Migration.Query;
@@ -86,8 +85,9 @@ public static class OrmSchemaExporter
             var foreignSchemaName = fkAttr.ForeignSchema
                 ?? GetStaticPropertyValue<string>(fkAttr.ForeignTable, "SchemaName")
                 ?? "public";
+            var fkName = fkAttr.ConstraintName ?? $"FK_{tableName}_{string.Join("_", fkAttr.Columns)}_{foreignTableName}_{string.Join("_", fkAttr.ForeignColumns)}";
             constraints.Add(new ForeignKeyConstraint(
-                fkAttr.ConstraintName,
+                fkName,
                 fkAttr.Columns,
                 foreignTableName,
                 fkAttr.ForeignColumns,
@@ -96,17 +96,20 @@ public static class OrmSchemaExporter
 
         foreach (var uqAttr in tableType.GetCustomAttributes<UniqueConstraintAttribute>())
         {
-            constraints.Add(new UniqueConstraint(uqAttr.Columns));
+            var uqName = uqAttr.ConstraintName ?? $"UQ_{tableName}_{string.Join("_", uqAttr.Columns)}";
+            constraints.Add(new UniqueConstraint(uqAttr.Columns, uqName));
         }
 
         foreach (var pkAttr in tableType.GetCustomAttributes<PrimaryKeyTableConstraintAttribute>())
         {
-            constraints.Add(new PrimaryKeyTableConstraint(pkAttr.Columns));
+            var pkName = pkAttr.ConstraintName ?? $"PK_{tableName}_{string.Join("_", pkAttr.Columns)}";
+            constraints.Add(new PrimaryKeyTableConstraint(pkAttr.Columns, pkName));
         }
 
         foreach (var ckAttr in tableType.GetCustomAttributes<CheckTableConstraintAttribute>())
         {
-            constraints.Add(new CheckTableConstraint(ckAttr.Expression));
+            var ckName = ckAttr.ConstraintName ?? $"CHK_{tableName}_{ckAttr.Expression.GetHashCode():X8}";
+            constraints.Add(new CheckTableConstraint(ckAttr.Expression, ckName));
         }
 
         // Read index attributes

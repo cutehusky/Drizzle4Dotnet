@@ -245,7 +245,10 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                     .Cast<string>()
                     .ToArray();
 
-                var foreignTableName = ResolveDbTableName(foreignTableType) ?? foreignTableType?.Name ?? "?";
+                if (fkColumns.Length == 0 || foreignColumns.Length == 0 || foreignTableType == null)
+                    continue;
+                
+                var foreignTableName = ResolveDbTableName(foreignTableType) ?? foreignTableType.Name;
                 var foreignSchemaName = ResolveDbSchemaName(foreignTableType, attr);
                 foreignKeyConstraints.Add(new ForeignKeyConstraintModel
                 {
@@ -263,7 +266,10 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                     .Where(v => v != null)
                     .Cast<string>()
                     .ToArray();
-                uniqueConstraints.Add(new UniqueConstraintModel { Columns = uqColumns });
+                var uqName = attr.NamedArguments
+                    .FirstOrDefault(n => n.Key == "ConstraintName").Value.Value?.ToString();
+                if (uqColumns.Length > 0)
+                    uniqueConstraints.Add(new UniqueConstraintModel { Columns = uqColumns, ConstraintName = uqName });
             }
             else if (attrName == "PrimaryKeyTableConstraintAttribute" && attr.ConstructorArguments.Length >= 1)
             {
@@ -272,15 +278,18 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                     .Where(v => v != null)
                     .Cast<string>()
                     .ToArray();
-                primaryKeyTableConstraints.Add(new PrimaryKeyTableConstraintModel { Columns = pkColumns });
+                var pkName = attr.NamedArguments
+                    .FirstOrDefault(n => n.Key == "ConstraintName").Value.Value?.ToString();
+                if (pkColumns.Length > 0)
+                    primaryKeyTableConstraints.Add(new PrimaryKeyTableConstraintModel { Columns = pkColumns, ConstraintName = pkName });
             }
             else if (attrName == "CheckTableConstraintAttribute" && attr.ConstructorArguments.Length >= 1)
             {
                 var expression = attr.ConstructorArguments[0].Value?.ToString();
-                if (expression != null)
-                {
-                    checkTableConstraints.Add(new CheckTableConstraintModel { Expression = expression });
-                }
+                var ckName = attr.NamedArguments
+                    .FirstOrDefault(n => n.Key == "ConstraintName").Value.Value?.ToString();
+                if (expression != null) 
+                    checkTableConstraints.Add(new CheckTableConstraintModel { Expression = expression, ConstraintName = ckName });
             }
             else if (attrName == "IndexAttribute" && attr.ConstructorArguments.Length >= 2)
             {
@@ -452,7 +461,9 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
 
                 foreach (var fk in table.ForeignKeyConstraints)
                 {
-                    var constraintName = fk.ConstraintName != null ? $"\"{EscapeString(fk.ConstraintName)}\"" : "null";
+                    var constraintName = fk.ConstraintName != null
+                        ? $"\"{EscapeString(fk.ConstraintName)}\""
+                        : $"\"FK_{EscapeString(table.DbTableName)}_{string.Join("_", fk.Columns.Select(EscapeString))}_{EscapeString(fk.ForeignTable)}_{string.Join("_", fk.ForeignColumns.Select(EscapeString))}\"";
                     var columns = string.Join(", ", fk.Columns.Select(c => $"\"{EscapeString(c)}\""));
                     var foreignColumns = string.Join(", ", fk.ForeignColumns.Select(c => $"\"{EscapeString(c)}\""));
                     var foreignSchema = fk.ForeignSchema ?? "public";
@@ -462,18 +473,21 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                 foreach (var uq in table.UniqueConstraints)
                 {
                     var columns = string.Join(", ", uq.Columns.Select(c => $"\"{EscapeString(c)}\""));
-                    sb.AppendLine($"                new UniqueConstraint(new[] {{ {columns} }}),");
+                    var uqName = uq.ConstraintName ?? $"UQ_{table.DbTableName}_{string.Join("_", uq.Columns)}";
+                    sb.AppendLine($"                new UniqueConstraint(new[] {{ {columns} }}, \"{EscapeString(uqName)}\"),");
                 }
 
                 foreach (var pk in table.PrimaryKeyTableConstraints)
                 {
                     var columns = string.Join(", ", pk.Columns.Select(c => $"\"{EscapeString(c)}\""));
-                    sb.AppendLine($"                new PrimaryKeyTableConstraint(new[] {{ {columns} }}),");
+                    var pkName = pk.ConstraintName ?? $"PK_{table.DbTableName}_{string.Join("_", pk.Columns)}";
+                    sb.AppendLine($"                new PrimaryKeyTableConstraint(new[] {{ {columns} }}, \"{EscapeString(pkName)}\"),");
                 }
 
                 foreach (var ck in table.CheckTableConstraints)
                 {
-                    sb.AppendLine($"                new CheckTableConstraint(\"{EscapeString(ck.Expression)}\"),");
+                    var ckName = ck.ConstraintName ?? $"CHK_{table.DbTableName}_{ck.Expression.GetHashCode():X8}";
+                    sb.AppendLine($"                new CheckTableConstraint(\"{EscapeString(ck.Expression)}\", \"{EscapeString(ckName)}\"),");
                 }
 
                 sb.AppendLine("            };");
@@ -993,16 +1007,19 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
     private class UniqueConstraintModel
     {
         public string[] Columns { get; set; } = [];
+        public string? ConstraintName { get; set; }
     }
 
     private class PrimaryKeyTableConstraintModel
     {
         public string[] Columns { get; set; } = [];
+        public string? ConstraintName { get; set; }
     }
 
     private class CheckTableConstraintModel
     {
         public string Expression { get; set; } = "";
+        public string? ConstraintName { get; set; }
     }
 
     private class TableIndexModel
