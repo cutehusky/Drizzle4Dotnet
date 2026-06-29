@@ -136,7 +136,6 @@ public class Program
                     break;
 
                 case "--verbose":
-                case "-V":
                     options.Verbose = true;
                     break;
 
@@ -169,7 +168,7 @@ public class Program
             Console.Error.WriteLine("  --snapshot, -s    Path to existing snapshot JSON file for diff comparison");
             Console.Error.WriteLine("  --project, --proj {0}", CliOptionParser.Descriptions.Project);
             Console.Error.WriteLine("  --assembly, -a    {0}", CliOptionParser.Descriptions.Assembly);
-            Console.Error.WriteLine("  --verbose, -V     {0}", CliOptionParser.Descriptions.Verbose);
+            Console.Error.WriteLine("  --verbose         {0}", CliOptionParser.Descriptions.Verbose);
             return 1;
         }
 
@@ -226,7 +225,6 @@ public class Program
                     break;
 
                 case "--verbose":
-                case "-V":
                     options.Verbose = true;
                     break;
 
@@ -263,7 +261,7 @@ public class Program
             Console.Error.WriteLine("  --output, -o      {0}  (default: ./snapshot.json)", CliOptionParser.Descriptions.OutputFile);
             Console.Error.WriteLine("  --project, --proj {0}", CliOptionParser.Descriptions.Project);
             Console.Error.WriteLine("  --assembly, -a    {0}", CliOptionParser.Descriptions.Assembly);
-            Console.Error.WriteLine("  --verbose, -V     {0}", CliOptionParser.Descriptions.Verbose);
+            Console.Error.WriteLine("  --verbose         {0}", CliOptionParser.Descriptions.Verbose);
             return 1;
         }
 
@@ -376,7 +374,6 @@ public class Program
                     break;
 
                 case "--verbose":
-                case "-V":
                     options.Verbose = true;
                     break;
 
@@ -436,7 +433,6 @@ public class Program
                     break;
 
                 case "--verbose":
-                case "-V":
                     options.Verbose = true;
                     break;
 
@@ -459,7 +455,7 @@ public class Program
             Console.Error.WriteLine("  --types, -t       {0}", CliOptionParser.Descriptions.Types);
             Console.Error.WriteLine("  --project, --proj {0}", CliOptionParser.Descriptions.Project);
             Console.Error.WriteLine("  --assembly, -a    {0}", CliOptionParser.Descriptions.Assembly);
-            Console.Error.WriteLine("  --verbose, -V     {0}", CliOptionParser.Descriptions.Verbose);
+            Console.Error.WriteLine("  --verbose         {0}", CliOptionParser.Descriptions.Verbose);
             return 1;
         }
 
@@ -508,7 +504,6 @@ public class Program
                     break;
 
                 case "--verbose":
-                case "-V":
                     options.Verbose = true;
                     break;
 
@@ -531,7 +526,7 @@ public class Program
             Console.Error.WriteLine("  --output, -o         {0}  (default: ./Migrations/{{provider}})", CliOptionParser.Descriptions.Output);
             Console.Error.WriteLine("  --migration-schema   {0}", CliOptionParser.Descriptions.MigrationSchema);
             Console.Error.WriteLine("  --migration-table    {0}", CliOptionParser.Descriptions.MigrationTable);
-            Console.Error.WriteLine("  --verbose, -V        {0}", CliOptionParser.Descriptions.Verbose);
+            Console.Error.WriteLine("  --verbose            {0}", CliOptionParser.Descriptions.Verbose);
             return 1;
         }
 
@@ -651,7 +646,7 @@ public class Program
         Console.WriteLine("  --connection, -c  {0}", CliOptionParser.Descriptions.Connection);
         Console.WriteLine("  --migration-schema {0}", CliOptionParser.Descriptions.MigrationSchema);
         Console.WriteLine("  --migration-table  {0}", CliOptionParser.Descriptions.MigrationTable);
-        Console.WriteLine("  --verbose, -V     {0}", CliOptionParser.Descriptions.Verbose);
+        Console.WriteLine("  --verbose,         {0}", CliOptionParser.Descriptions.Verbose);
     }
 
     /// <summary>

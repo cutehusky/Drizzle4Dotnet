@@ -60,7 +60,18 @@ public static class SchemaDebugPrinter
                 Console.WriteLine($"     Constraints:  {table.ConstraintDefinitions.Count}");
                 foreach (var constraint in table.ConstraintDefinitions)
                 {
-                    Console.WriteLine($"       {constraint}");
+                    if (constraint.ConstraintType == "FOREIGN KEY")
+                    {
+                        Console.WriteLine($"       {constraint.ConstraintName} {constraint.ConstraintType} {table.TableName}({string.Join(", ", constraint.Columns)}) -> {constraint.ForeignTable}({string.Join(", ", constraint.ForeignColumns)})");
+                    }
+                    else if (constraint.ConstraintType == "CHECK")
+                    {
+                        Console.WriteLine($"       {constraint.ConstraintName} {constraint.ConstraintType} ({constraint.Expression})");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"       {constraint.ConstraintName} {constraint.ConstraintType} ({string.Join(", ", constraint.Columns)})");
+                    }
                 }
                 Console.WriteLine();
             }
@@ -71,7 +82,7 @@ public static class SchemaDebugPrinter
                 Console.WriteLine($"     Indexes:      {table.IndexDefinitions.Count}");
                 foreach (var index in table.IndexDefinitions)
                 {
-                    Console.WriteLine($"       {index}");
+                    Console.WriteLine($"       {index.IndexName} {index.SchemaName}.{index.TableName}({string.Join(", ", index.Columns)}) {index.IndexType} {(index.IsUnique ? "[UNIQUE]" : "")} where {index.IsUnique}");
                 }
                 Console.WriteLine();
             }
