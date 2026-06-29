@@ -246,11 +246,13 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                     .ToArray();
 
                 var foreignTableName = ResolveDbTableName(foreignTableType) ?? foreignTableType?.Name ?? "?";
+                var foreignSchemaName = ResolveDbSchemaName(foreignTableType, attr);
                 foreignKeyConstraints.Add(new ForeignKeyConstraintModel
                 {
                     ConstraintName = constraintName,
                     Columns = fkColumns,
                     ForeignTable = foreignTableName,
+                    ForeignSchema = foreignSchemaName,
                     ForeignColumns = foreignColumns
                 });
             }
@@ -453,7 +455,8 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                     var constraintName = fk.ConstraintName != null ? $"\"{EscapeString(fk.ConstraintName)}\"" : "null";
                     var columns = string.Join(", ", fk.Columns.Select(c => $"\"{EscapeString(c)}\""));
                     var foreignColumns = string.Join(", ", fk.ForeignColumns.Select(c => $"\"{EscapeString(c)}\""));
-                    sb.AppendLine($"                new ForeignKeyConstraint({constraintName}, new[] {{ {columns} }}, \"{EscapeString(fk.ForeignTable)}\", new[] {{ {foreignColumns} }}),");
+                    var foreignSchema = fk.ForeignSchema ?? "public";
+                    sb.AppendLine($"                new ForeignKeyConstraint({constraintName}, new[] {{ {columns} }}, \"{EscapeString(fk.ForeignTable)}\", new[] {{ {foreignColumns} }}, \"{EscapeString(foreignSchema)}\"),");
                 }
 
                 foreach (var uq in table.UniqueConstraints)
@@ -571,6 +574,55 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
         }
 
         return typeSymbol.Name;
+    }
+
+    /// <summary>
+    /// Resolves the database schema name from a foreign table type symbol.
+    /// First checks the <c>ForeignSchema</c> named argument on the <c>ForeignKeyConstraint</c> attribute,
+    /// then falls back to the [Table] attribute's second constructor argument or Schema named argument,
+    /// and finally defaults to "public".
+    /// </summary>
+    private static string ResolveDbSchemaName(INamedTypeSymbol? typeSymbol, AttributeData attr)
+    {
+        // First, check if ForeignSchema is specified as a named argument on the attribute
+        foreach (var namedArg in attr.NamedArguments)
+        {
+            if (namedArg.Key == "ForeignSchema" && namedArg.Value.Value is string schema)
+            {
+                if (!string.IsNullOrEmpty(schema))
+                    return schema;
+            }
+        }
+
+        // Fall back to resolving from the foreign table type's [Table] attribute
+        if (typeSymbol == null)
+            return "public";
+
+        var tableAttr = typeSymbol.GetAttributes().FirstOrDefault(a =>
+            a.AttributeClass?.Name == "TableAttribute");
+
+        if (tableAttr != null)
+        {
+            // Check second constructor argument (schema position)
+            if (tableAttr.ConstructorArguments.Length > 1)
+            {
+                var schema = tableAttr.ConstructorArguments[1].Value?.ToString();
+                if (!string.IsNullOrEmpty(schema))
+                    return schema;
+            }
+
+            // Check named argument "Schema"
+            foreach (var namedArg in tableAttr.NamedArguments)
+            {
+                if (namedArg.Key == "Schema" && namedArg.Value.Value is string schema)
+                {
+                    if (!string.IsNullOrEmpty(schema))
+                        return schema;
+                }
+            }
+        }
+
+        return "public";
     }
 
     private static string EscapeString(string value)
@@ -934,6 +986,7 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
         public string? ConstraintName { get; set; }
         public string[] Columns { get; set; } = [];
         public string ForeignTable { get; set; } = "";
+        public string? ForeignSchema { get; set; }
         public string[] ForeignColumns { get; set; } = [];
     }
 

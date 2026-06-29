@@ -711,7 +711,10 @@ public class MigrationGenerator
             {
                 case ForeignKeyConstraintAttribute fk:
                     var fkName = fk.ConstraintName != null ? $"\"{fk.ConstraintName}\" " : "";
-                    Console.WriteLine($"       [ForeignKey] {fkName}({string.Join(", ", fk.Columns)}) → {fk.ForeignTable.Name}({string.Join(", ", fk.ForeignColumns)})");
+                    var foreignTarget = fk.ForeignSchema != null
+                        ? $"{fk.ForeignSchema}.{fk.ForeignTable.Name}"
+                        : fk.ForeignTable.Name;
+                    Console.WriteLine($"       [ForeignKey] {fkName}({string.Join(", ", fk.Columns)}) → {foreignTarget}({string.Join(", ", fk.ForeignColumns)})");
                     break;
                 case UniqueConstraintAttribute uc:
                     Console.WriteLine($"       [Unique] ({string.Join(", ", uc.Columns)})");

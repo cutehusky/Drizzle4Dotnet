@@ -83,11 +83,15 @@ public static class OrmSchemaExporter
         {
             var foreignTableName = GetStaticPropertyValue<string>(fkAttr.ForeignTable, "TableName")
                                    ?? fkAttr.ForeignTable.Name;
+            var foreignSchemaName = fkAttr.ForeignSchema
+                ?? GetStaticPropertyValue<string>(fkAttr.ForeignTable, "SchemaName")
+                ?? "public";
             constraints.Add(new ForeignKeyConstraint(
                 fkAttr.ConstraintName,
                 fkAttr.Columns,
                 foreignTableName,
-                fkAttr.ForeignColumns));
+                fkAttr.ForeignColumns,
+                foreignSchemaName));
         }
 
         foreach (var uqAttr in tableType.GetCustomAttributes<UniqueConstraintAttribute>())

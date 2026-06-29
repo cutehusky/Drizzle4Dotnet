@@ -62,7 +62,10 @@ public static class SchemaDebugPrinter
                 {
                     if (constraint.ConstraintType == "FOREIGN KEY")
                     {
-                        Console.WriteLine($"       {constraint.ConstraintName} {constraint.ConstraintType} {table.TableName}({string.Join(", ", constraint.Columns)}) -> {constraint.ForeignTable}({string.Join(", ", constraint.ForeignColumns)})");
+                        var foreignTarget = string.IsNullOrEmpty(constraint.ForeignSchema)
+                            ? constraint.ForeignTable
+                            : $"{constraint.ForeignSchema}.{constraint.ForeignTable}";
+                        Console.WriteLine($"       {constraint.ConstraintName} {constraint.ConstraintType} {table.TableName}({string.Join(", ", constraint.Columns)}) -> {foreignTarget}({string.Join(", ", constraint.ForeignColumns)})");
                     }
                     else if (constraint.ConstraintType == "CHECK")
                     {

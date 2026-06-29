@@ -330,6 +330,7 @@ public class SchemaSnapshot
                 sn.ConstraintName = fk.ConstraintName;
                 sn.Columns = fk.Columns.ToList();
                 sn.ForeignTable = fk.ForeignTable;
+                sn.ForeignSchema = fk.ForeignSchema;
                 sn.ForeignColumns = fk.ForeignColumns.ToList();
                 break;
             case UniqueConstraint uc:
@@ -367,7 +368,8 @@ public class SchemaSnapshot
                     sc.ConstraintName,
                     sc.Columns.ToArray(),
                     sc.ForeignTable ?? "",
-                    sc.ForeignColumns.ToArray());
+                    sc.ForeignColumns.ToArray(),
+                    sc.ForeignSchema ?? "public");
             case "UNIQUE":
                 return new UniqueConstraint(sc.Columns.ToArray());
             case "PRIMARY KEY":
@@ -462,6 +464,9 @@ public class SnapshotConstraint
 
     /// <summary>Referenced table (for FOREIGN KEY).</summary>
     public string? ForeignTable { get; set; }
+
+    /// <summary>Optional schema of the referenced table (for FOREIGN KEY).</summary>
+    public string? ForeignSchema { get; set; }
 
     /// <summary>Referenced columns (for FOREIGN KEY).</summary>
     public List<string> ForeignColumns { get; set; } = new();

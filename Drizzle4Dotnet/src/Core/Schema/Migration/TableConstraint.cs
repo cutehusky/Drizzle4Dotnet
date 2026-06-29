@@ -69,16 +69,23 @@ public class ForeignKeyConstraint : TableConstraint
     /// <summary>The referenced column names (database column names).</summary>
     public string[] ForeignColumns { get; }
 
+    /// <summary>
+    /// The schema name of the referenced table.
+    /// </summary>
+    public string ForeignSchema { get; }
+
     /// <param name="constraintName">Optional constraint name.</param>
     /// <param name="columns">Source column names (DB column names).</param>
     /// <param name="foreignTable">Referenced table name (DB table name).</param>
     /// <param name="foreignColumns">Referenced column names (DB column names).</param>
-    public ForeignKeyConstraint(string? constraintName, string[] columns, string foreignTable, string[] foreignColumns)
+    /// <param name="foreignSchema">Schema name of the referenced table.</param>
+    public ForeignKeyConstraint(string? constraintName, string[] columns, string foreignTable, string[] foreignColumns, string foreignSchema)
     {
         ConstraintName = constraintName;
         Columns = columns;
         ForeignTable = foreignTable;
         ForeignColumns = foreignColumns;
+        ForeignSchema = foreignSchema;
     }
 
     /// <inheritdoc />
@@ -93,6 +100,9 @@ public class ForeignKeyConstraint : TableConstraint
         sqlBuilder.Append("FOREIGN KEY (");
         sqlBuilder.Append(string.Join(", ", Columns.Select(c => $"\"{c}\"")));
         sqlBuilder.Append(") REFERENCES ");
+
+        sqlBuilder.Append(ForeignSchema);
+        sqlBuilder.Append('.');
         sqlBuilder.Append(ForeignTable);
         sqlBuilder.Append(" (");
         sqlBuilder.Append(string.Join(", ", ForeignColumns.Select(c => $"\"{c}\"")));

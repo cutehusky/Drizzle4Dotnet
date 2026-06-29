@@ -57,6 +57,12 @@ public class ForeignKeyConstraintAttribute(string? constraintName, string[] colu
     public string[] Columns { get; } = columns;
     public Type ForeignTable { get; } = foreignTable;
     public string[] ForeignColumns { get; } = foreignColumns;
+
+    /// <summary>
+    /// Optional: the schema name of the referenced table.
+    /// If not set, the schema will be resolved from the foreign table's [Table] attribute, or default to "public".
+    /// </summary>
+    public string? ForeignSchema { get; set; }
 }
 
 /// <summary>
