@@ -1,1156 +1,947 @@
-# Drizzle4Dotnet — Comprehensive Implementation Plan
+# Drizzle4Dotnet — Total Project Roadmap
 
-> **Status:** Draft  
-> **Last Updated:** 2026-06-22  
-> **Target:** Production-ready ORM with PostgreSQL-first support, extensible to other dialects.
+> **Status:** Active Development  
+> **Last Updated:** 2026-06-29  
+> **Target:** v1.0 Release
 
 ---
 
 ## Table of Contents
 
-1. [Architecture Overview](#1-architecture-overview)
-2. [Phase 1: Operators & SQL Functions (Foundation)](#2-phase-1-operators--sql-functions)
-3. [Phase 1b: Static `Sql` Utility Class](#2b-phase-1b-static-sql-utility-class)
-4. [Phase 2: Window Functions](#3-phase-2-window-functions)
-5. [Phase 3: Advanced DML (Insert/Update/Delete)](#4-phase-3-advanced-dml)
-6. [Phase 3b: Recursive CTEs & Advanced Subqueries](#4b-phase-3b-recursive-ctes--advanced-subqueries)
-7. [Phase 4: Set Operations & Compound Queries](#5-phase-4-set-operations)
-8. [Phase 5: Convenience Execution Methods](#6-phase-5-convenience-execution-methods)
-9. [Phase 6: Batch Operations & Streaming](#7-phase-6-batch-operations--streaming)
-10. [Phase 7: Multi-Dialect Support](#8-phase-7-multi-dialect-support)
-11. [Phase 8: Schema / Migration Management](#9-phase-8-schema--migration-management)
-12. [Phase 9: Observability & Tooling](#10-phase-9-observability--tooling)
-13. [Phase 10: Source Generator Enhancements](#11-phase-10-source-generator-enhancements)
-14. [Phase 11: GitHub Issues & Reported Bugs](#12-phase-11-github-issues--reported-bugs)
-15. [Appendix: Cross-Cutting Concerns](#13-appendix-cross-cutting-concerns)
+1. [Current State Summary](#1-current-state-summary)
+2. [Phase 1: Full Unit Test Coverage](#2-phase-1-full-unit-test-coverage)
+3. [Phase 2: Batch API Support](#3-phase-2-batch-api-support)
+4. [Phase 3: Prepared Statement Support](#4-phase-3-prepared-statement-support)
+5. [Phase 4: Better JSON/JSONB Handling](#5-phase-4-better-jsonjsonb-handling)
+6. [Phase 5: Cross-Dialect Test Suites](#6-phase-5-cross-dialect-test-suites)
+7. [Phase 6: Performance & AOT Optimization](#7-phase-6-performance--aot-optimization)
+8. [Phase 7: Documentation & Release](#8-phase-7-documentation--release)
+9. [Timeline & Milestones](#9-timeline--milestones)
 
 ---
 
-## 1. Architecture Overview
+## 1. Current State Summary
 
-### Existing Architecture (Current State)
+| Area | Status | Details |
+|------|--------|---------|
+| **Core Library** | ✅ Stable | SQL builder, expression nodes, operators, functions, schema/migration |
+| **PgSql Dialect** | ✅ Complete | Full PostgreSQL support with Npgsql |
+| **MySql Dialect** | ✅ Complete | Full MySQL/MariaDB support with MySqlConnector |
+| **MSSQL Dialect** | ✅ Complete | Full SQL Server support with Microsoft.Data.SqlClient |
+| **Oracle Dialect** | ✅ Complete | Full Oracle support with Oracle.ManagedDataAccess.Core |
+| **SQLite Dialect** | 🚧 Planned | Not yet implemented |
+| **Source Generators** | ✅ Stable | TableGenerator, DbSelectGenerator, MigrationSchemaGenerator |
+| **CLI Tool** | ✅ Stable | Generate, snapshot, apply, status, debug commands |
+| **Migration System** | ✅ Stable | Snapshot-based diff and migration plan generation |
+| **Unit Tests** | ⚠️ Partial | PgSql/MySql query tests exist; MSSQL/Oracle missing; core component tests missing |
+| **Batch API** | ❌ Missing | No batch insert/update/delete support |
+| **Prepared Statements** | ❌ Missing | No prepared statement / command caching |
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    DbClient<TDialect>                │
-│  Select / Insert / Update / Delete / ExecuteGetList  │
-└──────────┬──────────┬──────────┬──────────┬──────────┘
-           │          │          │          │
-     ┌─────▼──┐ ┌────▼───┐ ┌───▼────┐ ┌───▼────┐
-     │Select  │ │Insert  │ │Update  │ │Delete  │
-     │Query   │ │Query   │ │Query   │ │Query   │
-     └────┬───┘ └────┬───┘ └───┬────┘ └───┬────┘
-          │          │         │          │
-     ┌────▼──────────▼─────────▼──────────▼────┐
-     │           QueryBase<TDialect>            │
-     │  BuildSql() / Build() / AppendClause()   │
-     └────────────────┬─────────────────────────┘
-                      │
-     ┌────────────────▼─────────────────────────┐
-     │         SqlBuilder<TDialect>              │
-     │  ISqlBuilder: Append / AddParameter       │
-     └───────────────────────────────────────────┘
-```
+### 1.1 Existing Documentation
 
-### Target Architecture
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    DbClient<TDialect>                         │
-│  Connection Mgmt / Transaction / Execution / Factory         │
-└──┬──────────┬──────────┬──────────┬──────────┬────────────────┘
-   │          │          │          │          │
-   ├──────────┴──────────┴──────────┴──────────┤
-   │           Query Builders                   │
-   │  Select / Insert / Update / Delete / Merge │
-   │  + Union / Intersect / Except              │
-   └──────────────────┬────────────────────────┘
-                      │
-   ┌──────────────────▼────────────────────────┐
-   │        SqlBuilder<TDialect> + Hooks        │
-   │  Parameter handling / Logging / Events     │
-   └──────────────────┬────────────────────────┘
-                      │
-   ┌──────────────────▼────────────────────────┐
-   │           ISqlDialect                      │
-   │  PgSql / MySql / Sqlite / SqlServer        │
-   └────────────────────────────────────────────┘
-```
-
-### Layer Structure
-
-| Layer | Path | Responsibility |
-|-------|------|----------------|
-| **Core** | [`Drizzle4Dotnet/src/Core/`](Drizzle4Dotnet/src/Core/) | Query builders, schema types, shared interfaces |
-| **Dialect** | [`Drizzle4Dotnet/src/Dialect/`](Drizzle4Dotnet/src/Dialect/) | SQL dialect implementations |
-| **Source Generators** | [`SourceGenerators/SourceGenerators/`](SourceGenerators/SourceGenerators/) | Roslyn generators for tables & selects |
-| **Test** | [`Test/`](Test/) | NUnit test suites |
-| **Shared Demo** | [`SharedDemo/`](SharedDemo/) | Shared schema & DTO definitions |
-| **Benchmark** | [`Benchmark/`](Benchmark/) | Performance benchmarks |
+| Document | Description | Status |
+|----------|-------------|--------|
+| [`class.md`](class.md) | Comprehensive class design | ✅ |
+| [`feature.md`](feature.md) | Complete feature inventory | ✅ |
+| [`design-review.md`](design-review.md) | Design analysis & recommendations | ✅ |
+| [`test-report.md`](test-report.md) | Test coverage report & plan | ✅ |
+| [`PLAN-pgsql.md`](PLAN-pgsql.md) | PgSql implementation status | ✅ |
+| [`PLAN-mssql.md`](PLAN-mssql.md) | MSSQL implementation status | ✅ |
+| [`PLAN-mysql.md`](PLAN-mysql.md) | MySQL implementation status | ✅ |
+| [`PLAN-oracle.md`](PLAN-oracle.md) | Oracle implementation status | ✅ |
+| [`PLAN-sqlite.md`](PLAN-sqlite.md) | SQLite implementation plan | ✅ |
 
 ---
 
-## 2. Phase 1: Operators & SQL Functions
+## 2. Phase 1: Full Unit Test Coverage
 
-### 2.1 Missing Comparison & Logical Operators
+### 2.1 Core Component Tests
 
-| Feature | Priority | Status | File |
-|---------|----------|--------|------|
-| `IS DISTINCT FROM` / `IS NOT DISTINCT FROM` (null-safe equality) | High | ❌ Missing | [`Operators.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Operators.cs) |
-| `ALL` / `ANY` / `SOME` (subquery quantifiers) | Medium | ❌ Missing | [`Operators.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Operators.cs) |
+Target: 100% coverage of all core utility classes and expression nodes.
 
-### 2.2 String Functions
+#### 2.1.1 SqlBuilder Tests
 
-| Function | Example SQL | Priority | Status |
-|----------|-------------|----------|--------|
-| `Upper()` | `UPPER(col)` | High | ❌ Missing |
-| `Lower()` | `LOWER(col)` | High | ❌ Missing |
-| `Trim()` | `TRIM(col)` | Medium | ❌ Missing |
-| `LTrim()` / `RTrim()` | `LTRIM(col)` / `RTRIM(col)` | Low | ❌ Missing |
-| `Length()` | `LENGTH(col)` / `CHAR_LENGTH(col)` | High | ❌ Missing |
-| `Substring()` | `SUBSTRING(col FROM 1 FOR 3)` | Medium | ❌ Missing |
-| `Replace()` | `REPLACE(col, 'a', 'b')` | Medium | ❌ Missing |
-| `Position()` | `POSITION('sub' IN col)` | Low | ❌ Missing |
-| `ConcatWs()` | `CONCAT_WS(',', col1, col2)` | Low | ❌ Missing |
+| Test | Description |
+|------|-------------|
+| `SqlBuilder_Append_AccumulatesString` | Verify `Append()` accumulates correctly |
+| `SqlBuilder_AppendChar_AccumulatesChar` | Verify char overload works |
+| `SqlBuilder_AddParameter_ReturnsParameterName` | `@p0`, `@p1` sequential naming |
+| `SqlBuilder_AddParameter_StoresValue` | Parameter dictionary correctness |
+| `SqlBuilder_AddParameter_DifferentDialects` | Test `@p0` vs `:p0` naming per dialect |
+| `SqlBuilder_Build_ReturnsSqlAndParameters` | Complete build cycle |
+| `SqlBuilder_Build_ClearsState` | Ensure idempotent build |
+| `SqlBuilder_Chaining_ReturnsThis` | Fluent API returns `ISqlBuilder` |
+| `SqlBuilder_MultipleParameters_MixedTypes` | int, string, bool, null parameters |
 
-**Implementation:** [`Functions.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Functions.cs) — Add these as static methods returning [`UnaryNode`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/UnaryNode.cs) or custom node types.
+#### 2.1.2 SqlStatics Tests
 
-### 2.3 Numeric & Math Functions
+| Test | Description |
+|------|-------------|
+| `BuildClause_EmptyItems_NoOutput` | Empty list → no header appended |
+| `BuildClause_SingleItem_NoSeparator` | Single item → no separator needed |
+| `BuildClause_MultipleItems_WithSeparator` | Multiple items joined correctly |
+| `BuildClause_WithParentheses_WrapsEachItem` | Each condition wrapped in `()` |
+| `BuildSqlSetClause_Empty_NoOutput` | Empty dictionary → no SET |
+| `BuildSqlSetClause_ScalarValues_Parameterized` | Scalar values → `@p0` parameters |
+| `BuildSqlSetClause_ExpressionValues_Inline` | `ISql` expressions rendered inline |
+| `BuildSetValues_Empty_NoOutput` | Empty updates list |
+| `BuildSetValues_MultipleColumns_CommaSeparated` | Multiple SET pairs |
+| `BuildInsertColumnList_Empty_NoOutput` | Empty column list |
+| `BuildInsertColumnList_MultipleColumns_CommaSeparated` | Column list in `()` |
+| `BuildInsertColumnList_DialectQuoting_UsesBuildIdentifier` | `"col"`, `` `col` ``, `[col]` |
+| `BuildInsertRowValues_SingleRow` | `VALUES (@p0, @p1)` |
+| `BuildInsertRowValues_MultipleRows` | `VALUES (...), (...)` |
+| `BuildInsertRowValues_WithDefaultValue` | Missing column → `DEFAULT`/`NULL` |
+| `BuildInsertRowValues_ExpressionValue_Inline` | `ISql` inlined in VALUES |
+| `BuildSqlJoins_Empty_NoOutput` | Empty join list |
+| `BuildSqlJoins_SingleJoin` | `INNER JOIN t ON (cond)` |
+| `BuildSqlJoins_MultipleJoins` | `INNER JOIN ... LEFT JOIN ...` |
+| `BuildSqlJoins_CrossJoin_NoOn` | `CROSS JOIN t` (no ON) |
+| `BuildSqlCte_Empty_NoOutput` | No CTEs → no WITH |
+| `BuildSqlCte_SingleCte` | `WITH "cte" AS (...) ` |
+| `BuildSqlCte_MultipleCtes_CommaSeparated` | `WITH "a" AS (...), "b" AS (...)` |
+| `BuildSqlCte_Recursive` | `WITH RECURSIVE "cte" AS (...)` |
+| `BuildSqlOrderBy_Empty_NoOutput` | Empty order list |
+| `BuildSqlOrderBy_SingleColumn_Asc` | `ORDER BY "col" ASC` |
+| `BuildSqlOrderBy_MultipleColumns_MixedDir` | `ORDER BY "a" ASC, "b" DESC` |
 
-| Function | Priority | Status |
-|----------|----------|--------|
-| `Abs()` | High | ❌ Missing |
-| `Ceil()` / `Floor()` | High | ❌ Missing |
-| `Round()` | High | ❌ Missing |
-| `Power()` / `Sqrt()` | Medium | ❌ Missing |
-| `Random()` | Low | ❌ Missing |
-| `Sign()` | Low | ❌ Missing |
+#### 2.1.3 Expression Node Tests
 
-### 2.4 Date/Time Functions
+| Node | Test Cases |
+|------|-----------|
+| `BinaryNode` | Eq/Neq with values, Eq/Neq with columns, arithmetic ops, type param validation |
+| `UnaryNode` | NOT, IS NULL, IS NOT NULL, EXISTS, prefix vs postfix |
+| `NnaryNode` | AND/OR/XOR with 2 args, 3 args, N args |
+| `TrinaryNode` | BETWEEN, NOT BETWEEN with two bounds, null bounds |
+| `FunctionCallNode` | No args, multiple args, DISTINCT, ORDER BY in agg, FILTER (WHERE) |
+| `CaseNode` | Single WHEN, multiple WHEN, ELSE, nested CASE, no ELSE |
+| `CastNode` | CAST to TEXT/INTEGER/BIGINT/DOUBLE/TIMESTAMP, PostgreSQL `::` syntax |
+| `SqlValueNode` | int, string, bool, null, DateTime, Guid, decimal |
+| `FilteredAggregateNode` | Agg + FILTER, chained from FunctionCallNode |
 
-| Function | Priority | Status |
-|----------|----------|--------|
-| `Extract(year/month/day FROM col)` | High | ❌ Missing |
-| `DateTrunc('day', col)` | High | ❌ Missing |
-| `DateAdd()` / `DateDiff()` | Medium | ❌ Missing |
-| `Now()` / `CurrentTimestamp()` | Medium | ❌ Missing |
-| `AtTimeZone()` | Medium | ❌ Missing |
-| `Age()` (PostgreSQL) | Low | ❌ Missing |
+#### 2.1.4 Alias & Virtual Column Tests
 
-### 2.5 Conditional Expressions
+| Test | Description |
+|------|-------------|
+| `AliasedSql_BuildSql_WrapsInParentheses` | `(expr) AS alias` |
+| `AliasedSql_Identifier_ReturnsAlias` | `Identifier` property returns alias |
+| `VirtualColumn_BuildSql_QualifiedName` | `"alias"."column"` |
+| `VirtualColumn_Identifier_ReturnsColumnName` | `Identifier` returns column name |
+| `VirtualColumn_DialectQuoting_UsesBuildColumnName` | Correct quoting per dialect |
 
-| Expression | Example | Priority | Status |
-|------------|---------|----------|--------|
-| `Coalesce()` | `COALESCE(col, 'default')` | **Critical** | ❌ Missing |
-| `NullIf()` | `NULLIF(a, b)` | High | ❌ Missing |
-| `Case/When/Then/Else/End` | `CASE WHEN ... THEN ... ELSE ... END` | **Critical** | ❌ Missing (commented out in tests) |
-| `IIf()` (MySQL/SQLite) | `IIF(condition, true_val, false_val)` | Low | ❌ Missing |
+### 2.2 Dialect-Specific Query Tests
 
-**Case Expression Design:**
+#### 2.2.1 MSSQL Test Suite (🔴 High Priority)
 
-```csharp
-// Proposed API
-var query = _db
-    .Select(
-        UsersTable.Id,
-        Case()
-            .When(UsersTable.IsActive.Eq(true), Sql.Value("Active"))
-            .When(UsersTable.IsActive.Eq(false), Sql.Value("Inactive"))
-            .Else(Sql.Value("Unknown"))
-            .As("Status")
-    )
-    .From(users);
+**File: [`Test/Select/MssqlSelectTests.cs`](Test/Select/MssqlSelectTests.cs)** (to be created)
+
+| Category | Test Cases |
+|----------|-----------|
+| TOP | `Top_Basic`, `Top_WithTies`, `Top_Percent`, `Top_WithDistinct`, `Top_WithWhere` |
+| OFFSET/FETCH | `OffsetFetch_Basic`, `OffsetFetch_WithOrderBy`, `OffsetFetch_WithoutOrderBy_AddsWorkaround` |
+| CROSS/OUTER APPLY | `CrossApply_Basic`, `OuterApply_Basic`, `CrossApply_WithWhere` |
+| FULL OUTER JOIN | `FullJoin_Basic`, `FullJoin_WithWhere` |
+| Table Hints | `WithHint_Nolock`, `WithHint_Tablock`, `MultipleHints` |
+| ORDER BY requirement | `OffsetWithoutOrderBy_AddsSelect0` |
+
+**File: [`Test/Insert/MssqlInsertTests.cs`](Test/Insert/MssqlInsertTests.cs)**
+
+| Category | Test Cases |
+|----------|-----------|
+| OUTPUT INSERTED | `OutputInserted_SingleColumn`, `OutputInserted_MultipleColumns`, `OutputInserted_AllColumns` |
+| OUTPUT clause position | `Output_BetweenColumnsAndValues`, `Output_WithDefaultValues`, `Output_WithInsertSelect` |
+
+**File: [`Test/Merge/MssqlMergeTests.cs`](Test/Merge/MssqlMergeTests.cs)**
+
+| Category | Test Cases |
+|----------|-----------|
+| Basic MERGE | `Merge_BasicUsingOn`, `Merge_UsingSubquery` |
+| WHEN MATCHED | `WhenMatchedUpdate`, `WhenMatchedUpdateMultiple` |
+| WHEN NOT MATCHED | `WhenNotMatchedInsert`, `WhenNotMatchedInsertMultiple` |
+| BY SOURCE | `WhenNotMatchedBySourceDelete`, `WhenNotMatchedBySourceUpdate` |
+| OUTPUT | `MergeOutputInserted`, `MergeOutputDeleted`, `MergeOutputBoth` |
+| JOIN in USING | `MergeWithJoin` |
+
+#### 2.2.2 Oracle Test Suite (🔴 High Priority)
+
+**File: [`Test/Select/OracleSelectTests.cs`](Test/Select/OracleSelectTests.cs)**
+
+| Category | Test Cases |
+|----------|-----------|
+| FOR UPDATE | `ForUpdate_Basic`, `ForUpdate_Of`, `ForUpdate_NoWait`, `ForUpdate_Wait`, `ForUpdate_SkipLocked` |
+| Pagination | `OffsetFetch_Basic`, `OffsetFetch_WithOrderBy` |
+| DUAL table | `ScalarSelect_AppendsFromDual` (if applicable) |
+
+**File: [`Test/Insert/OracleInsertTests.cs`](Test/Insert/OracleInsertTests.cs)**
+
+| Category | Test Cases |
+|----------|-----------|
+| RETURNING INTO | `ReturningInto_SingleColumn`, `ReturningInto_MultipleColumns` |
+| MERGE-based upsert | `OnConflictDoNothing`, `OnConflictDoUpdate` |
+
+**File: [`Test/Merge/OracleMergeTests.cs`](Test/Merge/OracleMergeTests.cs)**
+
+| Category | Test Cases |
+|----------|-----------|
+| Basic MERGE | `Merge_Basic` |
+| DELETE WHERE | `WhenMatchedDeleteWhere` (Oracle-specific) |
+| Full flow | `Merge_WhenMatchedUpdate_WhenNotMatchedInsert_DeleteWhere` |
+
+#### 2.2.3 SQLite Test Suite (When Implemented)
+
+See [PLAN-sqlite.md](PLAN-sqlite.md) for SQLite implementation plan. Once SQLite dialect is built, full test suite parallels PgSql patterns.
+
+### 2.3 Operator Tests
+
+**File: [`Test/Operators/ComparisonOperatorTests.cs`](Test/Operators/ComparisonOperatorTests.cs)**
+
+| Test | Description |
+|------|-------------|
+| `Eq_Value_GeneratesEquals` | `col = @p0` |
+| `Eq_Column_GeneratesEquals` | `col1 = col2` |
+| `Ne_Value_GeneratesNotEquals` | `col <> @p0` |
+| `Lt_Gt_Ltq_Gtq_EachOperator` | Each comparison operator |
+| `ChainedOperators_MultipleConditions` | `.Eq().And().Gt()` chaining |
+
+**File: [`Test/Operators/LogicalOperatorTests.cs`](Test/Operators/LogicalOperatorTests.cs)**
+
+| Test | Description |
+|------|-------------|
+| `And_Binary_GeneratesAnd` | `(cond1) AND (cond2)` |
+| `And_Nary_GeneratesMultipleAnd` | `(c1) AND (c2) AND (c3)` |
+| `Or_BinaryAndNary` | OR variants |
+| `Xor_Basic` | `(c1) XOR (c2)` |
+| `Not_WrapsInParentheses` | `NOT (condition)` |
+
+**File: [`Test/Operators/StringOperatorTests.cs`](Test/Operators/StringOperatorTests.cs)**
+
+| Test | Description |
+|------|-------------|
+| `Like_GeneratesLike` | `col LIKE @p0` |
+| `NotLike_GeneratesNotLike` | `col NOT LIKE @p0` |
+| `Contains_WrapsWithWildcards` | `col LIKE '%' \|\| @p0 \|\| '%'` |
+| `StartsWith_AppendsWildcard` | `col LIKE @p0 \|\| '%'` |
+| `EndsWith_PrependsWildcard` | `col LIKE '%' \|\| @p0` |
+
+**File: [`Test/Operators/CollectionOperatorTests.cs`](Test/Operators/CollectionOperatorTests.cs)**
+
+| Test | Description |
+|------|-------------|
+| `IsNull_GeneratesIsNull` | `col IS NULL` |
+| `IsNotNull_GeneratesIsNotNull` | `col IS NOT NULL` |
+| `In_ValueList_GeneratesIn` | `col IN (@p0, @p1, @p2)` |
+| `NotIn_ValueList_GeneratesNotIn` | `col NOT IN (@p0, @p1)` |
+| `In_Subquery_GeneratesSubqueryIn` | `col IN (SELECT ...)` |
+| `Exists_GeneratesExists` | `EXISTS (SELECT ...)` |
+
+**File: [`Test/Operators/RangeOperatorTests.cs`](Test/Operators/RangeOperatorTests.cs)**
+
+| Test | Description |
+|------|-------------|
+| `Between_GeneratesBetween` | `col BETWEEN @p0 AND @p1` |
+| `NotBetween_GeneratesNotBetween` | `col NOT BETWEEN @p0 AND @p1` |
+
+**File: [`Test/Operators/ArithmeticOperatorTests.cs`](Test/Operators/ArithmeticOperatorTests.cs)**
+
+| Test | Description |
+|------|-------------|
+| `Add_Sub_Mul_Div_Mod_EachOperator` | Each arithmetic operator |
+| `Neg_GeneratesNegation` | `(-col)` |
+| `ComplexArithmetic_Chained` | `((col1 + col2) * col3)` |
+
+**File: [`Test/Operators/PgSqlOperatorTests.cs`](Test/Operators/PgSqlOperatorTests.cs)**
+
+| Test | Description |
+|------|-------------|
+| `IsDistinctFrom_GeneratesCorrectSql` | `col IS DISTINCT FROM @p0` |
+| `JsonContains_GeneratesAtGt` | `col @> @p0` |
+| `JsonExists_GeneratesQuestion` | `col ? @p0` |
+| `TextSearch_GeneratesAtAt` | `col @@ @p0` |
+| `TrigramSimilar_GeneratesPercent` | `col % @p0` |
+
+**File: [`Test/Operators/MySqlOperatorTests.cs`](Test/Operators/MySqlOperatorTests.cs)**
+
+| Test | Description |
+|------|-------------|
+| `NullSafeEq_GeneratesSafeEquals` | `` `col` <=> @p0 `` |
+| `RegexMatch_GeneratesRegexp` | `` `col` REGEXP @p0 `` |
+
+### 2.4 Function Tests
+
+**File: [`Test/Functions/AggregateFunctionTests.cs`](Test/Functions/AggregateFunctionTests.cs)**
+
+| Test | Description |
+|------|-------------|
+| `Count_Basic` | `COUNT("col")` |
+| `CountDistinct` | `COUNT(DISTINCT "col")` |
+| `Sum_Avg_Min_Max_Each` | Each aggregate |
+| `Sum_WithFilter` | `SUM("col") FILTER (WHERE ...)` |
+| `StdDev_Variance_Each` | Statistical aggregates |
+
+**File: [`Test/Functions/StringFunctionTests.cs`](Test/Functions/StringFunctionTests.cs)**
+
+| Test | Description |
+|------|-------------|
+| `Upper_Lower_Trim_Each` | Each string function |
+| `Length_Substring_Replace` | Positional string functions |
+| `Concat_MultipleArgs` | `CONCAT("a", "b", "c")` |
+
+### 2.5 Migration & DDL Tests
+
+**File: [`Test/Migration/DDLQueryBuilderTests.cs`](Test/Migration/DDLQueryBuilderTests.cs)**
+
+| Test | Description |
+|------|-------------|
+| `CreateTable_Basic` | `CREATE TABLE "s"."t" ("col" TYPE)` |
+| `CreateTable_WithIfNotExists` | `CREATE TABLE IF NOT EXISTS ...` |
+| `CreateTable_Temporary` | `CREATE TEMPORARY TABLE ...` |
+| `CreateTable_WithAllColumnOptions` | PK, NOT NULL, DEFAULT, CHECK, AUTO_INCREMENT |
+| `CreateTable_WithConstraints` | FOREIGN KEY, UNIQUE, PRIMARY KEY constraints |
+| `CreateTable_WithIndexes` | Inline index definitions |
+| `DropTable_Basic` | `DROP TABLE "s"."t"` |
+| `DropTable_IfExists` | `DROP TABLE IF EXISTS ...` |
+| `DropTable_Cascade` | `DROP TABLE ... CASCADE` |
+| `AlterTable_AddColumn` | `ALTER TABLE ... ADD COLUMN ...` |
+| `AlterTable_DropColumn` | `ALTER TABLE ... DROP COLUMN ...` |
+| `AlterTable_AlterType` | `ALTER TABLE ... ALTER COLUMN TYPE ...` |
+| `AlterTable_SetNotNull` | `ALTER TABLE ... ALTER COLUMN SET NOT NULL` |
+| `AlterTable_DropDefault` | `ALTER TABLE ... ALTER COLUMN DROP DEFAULT` |
+| `AlterTable_AddConstraint` | `ALTER TABLE ... ADD CONSTRAINT ...` |
+| `AlterTable_DropConstraint` | `ALTER TABLE ... DROP CONSTRAINT ...` |
+| `AlterTable_RenameColumn` | `ALTER TABLE ... RENAME COLUMN ...` |
+| `CreateIndex_Basic` | `CREATE INDEX ... ON ... (...)` |
+| `CreateIndex_Unique` | `CREATE UNIQUE INDEX ...` |
+| `CreateIndex_UsingType` | `CREATE INDEX ... ON ... USING GIN (...)` |
+| `CreateIndex_WithWhere` | `CREATE INDEX ... ON ... WHERE ...` |
+| `DropIndex_Basic` | `DROP INDEX ...` |
+| `CreateSchema_Basic` | `CREATE SCHEMA ...` |
+| `CreateDatabase_Basic` | `CREATE DATABASE ...` |
+
+---
+
+## 3. Phase 2: Batch API Support
+
+### 3.1 Motivation
+
+Currently, each `await query` executes a single SQL statement. For bulk operations (inserting 10,000 rows, updating multiple records), the overhead of individual round-trips is prohibitive. Batch API enables:
+
+- **Bulk INSERT**: Single command with multiple value rows
+- **Batch INSERT/UPDATE/DELETE**: Multiple statements in one round-trip
+- **Transactional batch**: All-or-nothing execution
+
+### 3.2 Architecture
+
+```
+BatchQuery<TDialect>
+├── BatchInsert<TTable, TDialect>
+├── BatchUpdate<TTable, TDialect>
+└── BatchDelete<TTable, TDialect>
+
+IExecutableBatch
+├── ExecuteAsync()       # Execute all statements
+└── Build()              # Get SQL + parameters
 ```
 
-**Implementation:** Create [`CaseNode.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/CaseNode.cs) implementing [`IGenericSql`](Drizzle4Dotnet/src/Core/Shared/ISql.cs#L50).
+### 3.3 API Design
 
-### 2.6 Type Casting
-
-| Expression | Priority | Status |
-|------------|----------|--------|
-| `Cast(col AS type)` / `col::type` | High | ❌ Missing |
-| `CastToString()` / `CastToInt()` | Medium | ❌ Missing |
-
-**Implementation:** Create [`CastNode.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/CastNode.cs). The PostgreSQL dialect would emit `::type`, others would emit `CAST(... AS ...)`.
-
-### 2.7 JSON Functions (PostgreSQL)
-
-| Function | Priority | Status |
-|----------|----------|--------|
-| `JsonExtract(col, 'path')` / `->` / `->>` | High | ❌ Missing |
-| `JsonAgg(col)` / `JsonBuildObject(...)` | Medium | ❌ Missing |
-| `JsonArrayLength()` | Low | ❌ Missing |
-| `ToJson()` / `RowToJson()` | Low | ❌ Missing |
-
-### 2.8 Array Functions (PostgreSQL)
-
-| Function | Priority | Status |
-|----------|----------|--------|
-| `ArrayAgg(col)` | Medium | ❌ Missing |
-| `Unnest(col)` | Medium | ❌ Missing |
-| `ArrayLength()` | Low | ❌ Missing |
-| `Any(col)` / `All(col)` (array version) | Low | ❌ Missing |
-
-### 2.9 `NnaryNode` API — Unused Generic Parameter Bug
-
-**File:** [`NnaryNode.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/NnaryNode.cs#L74-L76)
-
-The `And<T>`, `Or<T>`, `Xor<T>` static extension methods have an unused generic parameter `T`:
+#### Batch Insert
 
 ```csharp
-public static NnaryNode<bool, bool> And<T>(params ISql<bool>[] conditions)
+// Current: individual round-trips
+await db.Insert(users).Value(r1);
+await db.Insert(users).Value(r2);  // 2 round-trips
+
+// Proposed: batch
+await db.Batch(users)
+    .Insert(r1)
+    .Insert(r2)
+    .Insert(r3)     // adds rows to VALUES
+    .ExecuteAsync(); // 1 round-trip
 ```
 
-The `T` is never referenced in the method body. These should be corrected to non-generic:
-
-```csharp
-public static NnaryNode<bool, bool> And(params ISql<bool>[] conditions)
-```
-
-### 2.10 Mixed IN Clause — Values + Subquery
-
-**File:** [`Operators.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Operators.cs#L117-L118) and [`NnaryNode.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/NnaryNode.cs#L28-L53)
-
-The `In<T, TDialect>(IColumnOfDialect, params SqlValue<T, TDialect>[])` overloads are commented out. This prevents mixing literal values with subqueries in `IN` clauses:
-
-```csharp
-// Currently NOT possible:
-.Where(In(UsersTable.Id, 10, 20, subQuery))
-
-// But should be:
-.Where(In<int, PgSqlSqlDialectImpl>(UsersTable.Id, 10, 20, subQuery))
-```
-
-**Fix:** Uncomment the `NnaryAnyNode`-based overloads and ensure `SqlValue<T, TDialect>` implicit conversions work correctly.
-
-### 2.11 `FILTER (WHERE ...)` for Aggregate Functions
-
-PostgreSQL supports `FILTER (WHERE ...)` on aggregate functions:
-
+**Generated SQL (multi-row INSERT):**
 ```sql
-SELECT COUNT(*) FILTER (WHERE is_active = true) AS active_users FROM users
+INSERT INTO "users" ("name", "email") VALUES (@p0, @p1), (@p2, @p3), (@p4, @p5);
 ```
 
-**Proposed API:**
+#### Batch Mixed Operations
 
 ```csharp
-Count(UsersTable.Id).Filter(Where: Eq(UsersTable.IsActive, true)).As("ActiveUsers")
+await db.Batch()
+    .Insert(users, r1)
+    .Update(users, u => u.Set(...).Where(...))
+    .Delete(users, d => d.Where(...))
+    .ExecuteAsync();
 ```
 
-### 2.12 `AsSubQuery()` Missing on Non-VirtualTable SelectQuery
-
-**File:** [`Query.cs`](Drizzle4Dotnet/src/Core/Query/Query.cs#L66-L69)
-
-`AsSubQuery()` is only available on `Query<TReturn, TDialect, TVirtualTable>` but NOT on `Query<TReturn, TDialect>` (the non-virtual-table variant). This is inconsistent.
-
-**Fix:** Add `AsSubQuery()` to the non-virtual-table variant returning `RawSubqueryTableSql<TDialect>` or similar.
-
-### 2.13 `IS DISTINCT FROM` / `IS NOT DISTINCT FROM` (Null-Safe Equality)
-
-**Priority: High**
-
+**Generated SQL (statement batching):**
 ```sql
-SELECT * FROM users WHERE name IS DISTINCT FROM 'Alice'
+INSERT INTO "users" ("name") VALUES (@p0);
+UPDATE "users" SET "name" = @p1 WHERE "id" = @p2;
+DELETE FROM "users" WHERE "id" = @p3;
 ```
 
-PostgreSQL's null-safe comparison operator. Useful for comparing nullable columns without null-propagating.
+### 3.4 Implementation Plan
 
----
+| Step | Component | Files | Effort |
+|------|-----------|-------|--------|
+| 3.4.1 | `BatchQuery` base class | `Drizzle4Dotnet/src/Core/Query/Batch/BatchQuery.cs` | 2 days |
+| 3.4.2 | `BatchInsert` | `Drizzle4Dotnet/src/Core/Query/Batch/BatchInsert.cs` | 1 day |
+| 3.4.3 | `BatchUpdate` | `Drizzle4Dotnet/src/Core/Query/Batch/BatchUpdate.cs` | 1 day |
+| 3.4.4 | `BatchDelete` | `Drizzle4Dotnet/src/Core/Query/Batch/BatchDelete.cs` | 1 day |
+| 3.4.5 | `IExecutableBatch` interface | `Drizzle4Dotnet/src/Core/Shared/IBatch.cs` | 0.5 day |
+| 3.4.6 | Batch execution in DbClient | `DbClient.ExecuteBatchAsync()` | 1 day |
+| 3.4.7 | Fluent API entry points | `QueryBuilder.Batch()` methods | 0.5 day |
+| 3.4.8 | Dialect batching support | `ISqlDialect.SupportsBatch` flag | 0.5 day |
+| 3.4.9 | Unit tests | `Test/Batch/*BatchTests.cs` | 2 days |
+| **Total** | | | **~9.5 days** |
 
-## 2b. Phase 1b: Static `Sql` Utility Class
-
-**Priority: Medium** — A static `Sql` utility class providing factory methods for common SQL expression patterns.
-
-**Proposed file:** [`Drizzle4Dotnet/src/Core/Shared/Sql.cs`]
-
-### Core Methods
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `Sql.Value<T>(T value)` | `ISql<T>` | Creates a parameterized value expression |
-| `Sql.Raw(string sql)` | `ISql` | Creates a raw SQL fragment |
-| `Sql.Raw<T>(string sql)` | `ISql<T>` | Creates a typed raw SQL fragment |
-| `Sql.Literal(string sql)` | `ISql` | Unsafe literal SQL (no parameterization) |
-| `Sql.Null<T>()` | `ISql<T>` | NULL literal |
-| `Sql.Default()` | `ISql` | DEFAULT VALUES / DEFAULT keyword |
-
-### Usage Examples
+### 3.5 Interface Design
 
 ```csharp
-// Parameterized value
-.Where(Eq(UsersTable.Status, Sql.Value("active")))
-
-// Raw SQL for database-specific functions
-.Select(Sql.Raw<string>("NOW()::text").As("CurrentTime"))
-
-// Literal SQL fragment
-.OrderBy(Sql.Literal("RANDOM()"))
-```
-
-### 2b.1 Operator `.As()` Consistency Audit
-
-Verify that ALL operator return types implement `ISql<T>` so `.As(alias)` works universally:
-- [`UnaryNode<T>`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/UnaryNode.cs) — implements `IOperator<T>` → `ISql<T>` ✅
-- [`UnaryNode<T, TReturn>`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/UnaryNode.cs) — implements `IOperator<TReturn>` → `ISql<TReturn>` ✅
-- [`BinaryNode<T>`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/BinaryNode.cs) — implements `IOperator<T>` → `ISql<T>` ✅
-- [`BinaryNode<T1, T2, TReturn>`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/BinaryNode.cs) — implements `IOperator<TReturn>` → `ISql<TReturn>` ✅
-- [`BinarySqlValueNode<T, TReturn>`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/BinaryNode.cs) — implements `IOperator<TReturn>` → `ISql<TReturn>` ✅
-- [`NnaryNode<T, TReturn>`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/NnaryNode.cs) — implements `IOperator<TReturn>` → `ISql<TReturn>` ✅
-
-All seem correct in the codebase. No changes needed.
-
----
-
-## 3. Phase 2: Window Functions
-
-### 3.1 Window Function Support
-
-Window functions are essential for analytical queries.
-
-| Function | Priority | Status |
-|----------|----------|--------|
-| `RowNumber().Over(...)` | **Critical** | ❌ Missing |
-| `Rank().Over(...)` | High | ❌ Missing |
-| `DenseRank().Over(...)` | High | ❌ Missing |
-| `Ntile(n).Over(...)` | Medium | ❌ Missing |
-| `Lead(col, offset, default).Over(...)` | High | ❌ Missing |
-| `Lag(col, offset, default).Over(...)` | High | ❌ Missing |
-| `FirstValue(col).Over(...)` | Medium | ❌ Missing |
-| `LastValue(col).Over(...)` | Medium | ❌ Missing |
-| `NthValue(col, n).Over(...)` | Low | ❌ Missing |
-
-### 3.2 OVER Clause Design
-
-```
-Over()
-    .PartitionBy(col1, col2)
-    .OrderBy(col3.Asc(), col4.Desc())
-    .RowsBetween(WindowFrame.UnboundedPreceding, WindowFrame.CurrentRow)
-    .RangeBetween(...)
-```
-
-**Implementation Plan:**
-
-1. Create [`WindowFrame.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/WindowFrame.cs) — enum/struct for frame types
-2. Create [`OverNode.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/OverNode.cs) — `PARTITION BY` / `ORDER BY` / frame clause
-3. Create window function methods in [`Functions.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Functions.cs) returning `WindowFunctionNode`
-4. Create [`WindowFunctionNode.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/WindowFunctionNode.cs) — combines function + OVER clause
-
-**Files to create/modify:**
-- [`Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/WindowFunctionNode.cs`] — New
-- [`Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/OverNode.cs`] — New
-- [`Drizzle4Dotnet/src/Core/Shared/Operators/WindowFrame.cs`] — New
-- [`Drizzle4Dotnet/src/Core/Shared/Operators/Functions.cs`] — Extend
-- [`Drizzle4Dotnet/src/Core/Shared/ISql.cs`] — Possible extension
-
----
-
-## 4. Phase 3: Advanced DML
-
-### 4.1 UPSERT — INSERT ... ON CONFLICT
-
-**Priority: Critical** — Essential for PostgreSQL production usage.
-
-**Proposed API:**
-
-```csharp
-// ON CONFLICT DO NOTHING
-var q1 = _db.Insert(UsersTable)
-    .Values(insertRecord)
-    .OnConflictDoNothing();
-
-// ON CONFLICT (columns) DO UPDATE SET ...
-var q2 = _db.Insert(UsersTable)
-    .Values(insertRecord)
-    .OnConflict(UsersTable.Id)
-    .DoUpdate()
-    .Set(UsersTable.Name, "Updated Name")
-    .Where(UsersTable.IsActive.Eq(true));
-
-// ON CONFLICT ON CONSTRAINT constraint_name
-var q3 = _db.Insert(UsersTable)
-    .Values(insertRecord)
-    .OnConflictOnConstraint("users_email_key")
-    .DoNothing();
-```
-
-**Implementation:**
-- Modify [`InsertQuery.cs`](Drizzle4Dotnet/src/Core/Query/Insert/InsertQuery.cs) to add `OnConflictDoNothing()`, `OnConflict()`, and related methods
-- Create [`OnConflictClause.cs`](Drizzle4Dotnet/src/Core/Query/Insert/OnConflictClause.cs) for conflict target + action
-- Wire into `BuildSql()` to emit `ON CONFLICT [...] DO [...]`
-
-### 4.2 INSERT ... SELECT (InsertFromQuery)
-
-**Priority: High**
-
-**Proposed API:**
-
-```csharp
-var q = _db.Insert(UsersTable)
-    .From(
-        _db.Select(UsersTable.Id, UsersTable.Name)
-           .From(users)
-           .Where(UsersTable.IsActive.Eq(true))
-    );
-```
-
-**Implementation:**
-- Add `From(SelectQuery<...>)` method to [`InsertQuery.cs`](Drizzle4Dotnet/src/Core/Query/Insert/InsertQuery.cs)
-- Modify `BuildSql()` to support `INSERT INTO table (...) SELECT ...` instead of `VALUES`
-
-### 4.3 INSERT DEFAULT VALUES
-
-**Priority: Medium**
-
-```csharp
-var q = _db.Insert(UsersTable).DefaultValues();
-```
-
-### 4.4 UPDATE with FROM / JOIN
-
-**Priority: High** — PostgreSQL supports `UPDATE ... FROM ... WHERE`.
-
-**Proposed API:**
-
-```csharp
-var q = _db.Update(UsersTable)
-    .Set(UsersTable.Salary, 50000)
-    .From(departments)
-    .Where(And(
-        Eq(UsersTable.DepartmentId, DepartmentsTable.Id),
-        Eq(DepartmentsTable.Name, "Engineering")
-    ));
-```
-
-**Implementation:**
-- Add `From()` method to [`UpdateQuery.cs`](Drizzle4Dotnet/src/Core/Query/Update/UpdateQuery.cs)
-- Modify `BuildSql()` to handle `FROM` clause
-
-### 4.5 UPDATE/DELETE with USING (PostgreSQL)
-
-**Priority: High**
-
-```csharp
-var q = _db.Delete(UsersTable)
-    .Using(departments)
-    .Where(And(
-        Eq(UsersTable.DepartmentId, DepartmentsTable.Id),
-        Eq(DepartmentsTable.Name, "Obsolete")
-    ));
-```
-
-### 4.6 MERGE (SQL Standard)
-
-**Priority: Medium** — Useful for migrations and complex sync operations.
-
-```csharp
-var q = _db.Merge(UsersTable)
-    .Using(sourceTable)
-    .On(Eq(UsersTable.Id, sourceTable.Id))
-    .WhenMatched()
-        .Update()
-        .Set(UsersTable.Name, sourceTable.Name)
-    .WhenNotMatched()
-        .Insert();
-```
-
-**Implementation:**
-- Create [`MergeQuery.cs`](Drizzle4Dotnet/src/Core/Query/Merge/MergeQuery.cs) — new query builder
-- Add `Merge()` method to [`DbClient.cs`](Drizzle4Dotnet/src/Core/DbClient.cs)
-
-### 4.7 RETURNING Clause Enhancements
-
-**Priority: Medium** — Already implemented as [`ReturningQuery.cs`](Drizzle4Dotnet/src/Core/Query/ReturningQuery.cs), but verify it works correctly with all DML types.
-
-- Ensure `RETURNING` on UPDATE/DELETE emits correct SQL
-- Add convenience methods like `ExecuteReturningAsync<T>()` on `DbClient`
-
-### 4.8 `DELETE USING` (PostgreSQL)
-
-**Priority: High** — PostgreSQL supports `DELETE FROM table USING other_table WHERE ...`
-
-```csharp
-var q = _db.Delete(UsersTable)
-    .Using(departments)
-    .Where(And(
-        Eq(UsersTable.DepartmentId, DepartmentsTable.Id),
-        Eq(DepartmentsTable.Name, "Archived")
-    ));
-```
-
----
-
-## 4b. Phase 3b: Recursive CTEs & Advanced Subqueries
-
-### 4b.1 Recursive CTEs
-
-**Priority: High** — Already identified as commented-out code in [`Test/Select/Base.cs`](Test/Select/Base.cs#L574-L595). Essential for tree/hierarchy queries.
-
-**Proposed API:**
-
-```csharp
-var deptTree = _db
-    .Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
-    .From(departments)
-    .Where(Eq(DepartmentsTable.Id, 1))           // Anchor member
-    .UnionAll(
-        _db.Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
-            .From(departments)
-            .InnerJoin(deptTree, Eq(DepartmentsTable.ParentDepartmentId, deptTree.Field<int>("Id")))
-    )
-    .AsRecursiveCte("dept_tree");
-
-var query = _db
-    .Select(deptTree.Selected)
-    .With(deptTree)
-    .From(deptTree);
-```
-
-**Implementation Plan:**
-1. Add `Recursive` flag to CTE infrastructure
-2. Add `UnionAll(SelectQuery)` method to support recursive CTE body
-3. Create `AsRecursiveCte(alias)` method on [`SelectQuery`](Drizzle4Dotnet/src/Core/Query/Select/SelectQuery.cs)
-4. Modify [`TypedTupleGeneratedSubqueryTable`](Drizzle4Dotnet/src/Core/Shared/ISelectedColumns.cs#L49-L112) and [`GeneratedSubqueryTable`](SourceGenerators/SourceGenerators/TableGenerator.cs) to support recursive CTEs
-5. Emit `WITH RECURSIVE name AS (anchor UNION ALL recursive) SELECT ...`
-
-### 4b.2 LATERAL Subqueries Enhancement
-
-Currently [`SelectQuery`](Drizzle4Dotnet/src/Core/Query/Select/SelectQuery.cs#L412-L422) (TVirtualTable variant) has:
-- `InnerLateralJoin()`
-- `LeftLateralJoin()`
-- `CrossLateralJoin()`
-
-**Missing:** The non-virtual-table [`SelectQuery`](Drizzle4Dotnet/src/Core/Query/Select/SelectQuery.cs#L16-L223) does NOT have these methods. Add for consistency.
-
-### 4b.3 Correlated Subquery in SELECT List
-
-Already supported via `.As(alias)` on subquery objects (tested in [`Test/Select/Base.cs`](Test/Select/Base.cs#L395-L413)). Verify consistency across all query variants.
-
-### 4b.4 Subquery Factoring / Named Subquery Blocks
-
-**Proposed API — reusable query blocks:**
-
-```csharp
-var userSummary = _db
-    .Select(UsersTable.Id, Count(UserProjectsTable.Id).As("ProjectCount"))
-    .From(users)
-    .LeftJoin(userProjects, Eq(UsersTable.Id, UserProjectsTable.UserId))
-    .GroupBy(UsersTable.Id)
-    .AsSubQuery("user_summary");
-
-// Use the named block in multiple places
-var q1 = _db.Select(userSummary.Selected).From(userSummary);
-var q2 = _db.Select(UsersTable.Name, userSummary.Field<int>("ProjectCount"))
-    .From(users)
-    .InnerJoin(userSummary, Eq(UsersTable.Id, userSummary.Field<int>("Id")));
-```
-
-Already partially supported via [`TypedTupleAnonymousGeneratedSubqueryTable`](Drizzle4Dotnet/src/Core/Shared/ISelectedColumns.cs#L115-L149). Need to add cleaner API.
-
-### 4b.5 `SELECT INTO` (Create Table As)
-
-```csharp
-var q = _db.Select(UserSelect.Record)
-    .From(users)
-    .Into("users_backup");
-```
-
-**Implementation:** Add `Into(tableName)` method to [`SelectQuery`](Drizzle4Dotnet/src/Core/Query/Select/SelectQuery.cs), emitting `SELECT ... INTO table_name FROM ...`.
-
----
-
-## 5. Phase 4: Set Operations & Compound Queries
-
-### 5.1 UNION / INTERSECT / EXCEPT
-
-**Priority: High**
-
-**Proposed API:**
-
-```csharp
-var activeUsers = _db
-    .Select(UserSelect.Record)
-    .From(users)
-    .Where(Eq(UsersTable.IsActive, true));
-
-var formerUsers = _db
-    .Select(UserSelect.Record)
-    .From(users)
-    .Where(Eq(UsersTable.IsActive, false));
-
-var union = activeUsers.Union(formerUsers);
-var intersect = activeUsers.Intersect(formerUsers);
-var except = activeUsers.Except(formerUsers);
-
-// ALL variants
-var unionAll = activeUsers.UnionAll(formerUsers);
-```
-
-**Implementation:**
-- Create [`CompoundQuery.cs`](Drizzle4Dotnet/src/Core/Query/CompoundQuery.cs) wrapping two queries with a set operation
-- Add `Union()`, `UnionAll()`, `Intersect()`, `Except()` methods to [`SelectQuery.cs`](Drizzle4Dotnet/src/Core/Query/Select/SelectQuery.cs)
-- Return type should implement [`IReturning<TReturn, TDialect>`](Drizzle4Dotnet/src/Core/Shared/IReturning.cs)
-
-### 5.2 VALUES as Derived Table
-
-**Priority: Medium**
-
-```csharp
-var values = _db.Values(
-    ("Alice", 30),
-    ("Bob", 25),
-    ("Charlie", 35)
-).As("people(name, age)");
-
-var q = _db.Select(...).From(values);
-```
-
----
-
-## 6. Phase 5: Convenience Execution Methods
-
-### 6.1 DbClient Convenience Methods
-
-**Priority: High**
-
-Currently [`DbClient.cs`](Drizzle4Dotnet/src/Core/DbClient.cs) has `ExecuteGetListAsync` and `ExecuteAsync`. Add:
-
-| Method | Description | Priority |
-|--------|-------------|----------|
-| `ExecuteFirstAsync<T>()` | Returns first result or default | High |
-| `ExecuteSingleAsync<T>()` | Returns single result, throws if not exactly one | High |
-| `ExecuteFirstOrDefaultAsync<T>()` | Returns first result or `default` | High |
-| `ExecuteSingleOrDefaultAsync<T>()` | Returns single or `default` | High |
-| `ExecuteScalarAsync<T>()` | Returns first column of first row | High |
-| `ExecuteGetListAsync` with `CancellationToken` | Cancellation support | High |
-| `ExecutePagedAsync<T>()` | Built-in pagination (page + pageSize) | Medium |
-| `ExecuteReaderAsync()` | Raw reader access | Medium |
-
-### 6.2 SelectQuery Convenience Methods
-
-| Method | Description | Priority |
-|--------|-------------|----------|
-| `FirstAsync()` | Async first() | High |
-| `FirstOrDefaultAsync()` | Async first or default | High |
-| `SingleAsync()` | Async single() | High |
-| `SingleOrDefaultAsync()` | Async single or default | High |
-| `CountAsync()` | `SELECT COUNT(*) FROM (...) AS count_query` | High |
-| `ExistsAsync()` | `SELECT EXISTS(...)` | High |
-| `ToListAsync()` | Alias for ExecuteGetListAsync | High |
-
-### 6.3 Paging / Pagination
-
-**Proposed API:**
-
-```csharp
-var page = await _db
-    .Select(UserSelect.Record)
-    .From(users)
-    .Where(Eq(UsersTable.IsActive, true))
-    .OrderBy(UsersTable.Name)
-    .ToPageAsync(pageNumber: 2, pageSize: 20);
-// Returns (List<T> Items, int TotalCount, int Page, int PageSize, int TotalPages)
-```
-
-### 6.4 CancellationToken Support
-
-**Priority: High** — Add `CancellationToken` parameter to all async methods in [`DbClient.cs`](Drizzle4Dotnet/src/Core/DbClient.cs).
-
----
-
-## 7. Phase 6: Batch Operations & Streaming
-
-### 7.1 Batch Insert
-
-**Priority: High**
-
-```csharp
-var batch = _db.Insert(UsersTable)
-    .Values(record1, record2, record3, ...); // Already supported
-```
-
-But add support for large batch chunking:
-
-```csharp
-// Auto-chunking into batches of 100
-await batch.ExecuteBatchAsync(chunkSize: 100);
-```
-
-### 7.2 Bulk Insert (PostgreSQL COPY)
-
-**Priority: Medium** — Use `Npgsql's COPY` protocol for high-performance bulk insert.
-
-```csharp
-await _db.BulkInsertAsync(UsersTable, listOfRecords);
-```
-
-### 7.3 Async Streaming (IAsyncEnumerable)
-
-**Priority: Medium**
-
-```csharp
-await foreach (var user in _db
-    .Select(UserSelect.Record)
-    .From(users)
-    .Where(Eq(UsersTable.IsActive, true))
-    .AsAsyncEnumerable())
+/// <summary>
+/// Represents a batch of SQL statements that can be executed together.
+/// </summary>
+public interface IBatchQuery : IGenericSql
 {
-    Process(user);
+    /// <summary>Number of statements in the batch.</summary>
+    int StatementCount { get; }
+}
+
+/// <summary>
+/// Extension method on DbClient for starting a batch.
+/// </summary>
+public static BatchQuery<TDialect> Batch<TDialect>(this IQueryExecutor<TDialect> executor)
+    where TDialect : ISqlDialect;
+```
+
+### 3.6 DbClient Execution
+
+```csharp
+public abstract class DbClient<TDialect> : IQueryExecutor<TDialect>
+{
+    /// <summary>
+    /// Executes a batch query. Default implementation concatenates
+    /// statements with ';' separator. Dialects can override for
+    /// provider-specific batch support.
+    /// </summary>
+    public virtual async Task ExecuteBatchAsync(IBatchQuery batch)
+    {
+        await using var cmd = await CreateCommandAsync(batch);
+        await cmd.ExecuteNonQueryAsync();
+    }
 }
 ```
 
-### 7.4 Batch Update / Delete
+### 3.7 PostgreSQL-Specific: COPY for Bulk Insert
 
-**Priority: Medium**
+For very large datasets, PostgreSQL's `COPY` protocol is significantly faster than multi-row INSERT:
 
 ```csharp
-// Execute same command with different parameters
-var results = await _db.Update(UsersTable)
-    .Set(UsersTable.IsActive, false)
-    .Where(Eq(UsersTable.DepartmentId, Sql.Parameter<int>()))
-    .ExecuteBatchAsync(new[] { 1, 2, 3 });
+// Proposed future API:
+await db.BulkInsert(users)
+    .FromReader(externalDataReader)
+    .ExecuteCopyAsync();  // Uses Npgsql's COPY binary protocol
+```
+
+This is a future enhancement (v1.1+).
+
+---
+
+## 4. Phase 3: Prepared Statement Support
+
+### 4.1 Motivation
+
+Prepared statements improve performance for repeated query execution by:
+- **Caching query plans**: The database compiles the SQL once, reuses the plan
+- **Reducing network traffic**: Only parameter data is sent on subsequent executions
+- **Preventing SQL injection**: Parameterized queries are inherently safe
+
+### 4.2 Architecture
+
+```
+PreparedQuery<TDialect>
+├── PrepareAsync()           # Send to DB for preparation
+├── ExecuteAsync(params)     # Execute with parameter values
+├── ExecuteGetListAsync<T>(params)
+├── ExecuteScalarAsync<T>(params)
+└── DisposeAsync()           # DEALLOCATE the prepared statement
+```
+
+### 4.3 API Design
+
+```csharp
+// Prepare a query once
+var prep = await db.Prepare(
+    db.Select(users.Id, users.Name)
+      .From(users)
+      .Where(users.Id.Eq(Sql.Parameter<long>()))  // placeholder parameter
+);
+
+// Execute multiple times with different values
+var result1 = await prep.ExecuteGetListAsync(42);      // WHERE id = 42
+var result2 = await prep.ExecuteGetListAsync(100);     // WHERE id = 100
+
+// Clean up
+await prep.DisposeAsync();
+```
+
+#### Named Parameter Support
+
+```csharp
+var prep = await db.Prepare(
+    db.Select(users.Id, users.Name)
+      .From(users)
+      .Where(And(
+          users.Id.Eq(Sql.Parameter<long>("userId")),
+          users.IsActive.Eq(Sql.Parameter<bool>("isActive"))
+      ))
+);
+
+// Execute with named parameters
+var result = await prep.ExecuteGetListAsync(new {
+    userId = 42,
+    isActive = true
+});
+```
+
+### 4.4 Dialect Differences
+
+| Dialect | Prepared Statement Support | Syntax |
+|---------|--------------------------|--------|
+| PostgreSQL | ✅ `PREPARE`/`EXECUTE`/`DEALLOCATE` | `PREPARE name (int) AS SELECT ...` |
+| MySQL | ✅ Client-side prepared statements | `MySqlCommand` with `CommandType.Text` (automatic) |
+| MSSQL | ✅ `sp_prepare`/`sp_execute`/`sp_unprepare` | T-SQL system stored procedures |
+| Oracle | ✅ Cursor variables / `DBMS_SQL` | `OPEN :cursor FOR ...` |
+| SQLite | ✅ `sqlite3_prepare_v2` | Automatic via `SqliteCommand` |
+
+### 4.5 Implementation Plan
+
+| Step | Component | Files | Effort |
+|------|-----------|-------|--------|
+| 4.5.1 | `SqlParameter<T>` expression node | `Drizzle4Dotnet/src/Core/Operators/Nodes/SqlParameterNode.cs` | 1 day |
+| 4.5.2 | `PreparedQuery<TDialect>` class | `Drizzle4Dotnet/src/Core/Query/PreparedQuery.cs` | 2 days |
+| 4.5.3 | `IPreparedStatement` interface | `Drizzle4Dotnet/src/Core/Shared/IPreparedStatement.cs` | 0.5 day |
+| 4.5.4 | Parameter extraction from query tree | Walk expression tree to find `SqlParameter` nodes | 1 day |
+| 4.5.5 | DbClient.PrepareAsync() | `PrepareAsync(IGenericSql)` → `PreparedQuery` | 1 day |
+| 4.5.6 | PgSql prepared statement impl | `PREPARE`/`EXECUTE`/`DEALLOCATE` via Npgsql | 1 day |
+| 4.5.7 | MySql prepared statement impl | Auto-prepared via MySqlConnector | 0.5 day |
+| 4.5.8 | MSSQL prepared statement impl | `sp_prepare`/`sp_execute` | 1 day |
+| 4.5.9 | Oracle prepared statement impl | Implicit cursor handling | 1 day |
+| 4.5.10 | Unit tests | `Test/*PreparedQueryTests.cs` | 2 days |
+| 4.5.11 | Integration tests | `Test/Integration/*PreparedExecuteTests.cs` | 2 days |
+| **Total** | | | **~13 days** |
+
+### 4.6 SqlParameter Expression Node
+
+```csharp
+/// <summary>
+/// Represents a parameter placeholder in a prepared statement.
+/// Acts as a typed placeholder that gets replaced with actual values
+/// at execution time.
+/// </summary>
+public class SqlParameterNode<T> : ISql<T>
+{
+    public string? Name { get; }       // Optional named parameter
+    public int Index { get; set; }     // Positional index (assigned during preparation)
+
+    public void BuildSql(ISqlBuilder sqlBuilder)
+    {
+        // During preparation: renders as type placeholder
+        // During execution: renders as parameter reference
+        sqlBuilder.Append(sqlBuilder.AddParameter(null)); // placeholder value
+    }
+}
+
+// Factory method on Sql static class:
+public static SqlParameterNode<T> Parameter<T>(string? name = null)
+    => new(name);
+```
+
+### 4.7 PreparedQuery Class
+
+```csharp
+public class PreparedQuery<TDialect> : IAsyncDisposable
+    where TDialect : ISqlDialect
+{
+    private readonly IQueryExecutor<TDialect> _executor;
+    private readonly string _preparedSql;
+    private readonly IReadOnlyList<SqlParameterInfo> _parameters;
+    private bool _isPrepared;
+
+    /// <summary>Prepare the statement on the server.</summary>
+    public async Task PrepareAsync() { ... }
+
+    /// <summary>Execute with positional parameter values.</summary>
+    public Task ExecuteAsync(params object?[] parameterValues) { ... }
+
+    /// <summary>Execute with named parameter values.</summary>
+    public Task ExecuteAsync(Dictionary<string, object?> namedParameters) { ... }
+
+    /// <summary>Execute returning query with positional parameter values.</summary>
+    public Task<List<T>> ExecuteGetListAsync<T>(params object?[] parameterValues) { ... }
+
+    /// <summary>DEALLOCATE the prepared statement.</summary>
+    public async ValueTask DisposeAsync() { ... }
+}
+```
+
+### 4.8 Usage Examples
+
+```csharp
+// ===== Basic usage =====
+var prep = await db.Prepare(
+    db.Insert(users).Value(new UsersTable.InsertRecord(
+        Name: Sql.Parameter<string>("name"),
+        Email: Sql.Parameter<string>("email"),
+        IsActive: Sql.Parameter<bool>("active")
+    ))
+);
+
+await prep.ExecuteAsync("Alice", "alice@example.com", true);
+await prep.ExecuteAsync("Bob", "bob@example.com", false);
+await prep.DisposeAsync();
+
+// ===== SELECT with prepared statement =====
+var selectPrep = await db.Prepare(
+    db.Select(users.Id, users.Name)
+      .From(users)
+      .Where(users.Id.Eq(Sql.Parameter<long>()))
+);
+
+var results = await selectPrep.ExecuteGetListAsync<(long, string)>(42);
+var results2 = await selectPrep.ExecuteGetListAsync<(long, string)>(100);
+
+// ===== UPDATE with prepared statement =====
+var updatePrep = await db.Prepare(
+    db.Update(users)
+      .Set(users.Name, Sql.Parameter<string>("name"))
+      .Where(users.Id.Eq(Sql.Parameter<long>("id")))
+);
+
+await updatePrep.ExecuteAsync(new Dictionary<string, object?> {
+    ["name"] = "Updated Name",
+    ["id"] = 42L
+});
 ```
 
 ---
 
-## 8. Phase 7: Multi-Dialect Support
+## 5. Phase 4: Better JSON/JSONB Handling
 
-### 8.1 Dialect Interface Extension
+### 5.1 Motivation
 
-Currently [`ISqlDialect`](Drizzle4Dotnet/src/Core/Shared/ISqlDialect.cs) only has:
-- `BuildIdentifier()`
-- `BuildTableName()`
-- `BuildColumnName()`
-- `BuildParameterName()`
+JSON/JSONB support is currently fragmented across dialects. Each dialect has its own set of JSON functions and operators, but there is no unified, type-safe way to work with JSON columns in queries. The goal is to create a consistent, cross-dialect JSON API while preserving dialect-specific capabilities.
 
-**Need to add:**
+**Current state:**
+- PostgreSQL has rich JSON operators (`->`, `->>`, `#>`, `#>>`, `@>`, `?`, `?|`, `?&`) and JSONB functions
+- MySQL has `JSON_EXTRACT()`, `JSON_UNQUOTE()`, `JSON_CONTAINS()`, and `->`/`->>` operators
+- MSSQL has `JSON_VALUE()`, `JSON_QUERY()`, `JSON_MODIFY()`, `OPENJSON()`
+- Oracle has `JSON_VALUE()`, `JSON_QUERY()`, `JSON_EXISTS()`, `JSON_TABLE()`, `JSON_ARRAYAGG()`, `JSON_OBJECTAGG()`
+- No cross-dialect unified JSON column type
+- No compile-time JSON path validation
+- No JSON column type in schema generation
+
+### 5.2 Proposed Architecture
+
+```
+JsonColumn<T, TTable, TDialect> : DbColumn<T, TTable, TDialect>
+  ├── .Path(path)          → ISql<T>   # Extract at JSON path
+  ├── .Text(path)          → ISql<string> # Extract as text
+  ├── .Int(path)           → ISql<int>    # Extract as integer
+  ├── .Long(path)          → ISql<long>
+  ├── .Double(path)        → ISql<double>
+  ├── .Bool(path)          → ISql<bool>
+  ├── .ArrayLength(path)   → ISql<int>
+  ├── .ArrayContains(val)  → ISql<bool>
+  ├── .KeyExists(key)      → ISql<bool>
+  └── .ObjectField(key)    → ISql<T>
+
+CrossDialectJsonFunctions<TDialect>
+  ├── JsonExtract(col, path)
+  ├── JsonArrayAgg(expr)
+  ├── JsonObjectAgg(key, expr)
+  ├── JsonArray(val1, val2, ...)
+  ├── JsonObject(key1, val1, ...)
+  ├── JsonMergePatch(target, patch)
+  └── JsonStripNulls(expr)
+```
+
+### 5.3 API Design
 
 ```csharp
-public interface ISqlDialect
+// Schema definition with JSON column
+[PgSqlJsonB]
+[Column("Metadata")]
+public static string Metadata { get; set; }
+
+// Generated as:
+public static DbColumn<string, UsersTable, PgSqlSqlDialectImpl> Metadata { get; set; }
+
+// But we want to use it as a JSON column:
+var metadata = users.Metadata.AsJson(); // → JsonColumn<string, UsersTable, PgSqlSqlDialectImpl>
+
+// Then access sub-properties:
+db.Select(
+    metadata.Text("$.address.city"),
+    metadata.Int("$.age"),
+    metadata.Bool("$.isActive")
+)
+.From(users)
+.Where(metadata.ArrayContains("$.tags", "vip"));
+```
+
+#### Generated SQL per dialect
+
+**PostgreSQL:**
+```sql
+SELECT
+  "users"."Metadata" -> 'address' ->> 'city',    -- text path
+  CAST("users"."Metadata" -> 'age' AS INTEGER),   -- int path
+  "users"."Metadata" -> 'isActive'                 -- bool path
+FROM "users"
+WHERE "users"."Metadata" -> 'tags' ? 'vip';        -- array contains
+```
+
+**MySQL:**
+```sql
+SELECT
+  JSON_UNQUOTE(JSON_EXTRACT("users"."Metadata", '$.address.city')),
+  CAST(JSON_EXTRACT("users"."Metadata", '$.age') AS SIGNED),
+  JSON_EXTRACT("users"."Metadata", '$.isActive')
+FROM "users"
+WHERE JSON_CONTAINS("users"."Metadata", '"vip"', '$.tags');
+```
+
+**MSSQL:**
+```sql
+SELECT
+  JSON_VALUE("users"."Metadata", '$.address.city'),
+  CAST(JSON_VALUE("users"."Metadata", '$.age') AS INT),
+  JSON_QUERY("users"."Metadata", '$.isActive')
+FROM "users"
+WHERE JSON_VALUE("users"."Metadata", '$.tags') LIKE '%"vip"%';  -- approximation
+```
+
+**Oracle:**
+```sql
+SELECT
+  JSON_VALUE("users"."Metadata", '$.address.city'),
+  CAST(JSON_VALUE("users"."Metadata", '$.age') AS INTEGER),
+  JSON_QUERY("users"."Metadata", '$.isActive')
+FROM "users"
+WHERE JSON_EXISTS("users"."Metadata", '$.tags?(@ == "vip")');
+```
+
+### 5.4 JsonPath Expression Builder
+
+A type-safe JSON path builder to prevent path string errors at compile time:
+
+```csharp
+// Type-safe path builder
+var cityPath = JsonPath.Root().Field("address").Field("city");
+// → "$.address.city"
+
+var tag0Path = JsonPath.Root().Field("tags").Index(0);
+// → "$.tags[0]"
+
+var wildcardPath = JsonPath.Root().Field("items").Wildcard().Field("id");
+// → "$.items[*].id"
+
+// Used with JsonColumn:
+metadata.Text(cityPath)
+metadata.Int(JsonPath.Root().Field("age"))
+```
+
+### 5.5 JSON Column in Schema Generation
+
+```csharp
+// Schema attribute for JSON column type
+[PgSqlJsonB]
+[Column("Metadata")]
+public static string Metadata { get; set; }
+
+// Source generator enhancement:
+public static JsonDbColumn<string, UsersTable, PgSqlSqlDialectImpl> Metadata { get; set; }
+// JsonDbColumn exposes .Path(), .Text(), .Int(), .ArrayContains(), etc.
+```
+
+### 5.6 Implementation Plan
+
+| Step | Component | Effort |
+|------|-----------|--------|
+| 5.6.1 | `JsonColumn<T,TTable,TDialect>` class | 2 days |
+| 5.6.2 | `JsonPath` builder with type-safe path construction | 2 days |
+| 5.6.3 | `AsJson()` extension on `DbColumn<string,...>` | 1 day |
+| 5.6.4 | Cross-dialect JSON functions (`JsonExtract`, `JsonArrayAgg`, etc.) | 3 days |
+| 5.6.5 | PgSql JSON/JSONB implementation (operators + functions) | 2 days |
+| 5.6.6 | MySql JSON implementation | 2 days |
+| 5.6.7 | MSSQL JSON implementation | 2 days |
+| 5.6.8 | Oracle JSON implementation | 2 days |
+| 5.6.9 | Source generator enhancement for `JsonDbColumn` | 2 days |
+| 5.6.10 | Unit tests for all JSON operations | 3 days |
+| **Total** | | **~21 days** |
+
+### 5.7 JSON Data Type Matrix
+
+| Feature | PostgreSQL | MySQL | MSSQL | Oracle |
+|---------|-----------|-------|-------|--------|
+| **Storage type** | `JSON` / `JSONB` | `JSON` | no native type (nvarchar) | `JSON` (12c+) |
+| **Index support** | GIN on JSONB | Virtual column + index | Computed column + index | Functional index |
+| **Path extract** | `->` / `->>` | `JSON_EXTRACT()` / `->` | `JSON_VALUE()` / `JSON_QUERY()` | `JSON_VALUE()` / `JSON_QUERY()` |
+| **Contains** | `@>` operator | `JSON_CONTAINS()` | None | `JSON_TEXTCONTAINS()` |
+| **Key exists** | `?` operator | None | None | `JSON_EXISTS()` |
+| **Array agg** | `json_agg()` / `jsonb_agg()` | `JSON_ARRAYAGG()` (8.0+) | None (use `STRING_AGG` + concat) | `JSON_ARRAYAGG()` (19c+) |
+| **Object agg** | `jsonb_object_agg()` | `JSON_OBJECTAGG()` (8.0+) | None | `JSON_OBJECTAGG()` (19c+) |
+| **Table/rows** | `jsonb_to_recordset()` / `json_array_elements()` | `JSON_TABLE()` (8.0+) | `OPENJSON()` (2016+) | `JSON_TABLE()` (12c+) |
+| **Modify** | `jsonb_set()` | `JSON_SET()` / `JSON_REPLACE()` | `JSON_MODIFY()` | `JSON_MERGEPATCH()` (19c+) |
+
+### 5.8 Current Gaps vs Target
+
+| Capability | Current | Target |
+|------------|---------|--------|
+| Unified JSON API | ❌ No `JsonColumn` type | ✅ `JsonColumn<T,TTable,TDialect>` with `.Path()`, `.Text()`, `.Int()`, etc. |
+| JSON path safety | ❌ Raw string paths | ✅ `JsonPath` builder with compile-time checks |
+| Cross-dialect consistency | ⚠️ Different APIs per dialect | ✅ Single API, dialect-specific SQL generation |
+| JSON in schema | ❌ `string` column only | ✅ `JsonDbColumn` generated for JSON columns |
+| JSON_TABLE / OPENJSON | ❌ Not supported | ✅ `JsonTable()` function for unnesting JSON arrays |
+| JSON aggregation | ⚠️ Partial per-dialect | ✅ Unified `JsonArrayAgg()`, `JsonObjectAgg()` |
+
+---
+
+## 6. Phase 5: Cross-Dialect Test Suites
+
+### 5.1 MSSQL Full Test Suite
+
+| File | Tests | Effort |
+|------|-------|--------|
+| `Test/Select/MssqlSelectTests.cs` | 40+ | 3 days |
+| `Test/Insert/MssqlInsertTests.cs` | 15+ | 1 day |
+| `Test/Update/MssqlUpdateTests.cs` | 15+ | 1 day |
+| `Test/Delete/MssqlDeleteTests.cs` | 15+ | 1 day |
+| `Test/Merge/MssqlMergeTests.cs` | 20+ | 2 days |
+| `Test/Migration/MssqlMigrationTests.cs` | 30+ | 2 days |
+
+### 5.2 Oracle Full Test Suite
+
+| File | Tests | Effort |
+|------|-------|--------|
+| `Test/Select/OracleSelectTests.cs` | 30+ | 2 days |
+| `Test/Insert/OracleInsertTests.cs` | 15+ | 1 day |
+| `Test/Update/OracleUpdateTests.cs` | 10+ | 1 day |
+| `Test/Delete/OracleDeleteTests.cs` | 10+ | 1 day |
+| `Test/Merge/OracleMergeTests.cs` | 15+ | 2 days |
+| `Test/Migration/OracleMigrationTests.cs` | 20+ | 2 days |
+
+### 5.3 SQLite Test Suite
+
+To be implemented alongside the SQLite dialect (see [PLAN-sqlite.md](PLAN-sqlite.md)).
+
+---
+
+## 7. Phase 6: Performance & AOT Optimization
+
+### 6.1 AOT Compatibility Audit
+
+| Concern | Current Status | Action |
+|---------|---------------|--------|
+| Runtime reflection in schema export | ✅ Only in CLI (OrmSchemaExporter) | Acceptable — CLI is not AOT |
+| Source generators | ✅ AOT-safe | Already compatible |
+| Expression compilation | ✅ Static abstract dispatch | No runtime code gen |
+| `string.Join` in SQL building | ⚠️ Used in some places | Replace with `ISqlBuilder.Append` loops |
+| LINQ in hot paths | ⚠️ `.Select()`, `.Any()` in query building | Replace with loops |
+
+### 6.2 StringBuilder Pooling
+
+```csharp
+// Future optimization:
+internal static class StringBuilderPool
 {
-    // Existing
-    static abstract string BuildIdentifier(string identifier);
-    static abstract string BuildTableName(string schemaName, string tableName);
-    static abstract string BuildColumnName(string tableName, string columnName);
-    static abstract string BuildParameterName(string parameterName);
-    static abstract string BuildParameterName(int parameterIndex);
+    [ThreadStatic] private static StringBuilder? _cached;
     
-    // New
-    static abstract string EscapeString(string value);          // String escaping
-    static abstract string BuildLimitOffset(int? limit, int? offset);
-    static abstract string BuildReturning();                     // RETURNING keyword or lack thereof
-    static abstract string BuildConflictTarget(params string[] columns);
-    static abstract string BuildUpsert();                        // ON CONFLICT or MERGE
-    static abstract string BuildNow();                           // NOW(), CURRENT_TIMESTAMP
-    static abstract string BuildCast(string expression, string targetType);
-    static abstract string BuildOver(WindowSpec spec);
-    static abstract string BuildJsonOperator(string path);      // ->, ->>, #>> etc.
-    static abstract bool SupportsArrays { get; }
-    static abstract bool SupportsJson { get; }
-    static abstract bool SupportsReturning { get; }
-    static abstract bool SupportsWindowFunctions { get; }
-    static abstract bool SupportsCteWithModifiers { get; }      // WITH ... UPDATE/DELETE
+    public static StringBuilder Rent() => Interlocked.Exchange(ref _cached, null) ?? new();
+    public static void Return(StringBuilder sb) { sb.Clear(); _cached = sb; }
 }
 ```
 
-### 8.2 Dialect Implementations
-
-| Dialect | Priority | Status | File |
-|---------|----------|--------|------|
-| PostgreSQL | **Critical** | ✅ Done | [`PgSqlSqlDialectImpl.cs`](Drizzle4Dotnet/src/Dialect/PgSqlSqlDialectImpl.cs) |
-| MySQL / MariaDB | High | ❌ Missing | — |
-| SQLite | High | ❌ Missing | — |
-| SQL Server | High | ❌ Missing | — |
-
-Each dialect file should be placed in [`Drizzle4Dotnet/src/Dialect/`](Drizzle4Dotnet/src/Dialect/) following the naming convention `{Name}SqlDialectImpl.cs`.
-
-**MySQL considerations:**
-- Backtick quoting instead of double-quote
-- `LIMIT ? OFFSET ?` syntax
-- No `RETURNING` (use `LAST_INSERT_ID()`)
-- `ON DUPLICATE KEY UPDATE` for upsert
-- No CTEs with write operations
-- No window functions (pre 8.0)
-
-**SQLite considerations:**
-- No schema support
-- `LIMIT ? OFFSET ?`
-- No `RETURNING` (pre 3.35)
-- `INSERT OR REPLACE` / `INSERT OR IGNORE` for upsert
-- Limited JSON support
-
-**SQL Server considerations:**
-- `TOP` instead of `LIMIT` (or `OFFSET ... FETCH NEXT`)
-- `OUTPUT INSERTED.*` instead of `RETURNING`
-- `MERGE` for upsert
-- Square bracket quoting `[identifier]`
-- `@@IDENTITY` / `SCOPE_IDENTITY()`
-
-### 8.3 Source Generator Dialect Parameterization
-
-Currently [`TableGenerator.cs`](SourceGenerators/SourceGenerators/TableGenerator.cs) hardcodes `PgSqlSqlDialectImpl`. This should be made extensible.
-
-**Design Options:**
-
-1. **Option A** (Recommended): Make the dialect a generator parameter — add a `Dialect` property to `TableAttribute` / `AliasAttribute`.
-2. **Option B**: Generate for all registered dialects.
-3. **Option C**: Provide a base `DbColumn` that works generically without dialect-specific types.
-
-**Proposed Attribute Extension:**
+### 6.3 Parameter Dictionary Pooling
 
 ```csharp
-[Table("Users", Schema = "public", Dialect = typeof(PgSqlSqlDialectImpl))]
-// or
-[Table("Users")]  // Defaults to PgSqlSqlDialectImpl
+// Future optimization: use ArrayPool for small parameter dictionaries
+// or pre-allocate known-size dictionaries in generated code.
 ```
+
+### 6.4 Microbenchmarks
+
+| Benchmark | Current | Target | File |
+|-----------|---------|--------|------|
+| Simple SELECT build | — | < 1μs | `Benchmark/QueryBuildBenchmark.cs` |
+| Complex SELECT (joins, CTE) | — | < 5μs | `Benchmark/QueryBuildBenchmark.cs` |
+| INSERT with 100 rows | — | < 10μs | `Benchmark/InsertBenchmark.cs` |
+| SqlBuilder.Append (1M ops) | — | < 100ms | `Benchmark/SqlBuilderBenchmark.cs` |
 
 ---
 
-## 9. Phase 8: Schema / Migration Management
+## 8. Phase 7: Documentation & Release
 
-### 9.1 DDL Generation
+### 7.1 API Documentation
 
-**Priority: Medium** — Generate `CREATE TABLE` / `ALTER TABLE` from table definitions.
+| Document | Status | Description |
+|----------|--------|-------------|
+| `API.md` | 🚧 Planned | Full auto-generated API reference |
+| XML doc comments | ⚠️ Partial | Complete all `///` comments on public types |
+| Migration guide | 🚧 Planned | How to upgrade between versions |
+| Quickstart tutorial | 🚧 Planned | Step-by-step getting started guide |
 
-```csharp
-var createSql = _db.CreateTable(UsersTable)
-    .IfNotExists()
-    .Build();
-```
+### 7.2 NuGet Packaging
 
-### 9.2 Migration Support
+| Package | Contents |
+|---------|----------|
+| `Drizzle4Dotnet` | Core library + all dialects |
+| `Drizzle4Dotnet.SourceGenerators` | Roslyn incremental generators (auto-included) |
+| `Drizzle4Dotnet.Cli` | CLI tool (global tool or local tool) |
 
-**Priority: Medium** — Simple migration system:
+### 7.3 CI/CD Pipeline
 
-- Snapshot-based: Compare current schema with previous snapshot
-- Auto-detect: Add/Remove columns, change types
-- Generate migration scripts
-
-### 9.3 Index Management
-
-```csharp
-var idx = _db.CreateIndex("idx_users_email")
-    .On(UsersTable)
-    .Column(UsersTable.Email)
-    .Unique()
-    .Build();
-```
+| Step | Tool |
+|------|------|
+| Build + Test | GitHub Actions / `dotnet build && dotnet test` |
+| Code coverage | Coverlet + ReportGenerator (target: >80%) |
+| Benchmark tracking | BenchmarkDotNet with historical comparison |
+| NuGet publish | GitHub Release workflow |
 
 ---
 
-## 10. Phase 9: Observability & Tooling
+## 9. Timeline & Milestones
 
-### 10.1 Query Logging / Interception
+### Estimated Effort Summary
 
-**Priority: High**
+| Phase | Description | Effort | Dependencies |
+|-------|-------------|--------|--------------|
+| **P1** | Full Unit Test Coverage | 20 days | None |
+| **P2** | Batch API Support | 10 days | P1 (for testing) |
+| **P3** | Prepared Statement Support | 13 days | P1 (for testing) |
+| **P4** | Better JSON/JSONB Handling | 21 days | P1 (for testing) |
+| **P5** | Cross-Dialect Test Suites | 15 days | P1 (patterns) |
+| **P6** | Performance & AOT Optimization | 10 days | P1, P2, P3 (stable API) |
+| **P7** | Documentation & Release | 10 days | All above |
+| **Total** | | **~99 days** | |
 
-```csharp
-public interface IDbInterceptor
-{
-    void OnQueryExecuting(string sql, IDictionary<string, object?> parameters);
-    void OnQueryExecuted(string sql, IDictionary<string, object?> parameters, TimeSpan elapsed);
-    void OnQueryError(string sql, IDictionary<string, object?> parameters, Exception ex);
-}
+### Milestone Schedule
+
+```
+M1: Core Test Coverage Complete   [P1]         Week 4
+M2: Batch API Ready               [P2]         Week 6
+M3: Prepared Statement Ready      [P3]         Week 8
+M4: JSON/JSONB API Complete       [P4]         Week 12
+M5: All Dialect Tests Complete    [P5]         Week 14
+M6: Performance Optimized         [P6]         Week 16
+M7: v1.0 Release                  [P7]         Week 18
 ```
 
-```csharp
-var db = new DbClient<PgSqlSqlDialectImpl>(connection)
-    .WithInterceptor(new ConsoleLoggerInterceptor());
-```
-
-### 10.2 Query Timing / Metrics
-
-**Priority: Medium** — Expose execution time via events or callbacks.
-
-### 10.3 SQL Formatter / Pretty Printer
-
-**Priority: Low** — Optional utility to format generated SQL for debugging.
-
-### 10.4 EXPLAIN Support
-
-**Priority: Low**
-
-```csharp
-var plan = await _db
-    .Select(UserSelect.Record)
-    .From(users)
-    .ExplainAsync();
-```
-
----
-
-## 11. Phase 10: Source Generator Enhancements
-
-### 11.1 Table Generator Improvements
-
-**Current file:** [`TableGenerator.cs`](SourceGenerators/SourceGenerators/TableGenerator.cs)
-
-| Improvement | Priority | Description |
-|-------------|----------|-------------|
-| **Nullable support** | High | Properly handle nullable reference types in generated columns |
-| **Dialect parameterization** | High | Don't hardcode `PgSqlSqlDialectImpl` |
-| **Composite primary keys** | Medium | Detect and emit multiple PKs |
-| **Foreign key attributes** | Medium | `ForeignKeyAttribute` for relationship metadata |
-| **Default value attributes** | Medium | `DefaultValueAttribute("now()")` |
-| **Auto-increment detection** | Medium | Mark SERIAL/IDENTITY columns |
-| **Enum support** | Medium | Map C# enums to database enum types |
-| **Column ordering** | Low | Preserve declaration order |
-| **Partial column selection** | High | Generate `Select` subset methods: `UsersTable.SelectIdAndName()` |
-| **Join helpers** | Medium | Generate typed join methods |
-
-### 11.2 DbSelect Generator Improvements
-
-**Current file:** [`DbSelectGenerator.cs`](SourceGenerators/SourceGenerators/DbSelectGenerator.cs)
-
-| Improvement | Priority | Description |
-|-------------|----------|-------------|
-| **MapWithRaw support** | Medium | Already defined in [`Attributes.cs`](Drizzle4Dotnet/src/Core/Shared/Attributes.cs) but not handled by generator |
-| **MapWithAlias support** | Medium | Already defined but not handled |
-| **Computed columns** | Medium | Support `SELECT (a + b) AS total` in DTO |
-| **Aggregate projections** | Medium | Auto-generate DTO for aggregate results |
-| **Join-path generation** | Low | Auto-generate DTOs for join chains |
-
-### 11.3 New Generator: Migration Generator
-
-**Priority: Low** — Generate migration classes from schema snapshots.
-
-### 11.4 New Generator: Data Seed Generator
-
-**Priority: Low** — Generate typed seed data classes from SQL or data files.
-
-### 11.5 Source Generator `Utils.GetDataReaderMethod()` Missing Type Mappings
-
-**File:** [`SourceGenerators/SourceGenerators/Utils.cs`](SourceGenerators/SourceGenerators/Utils.cs#L12-L34)
-
-The `GetDataReaderMethod()` is missing several common .NET types and has a bug for `byte[]`:
-
-| Type | Current Mapping | Expected Mapping | Priority |
-|------|----------------|------------------|----------|
-| `byte` / `Byte` | ❌ Falls to `FieldValue<byte>` | `GetByte()` | High |
-| `sbyte` / `SByte` | ❌ Falls to `FieldValue<sbyte>` | `GetSByte()` (via `GetFieldValue<sbyte>`) | Low |
-| `ushort` / `UInt16` | ❌ Falls to `FieldValue<ushort>` | `GetInt16()` (cast from reader) | Medium |
-| `uint` / `UInt32` | ❌ Falls to `FieldValue<uint>` | `GetInt32()` (cast from reader) | Medium |
-| `ulong` / `UInt64` | ❌ Falls to `FieldValue<ulong>` | `GetInt64()` (cast from reader) | Medium |
-| `char` / `Char` | ❌ Falls to `FieldValue<char>` | `GetString()` → `.FirstOrDefault()` | Low |
-| `byte[]` | `FieldValue<byte[]>` ⚠️ | `GetFieldValue<byte[]>()` | High |
-| `TimeSpan` | ❌ Falls to `FieldValue<TimeSpan>` | `GetFieldValue<TimeSpan>()` | Medium |
-| `DateTimeOffset` | ❌ Falls to `FieldValue<DateTimeOffset>` | `GetFieldValue<DateTimeOffset>()` | Medium |
-| `DateOnly` | ❌ Falls to `FieldValue<DateOnly>` | `GetFieldValue<DateOnly>()` | Low |
-| `TimeOnly` | ❌ Falls to `FieldValue<TimeOnly>` | `GetFieldValue<TimeOnly>()` | Low |
-
-**Bug:** The `byte[]` mapping returns `GetFieldValue<byte[]>` wrapped as `FieldValue<byte[]>`, but the code generation pattern uses `r.Get{Method}({i})`. For `FieldValue<byte[]>`, it would generate `r.GetFieldValue<byte[]>({i})` — which should actually work since `GetFieldValue<T>` is a generic method. But the mapper code would need to use `GetFieldValue<T>(i)` pattern consistently for fallback types.
-
-**Fix:** 
-1. Add explicit mappings for all missing types
-2. Use `GetFieldValue<T>(i)` for types without a dedicated `Get{Type}(i)` method
-3. Ensure `byte[]` uses `GetFieldValue<byte[]>()` not the non-existent `GetFieldValue<byte[]>` as string
-
-### 11.6 `MapWithRaw` and `MapWithAlias` Attributes Not Handled by `DbSelectGenerator`
-
-**File:** [`DbSelectGenerator.cs`](SourceGenerators/SourceGenerators/DbSelectGenerator.cs#L311-L390)
-
-The `DbSelectGenerator` only processes `MapWithAttribute`. Two other attributes defined in [`Attributes.cs`](Drizzle4Dotnet/src/Core/Shared/Attributes.cs) are ignored:
-
-- `MapWithAliasAttribute` — maps from a specific table alias (e.g., self-join with different alias)
-- `MapWithRawAttribute` — maps from a raw SQL expression
-
-**Proposed API:**
-
-```csharp
-[DbSelect]
-public partial class UserWithManagerSelect
-{
-    // Direct column mapping
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public string UserName { get; set; }
-    
-    // Column from table alias (self-join)
-    [MapWithAlias(typeof(ManagersTable), "Manager", ManagersTable.ColumnNames.Name)]
-    public string ManagerName { get; set; }
-    
-    // Raw SQL expression
-    [MapWithRaw("CONCAT(first_name, ' ', last_name)", "FullName")]
-    public string FullName { get; set; }
-}
-```
-
-**Implementation:**
-1. Add `MapWithAlias` processing to [`DbSelectGenerator.GetClassModel()`](DbSelectGenerator.cs#L311-L358)
-2. Add `MapWithRaw` processing — emit raw SQL directly without table prefix
-3. Generate correct SQL fragments with alias prefixes where needed
-
-### 11.7 `TableAttribute` / `AliasAttribute` Not Exposing Constructor Args as Properties
-
-**File:** [`Schema/Tables/Attributes.cs`](Drizzle4Dotnet/src/Core/Schema/Tables/Attributes.cs)
-
-Primary constructors in attributes don't auto-generate public properties in older C# versions. Although the generator accesses via `ConstructorArguments`, the attributes should expose properties for runtime reflection use cases:
-
-```csharp
-[AttributeUsage(AttributeTargets.Class)]
-public class TableAttribute(string name, string schema = "") : Attribute
-{
-    public string Name { get; } = name;    // ❌ Missing
-    public string Schema { get; } = schema; // ❌ Missing
-}
-```
-
----
-
-## 12. Phase 11: GitHub Issues & Reported Bugs
-
-### 12.1 `NnaryNode.And<T>()` Unused Generic Parameter
-
-**File:** [`NnaryNode.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/NnaryNode.cs#L74-L76)
-
-The `T` in `And<T>()`, `Or<T>()`, `Xor<T>()` is unused:
-
-```csharp
-// Current (buggy):
-public static NnaryNode<bool, bool> And<T>(params ISql<bool>[] conditions)
-// Fixed:
-public static NnaryNode<bool, bool> And(params ISql<bool>[] conditions)
-```
-
-### 12.2 `SelectQuery.NonVirtualTable` Lacks LATERAL Join Methods
-
-**File:** [`SelectQuery.cs`](Drizzle4Dotnet/src/Core/Query/Select/SelectQuery.cs#L16-L223)
-
-The non-virtual-table variant (lines 16-223) is missing:
-- `InnerLateralJoin()`
-- `LeftLateralJoin()`
-- `CrossLateralJoin()`
-
-These are only available on the `TVirtualTable` variant (lines 412-422).
-
-### 12.3 `SelectQuery.NonVirtualTable` Lacks Advanced `ForUpdate` Overloads
-
-The `ForUpdate()` / `ForShare()` / `ForNoKeyUpdate()` / `ForKeyShare()` methods on the non-virtual-table variant don't support `skipLocked` / `nowait` / `ofColumns` parameters, unlike the `TVirtualTable` variant.
-
-### 12.4 `BinarySqlValueNode` Cannot Accept `ISql<T>` Right Side
-
-**File:** [`BinaryNode.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/BinaryNode.cs#L4-L23)
-
-`BinarySqlValueNode<T, TReturn>` only accepts plain `T` values, not `ISql<T>` expressions. This means `UsersTable.Salary.Eq(otherColumn)` works via `IColumnOfDialect` → `BinaryNode<T1, T2, bool>` overload, but `UsersTable.Salary.Add(otherColumn)` returns `BinarySqlValueNode` which can only accept a plain value.
-
-**Impact:** Arithmetic operations like `Add`, `Sub`, `Mul`, `Div` between two columns return `BinarySqlValueNode` not `BinaryNode`:
-
-```csharp
-// This works: column-to-column (uses IColumnOfDialect overload)
-Sub(UsersTable.Salary, managerSalaries.Field<decimal>("Salary"))
-
-// But this doesn't:
-UsersTable.Salary.Sub(UsersTable.Bonus)  // BinarySqlValueNode, not BinaryNode
-```
-
-**Fix:** Ensure all column-to-column arithmetic overloads exist and return `BinaryNode<T>`, not `BinarySqlValueNode<T, T>`.
-
-### 12.5 `QueryBuilderExtensions` Has Code Duplication with `DbSelectGenerator`
-
-**File:** [`QueryBuilderExtensions.cs`](Drizzle4Dotnet/src/Core/QueryBuilderExtensions.cs)
-
-This file is marked `// <auto-generated/>` but is checked into the repository. It generates Select/SelectDistinct overloads for 1-16 columns. The same generation logic exists (commented out) in [`DbSelectGenerator.cs`](DbSelectGenerator.cs#L31-L66).
-
-**Fix:** Either:
-1. Generate this file ONCE from the source generator (uncomment the code in DbSelectGenerator), OR
-2. Keep the hand-written version and remove the commented-out code in the generator
-
-### 12.6 `Returning` on Non-Select DML: SQL Syntax Verification
-
-**File:** [`ReturningQuery.cs`](Drizzle4Dotnet/src/Core/Query/ReturningQuery.cs)
-
-The `ReturningQuery` wraps any `Query<TDialect>` and appends `RETURNING`. But the SQL syntax is:
-- `INSERT INTO ... VALUES ... RETURNING ...` ✅ Works
-- `UPDATE ... SET ... WHERE ... RETURNING ...` ✅ Should work
-- `DELETE FROM ... WHERE ... RETURNING ...` ✅ Should work
-
-But: `SELECT ... RETURNING ...` is **invalid SQL**. Need to verify that `Returning()` cannot be called on select queries.
-
-**Fix:** Add compile-time constraint (e.g., separate `IDmlQuery` interface) or runtime validation.
-
-### 12.7 `Benchmark/Program.cs` / `Demo1/Program.cs` — Verify API Usage Patterns
-
-**Priority: Low** — Review these files to ensure the plan covers all usage patterns they demonstrate.
-
----
-
-## 12. Appendix: Cross-Cutting Concerns
-
-### 12.1 Native AOT Compatibility
-
-**Priority: High** — All code must be Native AOT friendly (no runtime reflection).
-
-Current state: ✅ Good — [`DbClient.cs`](Drizzle4Dotnet/src/Core/DbClient.cs) uses source-generated mappers.  
-To maintain: No `Activator.CreateInstance`, `Expression.Compile`, or runtime type discovery.
-
-### 12.2 Performance Optimization Targets
-
-| Area | Current | Target | Priority |
-|------|---------|--------|----------|
-| SQL generation allocation | String concatenation | `StringBuilder` pooling | Medium |
-| Parameter dictionary allocation | `Dictionary<string, object?>` | Reusable builders | Medium |
-| Mapper compilation | Source-generated | Static delegates | ✅ Already done |
-| Query object reuse | New per query | Query pool | Low |
-| Async overhead | Standard await patterns | `ValueTask` where applicable | Medium |
-
-### 12.3 Testing Strategy
-
-| Test Category | Coverage | Priority |
-|---------------|----------|----------|
-| SQL generation correctness | ✅ Good (select) / ❌ Missing (others) | High |
-| Query builder fluency | ✅ Good | Medium |
-| Operator node rendering | ✅ Good | Medium |
-| Dialect-specific output | ✅ PostgreSQL / ❌ Others | High |
-| Source generator output | ❌ Missing | High |
-| Integration tests (real DB) | ❌ Missing | Medium |
-| Edge cases (nulls, empty lists) | ❌ Missing | Medium |
-| Performance benchmarks | ✅ Existing | Medium |
-
-### 12.4 Documentation Plan
-
-| Document | Priority | Status |
-|----------|----------|--------|
-| `README.md` | **Critical** | ✅ Exists, needs update |
-| `PLAN.md` (this) | High | ✅ Being created |
-| `API.md` (full API reference) | High | ❌ Missing |
-| Migration guide | Medium | ❌ Missing |
-| Source generator documentation | Medium | ❌ Missing |
-| Dialect implementation guide | Medium | ❌ Missing |
-| Contributing guide | Low | ❌ Missing |
-
-### 12.5 Dependency Management
-
-| Dependency | Purpose | Status | Notes |
-|------------|---------|--------|-------|
-| `Microsoft.CodeAnalysis.*` | Source generators | ✅ Done | Roslyn 4.x |
-| `Npgsql` | PostgreSQL driver | ❌ Optional | Runtime only |
-| `Dapper` | Interop/comparison | ❌ Optional | Benchmarks |
-| `NUnit` | Testing | ✅ Done | `Test/Test.csproj` |
-| `BenchmarkDotNet` | Benchmarks | ✅ Done | `Benchmark/Benchmark.csproj` |
-
-### 12.6 Priority Matrix Summary
-
-| Phase | Features | Priority | Effort | Dependencies |
-|-------|----------|----------|--------|--------------|
-| **P1** | Operators & Functions | Critical | Medium | None |
-| **P2** | Window Functions | High | Large | P1 |
-| **P3** | Advanced DML | Critical | Large | None |
-| **P4** | Set Operations | High | Medium | None |
-| **P5** | Convenience Methods | High | Small | None |
-| **P6** | Batch & Streaming | Medium | Medium | P3 |
-| **P7** | Multi-Dialect | High | Large | None |
-| **P8** | Schema/Migrations | Medium | Large | P7 |
-| **P9** | Observability | Medium | Medium | None |
-| **P10** | Source Gen Enhancements | High | Large | None |
-
-### 12.7 Immediate Next Steps (Recommended Sprint)
-
-Based on the priority-effort matrix, the recommended first sprint focuses on:
-
-1. **UPSERT (ON CONFLICT)** — [`InsertQuery.cs`](Drizzle4Dotnet/src/Core/Query/Insert/InsertQuery.cs) — Critical, moderate effort
-2. **UPDATE with FROM** — [`UpdateQuery.cs`](Drizzle4Dotnet/src/Core/Query/Update/UpdateQuery.cs) — High, moderate effort
-3. **CASE/WHEN expressions** — New [`CaseNode.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Nodes/CaseNode.cs) — High, moderate effort
-4. **COALESCE / NULLIF** — [`Functions.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Functions.cs) — High, small effort
-5. **CancellationToken support** — [`DbClient.cs`](Drizzle4Dotnet/src/Core/DbClient.cs) — High, small effort
-6. **String functions (Upper, Lower, Length, Substring, Replace)** — [`Functions.cs`](Drizzle4Dotnet/src/Core/Shared/Operators/Functions.cs) — High, small effort
-7. **ExecuteFirst/FirstOrDefault/Single** — [`DbClient.cs`](Drizzle4Dotnet/src/Core/DbClient.cs) — High, small effort
-8. **Source generator nullable support** — [`TableGenerator.cs`](SourceGenerators/SourceGenerators/TableGenerator.cs) — High, moderate effort
+### Priority Order
+
+1. **🔴 Must-have for v1.0**: P1 (core tests), P5 (MSSQL/Oracle tests)
+2. **🟡 Should-have for v1.0**: P2 (batch API), P4 (JSON/JSONB), P7 (documentation)
+3. **🟠 Nice-to-have for v1.0**: P3 (prepared statements), P6 (optimization)
+4. **🟢 Future (v1.1+)**: SQLite dialect, COPY bulk insert, connection pooling integration

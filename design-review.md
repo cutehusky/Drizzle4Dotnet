@@ -1,405 +1,222 @@
-# Drizzle4Dotnet — Design Review
+# Design Review — Drizzle4Dotnet
 
-> **Review Date:** 2026-06-26  
-> **Scope:** Class design, architecture patterns, code organization, and potential improvements  
-> **Reference:** [`class.md`](class.md) (class hierarchy), [`feature.md`](feature.md) (feature inventory)
-
----
-
-## Table of Contents
-
-1. [Executive Summary](#1-executive-summary)
-2. [Strengths & Good Practices](#2-strengths--good-practices)
-3. [Design Concerns & Risks](#3-design-concerns--risks)
-4. [Component-by-Component Review](#4-component-by-component-review)
-   - 4.1 [Query Builder Hierarchy](#41-query-builder-hierarchy)
-   - 4.2 [Interface Design](#42-interface-design)
-   - 4.3 [Dialect System](#43-dialect-system)
-   - 4.4 [Expression AST](#44-expression-ast)
-   - 4.5 [Schema / Migration](#45-schema--migration)
-   - 4.6 [Source Generators](#46-source-generators)
-   - 4.7 [Execution Layer](#47-execution-layer)
-5. [Architecture Diagram Review](#5-architecture-diagram-review)
-6. [Recommendations](#6-recommendations)
-7. [Priority Action Items](#7-priority-action-items)
+> **Review Date**: 2026-06-29 UTC+7
+> **Scope**: Full class hierarchy, architecture patterns, and code organization across all layers (Core SQL, Schema, Query, Migration, Dialect, CLI)
 
 ---
 
-## 1. Executive Summary
+## 1. Strengths
 
-Drizzle4Dotnet is a well-structured .NET SQL builder with a strong type-safe design philosophy. The architecture follows a layered pattern with clean separation between core query building, dialect-specific implementations, and execution. The use of CRTP (Curiously Recurring Template Pattern) for fluent APIs and static abstract interface members for dialect abstraction is modern and idiomatic for .NET 10.
+### 1.1 Strong Type Safety via Generics
 
-**Overall Rating: 7.5/10** — Solid foundation with some areas needing improvement in duplication reduction, interface segregation, and error handling.
+The system leverages C# generics extensively to provide compile-time type safety:
 
----
+- [`DbColumn<T, TTable, TDialect>`](Drizzle4Dotnet/src/Core/Schema/Columns/DbColumn.cs:6) ties column type, owning table, and dialect together — eliminating mismatches between column types and their values at compile time.
+- [`Query<TReturn, TDialect, TVirtualTable>`](Drizzle4Dotnet/src/Core/Query/Query.cs:25) ensures subquery composition preserves column types through the `TVirtualTable` parameter.
+- Tuple overloads (1–16 columns) for [`Returning()`](Drizzle4Dotnet/src/Core/Query/QueryReturningExtensions.cs:9) and `Select()` enable type-safe selection without boxing or `dynamic`.
 
-## 2. Strengths & Good Practices
+### 1.2 Static Abstract Interface Pattern (C# 11)
 
-### 2.1 Type Safety
-- **Strong typing throughout**: `DbColumn<T, TTable, TDialect>` ensures column types are checked at compile time
-- **ValueTuple projections**: 1–16 column overloads provide type-safe multi-column results without dynamic mapping
-- **Dialect-as-type-parameter**: `TDialect : ISqlDialect` prevents mixing dialect implementations at compile time
+The [`ISqlDialect`](Drizzle4Dotnet/src/Core/Shared/ISqlDialect.cs:5) interface uses `static abstract` members, enabling:
 
-### 2.2 Modern .NET Usage
-- **Static abstract interfaces** (`ISqlDialect`): Enables polymorphic static dispatch without runtime overhead
-- **CRTP pattern**: Fluent methods return concrete subclass types, eliminating the need for casting
-- **`IAsyncDisposable`**: Proper async cleanup
-- **`TaskAwaiter`**: Direct `await` support on queries; elegant for quick execution
+- **Zero-overhead dispatch**: Dialect methods are resolved at compile time — no virtual calls or runtime dispatch.
+- **Compile-time feature gating**: `TDialect.SupportsReturning` etc. are known at JIT time, enabling dead code elimination.
+- **Type-safe factory methods**: `TDialect.BuildIdentifier()`, `TDialect.BuildParameterName()` are called without a dialect instance.
 
-### 2.3 Architecture
-- **Layered separation**: Core → Dialect → PgSql/MySql — clear dependency direction
-- **Extensible dialect system**: Adding a new dialect (e.g., SQLite, SQL Server) requires implementing `ISqlDialect` and creating subclass queries
-- **Expression AST**: SQL expressions are represented as composable node objects, enabling analysis, transformation, and dialect-specific rendering
-- **Source generators**: Compile-time code generation avoids runtime reflection — critical for Native AOT
+### 1.3 Fluent Builder Pattern
 
-### 2.4 Migration System
-- **Snapshot-based diffing**: `SchemaSnapshot.Compare()` cleanly separates schema state from migration generation
-- **Serializable snapshots**: JSON serialization for storing schema state between runs
-- **Checksum verification**: SHA-256 checksums prevent tampered/duplicate migrations
+All query types follow a consistent fluent API with method chaining:
 
----
-
-## 3. Design Concerns & Risks
-
-### 3.1 Code Duplication (High)
-The most significant issue is massive code duplication between:
-
-| Duplicate Pair | Lines | Problem |
-|----------------|-------|---------|
-| `SelectQuery<TReturn, TDialect, TSelf>` vs `SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>` | ~200+ lines each | Nearly identical code duplicated for virtual table support |
-| `CompoundQuery<TReturn, TDialect>` vs `CompoundQuery<TReturn, TDialect, TVirtualTable>` | ~45 lines each | Same structure duplicated |
-| `ReturningExtensions` 16 overloads | ~170 lines | Manually written overloads for each column count |
-| `PgSelectQuery<TReturn>` vs `PgSelectQuery<TReturn, TVirtualTable>` | ~105 lines each | Identical lock/lateral logic duplicated |
-| `MySqlSelectQuery<TReturn>` vs `MySqlSelectQuery<TReturn, TVirtualTable>` | ~70 lines each | Same pattern |
-| Functions extension vs non-extension overloads | Throughout | `Count<T>(ISql<T>)` and `Count<T,TDialect>(IColumnOfDialect<T,TDialect>)` are duplicated |
-
-**Risk:** Maintenance burden — changes to one variant must be manually replicated. Bug fixes easily missed.
-
-### 3.2 Interface Design Issues
-
-#### 3.2.1 `ISelectedColumns` Split
 ```csharp
-ISelectedColumns<TReturn, TDialect>          // Without virtual table
-ISelectedColumns<TReturn, TDialect, TVirtualTable>  // With virtual table
+_db.Select()
+   .From(users)
+   .Where(users.Name.Eq("Alice"))
+   .OrderBy(users.Id, asc: false)
+   .Limit(10)
 ```
-- These are separate interfaces despite nearly identical contracts
-- Forces duplicate generic type parameters throughout the entire query hierarchy
-- Alternative: Single interface with covariant/contravariant type parameters where possible
 
-#### 3.2.2 `IReturning` Interface Duplication
+The CRTP pattern (`TSelf : SelectQuery<..., TSelf>`) ensures fluent methods return the concrete subtype, preserving dialect-specific extension methods.
+
+### 1.4 Clean Separation of Concerns
+
+- **SQL Building** ([`SqlStatics`](Drizzle4Dotnet/src/Core/Shared/SqlStatics.cs:9)): Pure static utility methods with no side effects.
+- **Query Building** ([`SelectQuery`](Drizzle4Dotnet/src/Core/Query/Select/SelectQuery.cs:7), etc.): State management + validation.
+- **Execution** ([`DbClient<TDialect>`](Drizzle4Dotnet/src/Core/DbClient.cs:8)): ADO.NET interaction only.
+- **Migration** ([`SchemaSnapshot`](Drizzle4Dotnet/src/Core/Schema/Migration/SchemaSnapshot.cs:10), [`TableDefinitionComparer`](Drizzle4Dotnet/src/Core/Schema/Migration/TableDefinitionComparer.cs:11)): Schema introspection and diffing.
+- **CLI** ([`Program`](Drizzle4Dotnet.Cli/Program.cs:22)): Command dispatch and option parsing.
+
+### 1.5 Comprehensive Migration System
+
+The snapshot-diff-migration pipeline is well-designed:
+
+1. [`SchemaSnapshot`](Drizzle4Dotnet/src/Core/Schema/Migration/SchemaSnapshot.cs:10) captures full schema state (columns, constraints, indexes) in JSON.
+2. [`SchemaSnapshot.Compare()`](Drizzle4Dotnet/src/Core/Schema/Migration/SchemaSnapshot.cs:118) produces detailed [`SchemaDiff`](Drizzle4Dotnet/src/Core/Schema/Migration/SchemaSnapshot.cs:515) with typed changes.
+3. [`SchemaDiff.ToMigrationPlan()`](Drizzle4Dotnet/src/Core/Schema/Migration/SchemaSnapshot.cs:524) generates ordered DDL steps.
+4. Structured constraint/index objects ([`TableConstraint`](Drizzle4Dotnet/src/Core/Schema/Migration/TableConstraint.cs:10), [`TableIndex`](Drizzle4Dotnet/src/Core/Schema/Migration/TableConstraint.cs:185)) enable proper reconstruction rather than raw SQL strings.
+
+### 1.6 Reflection-Free Schema Export Path
+
+The [`OrmSchemaExporter`](Drizzle4Dotnet/src/Core/Schema/Migration/OrmSchemaExporter.cs:14) uses reflection to extract schema from source-generated classes, but the generated classes themselves are strongly typed — reflection is only needed at the CLI boundary for dynamic assembly loading.
+
+---
+
+## 2. Weaknesses & Concerns
+
+### 2.1 CRTP Boilerplate and Complexity
+
+The Curiously Recurring Template Pattern is used extensively:
+
 ```csharp
-IReturning<TReturn, TDialect>
-IReturning<TReturn, TDialect, TVirtualTable>
+public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>
+    : Query<TReturn, TDialect, TVirtualTable>
+    where TSelf : SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>
 ```
-- Same problem as `ISelectedColumns` — TVirtualTable variant adds only `AsSubQuery()`
-- Could use default interface methods to unify
 
-#### 3.2.3 Missing `IWhere` / `IOrderBy` / `IGroupBy` Interfaces
-- `Where()`, `OrderBy()`, `GroupBy()` are re-implemented in every query class
-- No shared contract for "query that supports WHERE" or "query that supports ORDER BY"
+This adds significant type parameter complexity. Every dialect-specific query class must propagate these four type parameters, and the constraints create a tight coupling between base and derived classes. Consider whether the benefit (fluent `TSelf` return types) outweighs the cognitive overhead.
 
-### 3.3 Structural Concerns
+### 2.2 Excessive Generic Parameters
 
-#### 3.3.1 `SqlBuilder` is a Mutable Struct
-- `SqlBuilder<TDialect>` is a `struct` but contains mutable `StringBuilder` and `Dictionary`
-- Passing by value (as `ISqlBuilder` interface) causes boxing
-- If passed as struct, mutations may be lost on copies
+Some classes carry 3–4 generic parameters:
 
-#### 3.3.2 `QueryBase` Direct `DbClient` Reference
-- `QueryBase<TDialect>` holds a reference to `DbClient<TDialect>`
-- This couples query objects to a specific client instance
-- Queries cannot be serialized, cached, or reused across connections
-- A "build-only" (no execution) mode would be cleaner
+| Class | Parameters |
+|---|---|
+| [`SelectQuery<T,D,VT,TS>`](Drizzle4Dotnet/src/Core/Query/Select/SelectQuery.cs:7) | `TReturn`, `TDialect`, `TVirtualTable`, `TSelf` |
+| [`InsertQuery<TTable,D,TS>`](Drizzle4Dotnet/src/Core/Query/Insert/InsertQuery.cs:7) | `TTable`, `TDialect`, `TSelf` |
+| [`UpdateQuery<TTable,D,TS>`](Drizzle4Dotnet/src/Core/Query/Update/UpdateQuery.cs:7) | `TTable`, `TDialect`, `TSelf` |
+| [`CompoundQuery<T,D,VT>`](Drizzle4Dotnet/src/Core/Query/CompoundQuery.cs:12) | `TReturn`, `TDialect`, `TVirtualTable` |
 
-#### 3.3.3 Static DDL Methods on `DbClient`
-- `CreateTable`, `DropTable`, etc. are `protected static` methods on `DbClient`
-- These should be standalone classes or factory methods; they don't need instance state
-- Tight coupling: DDL generation is tied to having a `DbClient` instance
+While this provides type safety, it makes the codebase harder to navigate and increases compilation times. The `TVirtualTable` parameter is particularly problematic — it flows through the entire query hierarchy but is only needed for `AsSubQuery()`.
 
-#### 3.3.4 `CompoundQuery<T>` Extension Methods
-- Extension methods are spread across `CompoundQueryExtensions` and `Query<TReturn, ...>` doesn't directly support UNION
-- The API surface is fragmented — `query.Union(other)` isn't discoverable from `SelectQuery`
+### 2.3 Duplicate CTE Implementation
 
-### 3.4 Testability & SOLID
+CTE support is implemented identically in 4 query types:
 
-#### 3.4.1 Single Responsibility Principle (SRP) Violations
-- `Query<TReturn, TDialect>` handles: SQL building + result mapping + execution (`GetAwaiter`)
-- `DbClient<TDialect>` handles: Connection management + SQL building + parameter management + execution
+- [`SelectQuery.With()`](Drizzle4Dotnet/src/Core/Query/Select/SelectQuery.cs:35)
+- [`InsertQuery.With()`](Drizzle4Dotnet/src/Core/Query/Insert/InsertQuery.cs:24)
+- [`UpdateQuery.With()`](Drizzle4Dotnet/src/Core/Query/Update/UpdateQuery.cs:33)
+- [`CompoundQuery.With()`](Drizzle4Dotnet/src/Core/Query/CompoundQuery.cs:27)
 
-#### 3.4.2 Dependency Inversion
-- `QueryBase` depends concretely on `DbClient<TDialect>` (concrete class, not interface)
-- Difficult to unit test query building without instantiating a `DbClient`
-- `IReturning.Mapper` is a `Func<DbDataReader, TReturn>` — tightly coupled to ADO.NET data readers
+Each has nearly identical code for `With()`, `WithRecursive()`, `CteTables`, and `Recursive` fields. Consider extracting CTE support into a reusable mixin pattern or moving it entirely into [`QueryBase`](Drizzle4Dotnet/src/Core/Query/QueryBase.cs:8) since all queries support CTEs.
 
-#### 3.4.3 Error Handling
-- `InsertQuery.BuildSql()` throws `InvalidOperationException` when no values provided — no compile-time check
-- Same for `UpdateQuery.BuildSql()` when no SET values
-- No validation at API entry point (e.g., `.Value()` could validate immediately)
+### 2.4 String Concatenation in SQL Building
 
-### 3.5 Code Organization
+Several places use string concatenation for SQL fragments instead of `ISqlBuilder.Append`:
 
-#### 3.5.1 Fragmented Operator Extensions
-- `Operators.cs` defines operators as extension methods on `IColumnOfDialect<T, TDialect>` AND as static methods on `ISql<T>`
-- Users must know both `Operators.Eq(col, val)` and `col.Eq(val)` patterns — inconsistent
-- PgSql operators in separate `PgOperators.cs` — users must discover this separately
+- [`ForeignKeyConstraint.BuildSql()`](Drizzle4Dotnet/src/Core/Schema/Migration/TableConstraint.cs:86): Uses `string.Join(", ", Columns.Select(c => $"\"{c}\""))` — the quoting is hardcoded as double-quotes, which is incorrect for MySQL (backticks) and SQL Server (brackets).
+- [`TableIndex.BuildSql()`](Drizzle4Dotnet/src/Core/Schema/Migration/TableConstraint.cs:229) and constraint `BuildSql()` methods don't use the dialect-aware builder for identifier quoting.
 
-#### 3.5.2 File Size
-- `FunctionCallNode.cs`: 43,852 chars — extremely long single file for an AST node
-- `Operators.cs`: 18,516 chars — could be broken into `ComparisonOperators.cs`, `LogicalOperators.cs`, etc.
-- `PgSqlQueryBuilderExtensions.cs`: 20,000 chars — very large file
+This breaks cross-dialect compatibility in migration DDL generation. Constraint and index SQL should go through the dialect's `BuildIdentifier()` method.
 
-### 3.6 Performance Considerations
+### 2.5 Raw SQL Type Coupling in Schema Snapshot
 
-#### 3.6.1 Allocation Patterns
-- Every `Value()` call allocates `Dictionary<string, object?>` for each row
-- Each `BuildSql()` call allocates a new `SqlBuilder<TDialect>` struct (with heap-allocated StringBuilder)
-- Expression nodes are heap objects — complex queries create many allocations
+The [`RawColumnDefinition`](Drizzle4Dotnet/src/Core/Schema/Migration/SchemaSnapshot.cs:485) class is used when deserializing snapshots, but it stores data types as raw strings (`RawSqlDataType`). This means:
 
-#### 3.6.2 Reflection in DDL
-- `DbClient.GetTableDefinition<TTable>()` uses reflection to extract column metadata
-- Called at migration time only, so acceptable, but should be noted
+- Round-tripping a snapshot loses the specific `ISqlDataType` implementation (e.g., `PgSqlDataType.Integer` becomes `RawSqlDataType("INTEGER")`).
+- No way to validate or transform data types after deserialization.
 
-#### 3.6.3 String Concatenation
-- SQL building uses `ISqlBuilder.Append(string)` which calls `StringBuilder.Append()`
-- Some methods still use string interpolation for SQL fragments (e.g., `$" LIMIT {limit}"`) — this bypasses parameterization
+### 2.6 Mixed Naming Conventions
+
+- **Method casing**: `AsSubQuery()`, `BuildSql()` vs. `ToMigrationPlan()`, `ToSql()` — some use PascalCase, others use mixed.
+- **Field naming**: `_sql`, `_identifier` vs. `_sb`, `_parameters` — inconsistent private field naming across files.
+- **File naming**: `ISql.cs` contains `ISqlBuilder`, `ISql`, `RawSql`, etc. — files are named by role, not by containing type.
+
+### 2.7 Missing Async Cancellation
+
+`IQueryExecutor` methods (`ExecuteGetListAsync`, `ExecuteAsync`, `ExecuteScalarAsync`, `ExecuteReaderAsync`) don't accept `CancellationToken`. This prevents cancellation of long-running queries, which is a standard practice in async ADO.NET code.
+
+### 2.8 CLI Command Duplication
+
+The [`Program.cs`](Drizzle4Dotnet.Cli/Program.cs:22) has separate `HandleGenerate`, `HandleSnapshot`, `HandleStatus`, `HandleApply`, `HandleDebug` methods, each with duplicated option parsing logic. This could be refactored into a command pattern with shared option parsing infrastructure.
 
 ---
 
-## 4. Component-by-Component Review
+## 3. Architecture Observations
 
-### 4.1 Query Builder Hierarchy
+### 3.1 Dialect Feature Flags — Strengths and Gaps
 
-```
-QueryBase<TDialect>
-  ├── Query<TDialect>          (DML)
-  ├── Query<TReturn, TDialect> (SELECT with return)
-  └── Query<TReturn, TDialect, TVirtualTable> (SELECT with VT)
-```
+The feature flag system in [`ISqlDialect`](Drizzle4Dotnet/src/Core/Shared/ISqlDialect.cs:32) is powerful, but:
 
-**Rating: 6/10**
+- **Strengths**: Allows query builders to conditionally enable/disable SQL features at compile time.
+- **Gaps**: Feature flags are not used consistently. For example, `SupportsCte` is declared but CTE methods are available on all query types regardless of dialect. Dialect-specific queries (PgSqlSelectQuery, MySqlSelectQuery, etc.) are responsible for only exposing supported features, but the base [`SelectQuery`](Drizzle4Dotnet/src/Core/Query/Select/SelectQuery.cs:7) unconditionally implements `ISupportCte`.
 
-| Aspect | Assessment |
-|--------|------------|
-| **Inheritance depth** | 3–4 levels — acceptable |
-| **Duplication** | High — two parallel hierarchies for VT vs non-VT |
-| **Fluent API** | Good — CRTP returns concrete type |
-| **Discoverability** | Fair — methods spread across base + subclasses |
+### 3.2 Virtual Table Pattern
 
-**Recommendation:** Introduce a `ISupportWhere`, `ISupportOrderBy`, `ISupportLimit` interfaces to share clause-building logic.
+The `TVirtualTable` parameter creates an interesting trade-off:
 
-### 4.2 Interface Design
+- **Pros**: Subqueries preserve column type information, enabling chained `.Field<T>()` access.
+- **Cons**: Every query class must carry this parameter, and dialect-specific subclasses must specify it. The concrete type is determined by source generators, creating a tight coupling between code generation and the runtime type system.
 
-**Rating: 6.5/10**
+### 3.3 Transaction Handling
 
-| Interface | Assessment |
-|-----------|------------|
-| `IGenericSql` | Clean, minimal — the foundation type |
-| `ISql<T>` / `ISql` | Good separation of typed vs untyped |
-| `IAliasedSql<T>` | Clear contract for aliased expressions |
-| `ISqlDialect` | Excellent — static abstract pattern is ideal for this |
-| `ISelectedColumns<T, TD>` | Over-complex — two variants needed |
-| `IReturning<T, TD>` | Reasonable but duplicates |
-| `IGenericTable<T>` | Good — `BuildSql` vs `BuildRefSql` separation is elegant |
-| `IGetFieldByName` | Useful for dynamic subquery field access |
-| `IWriteRecord` | Minimal, clean |
-
-### 4.3 Dialect System
-
-**Rating: 8.5/10**
-
-| Aspect | Assessment |
-|--------|------------|
-| **Extensibility** | Excellent — new dialect = implement `ISqlDialect` + subclass queries |
-| **Static dispatch** | Zero runtime overhead — calls resolved at compile time |
-| **Feature flags** | Well-designed — `SupportsReturning`, `SupportsArrays`, etc. |
-| **Default sharing** | Good — `SqlDialectDefaults` reduces duplication |
-| **Downside** | Dialect-specific queries require duplicate code (e.g., 2 lock implementations for PG) |
-
-**Recommendation:** Move locking logic to dialect interface (`BuildLockClause()`) instead of overriding `BuildSqlLock()` in subclasses.
-
-### 4.4 Expression AST
-
-**Rating: 7.5/10**
-
-| Aspect | Assessment |
-|--------|------------|
-| **Completeness** | Covers all standard SQL operators and functions |
-| **Composability** | Nodes compose arbitrarily — works like syntax trees |
-| **Type safety** | Generic type parameters track result types through operators |
-| **File organization** | `FunctionCallNode.cs` at 43KB needs splitting |
-| **Extensibility** | Adding new node types is straightforward |
-
-### 4.5 Schema / Migration
-
-**Rating: 8/10**
-
-| Aspect | Assessment |
-|--------|------------|
-| **DDL coverage** | CREATE/DROP/ALTER table + index — comprehensive |
-| **Snapshot design** | Clean serialization, clear diff model |
-| **Diff algorithm** | Column-level granularity with typed changes |
-| **Migration plan** | Ordered steps with SQL generation per dialect |
-| **Migration manager** | Tracks applied, checksums, auto-diff |
-| **Gap** | No rollback/undo support in migration plans |
-| **Gap** | No support for seed data or data migrations |
-
-### 4.6 Source Generators
-
-**Rating: 7/10**
-
-| Aspect | Assessment |
-|--------|------------|
-| **Incremental generation** | Uses `IIncrementalGenerator` — good for perf |
-| **Output quality** | Generates strongly-typed Table and Selection types |
-| **Dialect awareness** | Detects PgSql vs MySql from attributes |
-| **Missing** | No `[DbSelect]` documented in `Attributes.cs` — exported from generators? |
-| **Testability** | Source generators are hard to unit test |
-
-### 4.7 Execution Layer
-
-**Rating: 7/10**
-
-| Aspect | Assessment |
-|--------|------------|
-| **Async support** | Full async with `ExecuteGetListAsync` / `ExecuteAsync` |
-| **Transaction support** | `DbClientWithTransaction` with `RunInTransactionAsync` — well-designed |
-| **Parameter handling** | Auto-named parameters with dictionary — clean |
-| **Coupling** | Tightly coupled to `DbConnection` — hard to mock |
-| **Missing** | No `ExecuteScalar` |
-| **Missing** | No `ExecuteReader` (low-level access) |
-| **Missing** | No batch execution or bulk operations |
+The [`DbClientWithTransaction<TInstance, TDialect>`](Drizzle4Dotnet/src/Core/DbClient.cs:102) uses the CRTP pattern to return the concrete client type from `BeginTransactionAsync()`. This is clean but requires each concrete client to implement `CreateInstance()`. Consider whether a simpler composition-over-inheritance approach (e.g., a separate `TransactionScope` wrapper) would be more maintainable.
 
 ---
 
-## 5. Architecture Diagram Review
+## 4. Specific File-Level Issues
 
-### 5.1 Current Architecture (Simplified)
+### 4.1 [ISql.cs](Drizzle4Dotnet/src/Core/Shared/ISql.cs)
 
-```
-┌────────────────────────────────────────────────────────┐
-│                    DbClient<TDialect>                    │
-│  (connection, execution, DDL factories)                 │
-└──────────┬──────────────────────────────┬───────────────┘
-           │                              │
-           ▼                              ▼
-┌─────────────────────┐    ┌──────────────────────────────┐
-│  Query<TDialect>    │    │  Query<TReturn, TDialect>     │
-│  (DML base)         │    │  (SELECT base)                │
-└──────┬──────────────┘    └──────────┬───────────────────┘
-       │                              │
-       ▼                              ▼
-┌─────────────────────┐    ┌──────────────────────────────┐
-│  InsertQuery         │    │  SelectQuery                 │
-│  UpdateQuery         │    │  (CRTP)                      │
-│  DeleteQuery         │    └──────────┬───────────────────┘
-│  (CRTP)              │               │
-└──────┬──────────────┘               │
-       │                              ▼
-       ▼                    ┌──────────────────────────────┐
-┌─────────────────────┐    │  PgSelectQuery               │
-│  PgInsertQuery       │    │  MySqlSelectQuery            │
-│  PgUpdateQuery       │    │  (PG LATERAL, locks)        │
-│  PgDeleteQuery       │    └──────────────────────────────┘
-│  MySqlInsertQuery    │
-│  MySqlUpdateQuery    │
-│  MySqlDeleteQuery    │
-│  MySqlReplaceQuery   │
-└─────────────────────┘
-```
+- Contains 7+ unrelated types (`ISqlBuilder`, `SqlBuilder`, `IGenericSql`, `ISql`, `IAliasedSql`, `AliasedSql`, `RawSql`, `RawSql<TReturn>`, `RawSubqueryTableSql`, `SqlExtensions`). These should be split into separate files by responsibility.
+- `RawSubqueryTableSql.Create()` throws `NotImplementedException()` — dead code or placeholder that should be addressed.
 
-### 5.2 Dependency Graph Issues
+### 4.2 [TableDefinitionComparer.cs](Drizzle4Dotnet/src/Core/Schema/Migration/TableDefinitionComparer.cs)
 
-```
-Query<TR> ────► DbClient<TD>  (wrong direction — query depends on client)
-    │
-    ▼
-SelectQuery ──► QueryBase ──► SqlBuilder<TD>
-                                │
-                                ▼
-                            ISqlDialect  ✔ (correct direction)
+- Constraint and index comparison is not implemented — `Compare()` only checks column changes. Constraints and indexes are handled by [`SchemaSnapshot.Compare()`](Drizzle4Dotnet/src/Core/Schema/Migration/SchemaSnapshot.cs:118) but not by the lower-level `TableDefinitionComparer`.
+- The `AlterAction` struct and `AlterActionType` enum are private nested types, making them untestable in isolation.
 
-Recommendation:
-    Query<TR> ──► IQueryExecutor<TD>  (interface — inverted control)
-    DbClient  ──► IQueryExecutor<TD>  (client implements executor)
-```
+### 4.3 [SelectQuery.cs](Drizzle4Dotnet/src/Core/Query/Select/SelectQuery.cs)
+
+- `DistinctOn()` is defined in [`ISupportDistinctOn`](Drizzle4Dotnet/src/Core/Shared/QueryClauseInterfaces.cs:119) but not implemented in the base `SelectQuery` — only PostgreSQL-specific subclasses implement it. The interface should be moved or the base should provide a default no-op.
+- `GroupBy` and `Having` are unique to `SelectQuery` but are not defined as clause interfaces — they're directly on the class. Consider extracting `ISupportGroupBy` and `ISupportHaving` for consistency.
+
+### 4.4 [SchemaSnapshot.cs](Drizzle4Dotnet/src/Core/Schema/Migration/SchemaSnapshot.cs)
+
+- At ~757 lines, this file is too large and mixes several concerns: serialization (Serialize/Deserialize), comparison (Compare, CompareColumnSets, CompareConstraintSets, CompareIndexSets), conversion (ToTableDef, ToColDef, ToConstraint, ToSnapshotIndex, ToSnapshotConstraint), and migration planning (ToMigrationPlan, MigrationPlan, MigrationStep).
+- [`SchemaDiff.ToMigrationPlan()`](Drizzle4Dotnet/src/Core/Schema/Migration/SchemaSnapshot.cs:524) contains complex switch/case logic that should be broken into smaller methods.
+
+### 4.5 [DbColumn.cs](Drizzle4Dotnet/src/Core/Schema/Columns/DbColumn.cs)
+
+- Uses `TDialect.BuildColumnName()` in the constructor (called at static initialization time), which means static column properties must access the dialect type at class load time. This works with source generation but could cause issues with lazy initialization or reflection-based loading.
 
 ---
 
-## 6. Recommendations
+## 5. Recommendations
 
-### 6.1 High Priority
+### 5.1 Short-Term (High Impact, Low Effort)
 
-| # | Recommendation | Effort | Impact |
-|---|---------------|--------|--------|
-| R1 | **Eliminate VT/non-VT duplication**: Use single `ISelectedColumns<TReturn, TDialect>` with `IVirtualTable<TDialect>` as optional via default interface methods | Medium | High — removes ~50% of duplicated code |
-| R2 | **Extract `IQueryExecutor` interface**: Decouple query building from execution — `QueryBase` depends on interface, `DbClient` implements it | Medium | High — enables unit testing without DbConnection |
-| R3 | **Unify extension/non-extension operator overloads**: Use generic helper to generate both patterns from single implementation | Medium | High — removes hundreds of lines of duplication |
+1. **Split [ISql.cs](Drizzle4Dotnet/src/Core/Shared/ISql.cs)** into separate files per type.
+2. **Add `CancellationToken`** to all `IQueryExecutor` async methods.
+3. **Fix identifier quoting** in [`TableConstraint`](Drizzle4Dotnet/src/Core/Schema/Migration/TableConstraint.cs) subclasses to use the dialect system instead of hardcoded double-quotes.
+4. **Remove or implement** `RawSubqueryTableSql.Create()`.
+5. **Centralize CTE implementation** into [`QueryBase`](Drizzle4Dotnet/src/Core/Query/QueryBase.cs:8) to eliminate duplication.
 
-### 6.2 Medium Priority
+### 5.2 Medium-Term
 
-| # | Recommendation | Effort | Impact |
-|---|---------------|--------|--------|
-| R4 | **Add `ISupportWhere`, `ISupportOrderBy`, `ISupportLimit`, `ISupportJoin` interfaces** | Low | Medium — clean API contracts |
-| R5 | **Split large files**: `FunctionCallNode.cs` (43KB → multiple files), `Operators.cs` (18KB → category files) | Low | Medium — maintainability |
-| R6 | **Add `ExecuteScalar<T>()` and raw `ExecuteReader()` methods** | Low | Medium — feature completeness |
-| R7 | **Move DDL factories out of `DbClient`** into standalone static classes (`Ddl.CreateTable(...)`) | Low | Medium — cleaner separation |
+1. **Split [SchemaSnapshot.cs](Drizzle4Dotnet/src/Core/Schema/Migration/SchemaSnapshot.cs)** into separate files: `SchemaSnapshot.cs`, `SchemaDiff.cs`, `MigrationPlan.cs`, `SnapshotTypes.cs` (SnapshotTable, SnapshotColumn, SnapshotIndex, SnapshotConstraint).
+2. **Extract `GroupBy`/`Having`** into clause interfaces (`ISupportGroupBy`, `ISupportHaving`).
+3. **Refactor CLI commands** to use a shared option parsing base class or command pattern.
+4. **Add constraint/index comparison** to [`TableDefinitionComparer`](Drizzle4Dotnet/src/Core/Schema/Migration/TableDefinitionComparer.cs:11).
 
-### 6.3 Low Priority
+### 5.3 Long-Term
 
-| # | Recommendation | Effort | Impact |
-|---|---------------|--------|--------|
-| R8 | **Source-generate `ReturningExtensions` overloads** (1–16 columns) instead of hand-writing | Medium | Low — removes boilerplate |
-| R9 | **Source-generate `TypedTupleSelectedColumns` overloads** (1–16) | Medium | Low — maintenance automation |
-| R10 | **Add `SqlBuilder` pooling** using `ObjectPool<StringBuilder>` | Low | Low — allocation optimization |
-| R11 | **Add batch/bulk insert support** | High | Medium — feature expansion |
-| R12 | **Add migration rollback/undo** | High | Medium — reliability |
-| R13 | **Add data seeding support** to migration system | Medium | Low — feature completeness |
+1. **Evaluate CRTP necessity**: Consider whether removing `TSelf` and returning the base query type (losing some fluent subtype safety) would simplify the codebase enough to justify the trade-off.
+2. **Simplify `TVirtualTable`**: Consider separating subquery/CTE capabilities into a separate system rather than threading it through all query types.
+3. **Explore interceptors/pipelines**: Add pre/post execution hooks to `IQueryExecutor` for logging, auditing, or caching.
+4. **Batch DDL execution**: The migration plan generates individual statements but doesn't batch them. Consider adding transaction wrapping or batch execution support.
 
 ---
 
-## 7. Priority Action Items
+## 6. Summary
 
-### Short-term (Next Sprint)
+| Category | Rating | Notes |
+|---|---|---|
+| **Type Safety** | ⭐⭐⭐⭐⭐ | Excellent use of generics for compile-time safety |
+| **Architecture** | ⭐⭐⭐⭐ | Clean separation of concerns, but some over-engineering |
+| **Extensibility** | ⭐⭐⭐⭐ | Dialect system makes adding new DB providers straightforward |
+| **Migration System** | ⭐⭐⭐⭐⭐ | Comprehensive snapshot-diff-migration pipeline |
+| **Code Organization** | ⭐⭐⭐ | Large files, mixed concerns, inconsistent naming |
+| **Performance** | ⭐⭐⭐⭐⭐ | Static abstract dispatch, no reflection in hot paths |
+| **Testability** | ⭐⭐⭐ | Good separation (IQueryExecutor), but nested types untestable |
+| **Async Support** | ⭐⭐⭐ | Missing CancellationToken, otherwise solid |
 
-1. ✅ [R1] **Design consolidation**: Merge `SelectQuery<TReturn,TDialect,TSelf>` and `SelectQuery<TReturn,TDialect,TVirtualTable,TSelf>` into a single class using conditional virtual table support
-2. ✅ [R2] **Extract `IQueryExecutor`**: Define interface in `Core.Shared`, implement in `DbClient`, inject in `QueryBase`
-3. ✅ [R4] **Add clause interfaces**: `ISupportWhere<TQuery>`, `ISupportOrderBy<TQuery>`, `ISupportLimit<TQuery>` with default implementations
-
-### Medium-term (Next Release)
-
-4. ✅ [R5] **Split large files** for better maintainability
-5. ✅ [R6] **Add missing execution methods** (`ExecuteScalar`, `ExecuteReader`)
-6. ✅ [R3] **Unify operator extension methods** using `#pragma` or T4 templates
-
-### Long-term (Roadmap)
-
-7. ✅ [R8/R9] **Source-generate repetitive overloads** (Returning, TypedTupleSelectedColumns)
-8. ✅ [R10] **Performance optimization**: `SqlBuilder` pooling, reduce allocations
-9. ✅ [R11-R13] **Feature expansion**: batch operations, migration rollback, data seeding
-
----
-
-## Appendix: Code Quality Metrics
-
-| Metric | Current State | Target |
-|--------|--------------|--------|
-| **Duplication** | ~30-40% (VT vs non-VT) | <10% |
-| **Cyclomatic complexity** (avg) | ~3-5 per method | <8 |
-| **Class depth** | 3-4 levels | <5 |
-| **Method length** (avg) | ~20 lines | <30 |
-| **File size** (max) | 43KB (FunctionCallNode.cs) | <15KB |
-| **Interface segregation** | Some interfaces too large | Single responsibility |
-| **Test coverage** | Extensive (SQL output tests) | Maintain |
-| **Static analysis warnings** | Not measured | Zero |
-
----
-
-## Final Assessment
-
-Drizzle4Dotnet is a **well-architected project** that successfully brings Drizzle ORM's type-safe query building philosophy to .NET. The primary strength is the **strong type safety** and **dialect abstraction** via static abstract interfaces.
-
-The main weakness is **code duplication** driven by the parallel "with virtual table" / "without virtual table" class hierarchies. This is the single biggest area for improvement and would yield the highest maintenance savings.
-
-The **design is production-ready** for PostgreSQL and MySQL, with a clear path for adding new dialects. The migration system is particularly well-designed with snapshot-based diffing and checksum verification.
-
-**Score: 7.5/10** — Solid, with clear improvement roadmap.
+The class design is **generally strong**, with particular excellence in type safety, the static abstract dialect pattern, and the migration pipeline. The main improvement areas are **code organization** (splitting large files, centralizing duplicate code) and **completeness** (fixing TODOs, adding constraint comparison).
