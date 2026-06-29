@@ -27,7 +27,8 @@ public static class GenerateCommand
             var provider = MigrationGenerator.ParseCliOptionProvider(options.Provider);
             var generator = new MigrationGenerator(provider)
             {
-                Verbose = options.Verbose
+                Verbose = options.Verbose,
+                AutoCreateSchema = !options.NoAutoCreateSchema
             };
 
             // Resolve the output directory and ensure it exists
@@ -42,7 +43,8 @@ public static class GenerateCommand
                 ("Migration:", options.MigrationName),
                 ("Output:", Path.GetFullPath(outputDir)),
                 ("Tables:", $"{options.TableTypes.Count} type(s)"),
-                ("Log:", Path.GetFullPath(logDir))
+                ("Log:", Path.GetFullPath(logDir)),
+                ("Auto Schema:", generator.AutoCreateSchema ? "Yes" : "No")
             );
 
             CliOptionParser.LogBanner(migrationLog, "Migration Generator",
@@ -184,6 +186,12 @@ public class GenerateOptions : IAssemblyOptions
 
     /// <summary>Path to the .csproj file. If set, the project will be built and AssemblyPath resolved automatically.</summary>
     public string? ProjectPath { get; set; }
+
+    /// <summary>
+    /// If true, disables automatic schema/database creation in the generated migration SQL.
+    /// Default: false (schema/database creation IS auto-generated).
+    /// </summary>
+    public bool NoAutoCreateSchema { get; set; }
 
     /// <summary>Enable verbose output with detailed debug information.</summary>
     public bool Verbose { get; set; }

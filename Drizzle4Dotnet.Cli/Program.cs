@@ -135,6 +135,10 @@ public class Program
                     else errors.Add("'--project' requires a value");
                     break;
 
+                case "--no-auto-create-schema":
+                    options.NoAutoCreateSchema = true;
+                    break;
+
                 case "--verbose":
                     options.Verbose = true;
                     break;
@@ -168,6 +172,8 @@ public class Program
             Console.Error.WriteLine("  --snapshot, -s    Path to existing snapshot JSON file for diff comparison");
             Console.Error.WriteLine("  --project, --proj {0}", CliOptionParser.Descriptions.Project);
             Console.Error.WriteLine("  --assembly, -a    {0}", CliOptionParser.Descriptions.Assembly);
+            Console.Error.WriteLine("  --database, -db   Database name for CREATE DATABASE (MySQL only)");
+            Console.Error.WriteLine("  --no-auto-create-schema  Disable auto schema/database creation in migration SQL");
             Console.Error.WriteLine("  --verbose         {0}", CliOptionParser.Descriptions.Verbose);
             return 1;
         }

@@ -716,6 +716,8 @@ public class MigrationStep(MigrationStepType stepType, string description, ISql 
 
 public enum MigrationStepType
 {
+    CreateSchema,
+    CreateDatabase,
     CreateTable,
     DropTable,
     AlterTable,

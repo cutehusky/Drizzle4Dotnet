@@ -37,4 +37,18 @@ public static class Ddl
     /// </summary>
     public static DropIndexQuery DropIndex(string indexName, string? tableName = null) =>
         new(indexName, tableName);
+
+    /// <summary>
+    /// Creates a builder for a CREATE SCHEMA statement.
+    /// Generates: CREATE SCHEMA [IF NOT EXISTS] schema_name
+    /// Used by PgSql, Mssql, and Oracle dialects.
+    /// </summary>
+    public static CreateSchemaQuery CreateSchema(string schemaName) => new(schemaName);
+
+    /// <summary>
+    /// Creates a builder for a CREATE DATABASE statement.
+    /// Generates: CREATE DATABASE [IF NOT EXISTS] database_name
+    /// Used primarily by the MySQL dialect.
+    /// </summary>
+    public static CreateDatabaseQuery CreateDatabase(string databaseName) => new(databaseName);
 }

@@ -5,6 +5,7 @@ using Drizzle4Dotnet.Cli.Models;
 using Drizzle4Dotnet.Core.Schema.Columns;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Schema.Migration;
+using Drizzle4Dotnet.Core.Schema.Migration.Query;
 using Drizzle4Dotnet.Core.Shared;
 using Drizzle4Dotnet.PgSql;
 using Drizzle4Dotnet.MySql;
@@ -58,6 +59,12 @@ public class MigrationGenerator
     /// for each table type during schema extraction.
     /// </summary>
     public bool Verbose { get; set; }
+
+    /// <summary>
+    /// Whether to auto-generate schema/database creation statements.
+    /// Defaults to true. Set to false to disable automatic schema/database creation.
+    /// </summary>
+    public bool AutoCreateSchema { get; set; } = true;
 
     
     public static DatabaseProvider ParseCliOptionProvider(string provider)
@@ -166,6 +173,12 @@ public class MigrationGenerator
         var hasChanges = diff?.HasChanges ?? false;
         var description = diff != null ? DescribeDiff(diff) : "No schema changes detected.";
         var plan = diff?.ToMigrationPlan(migrationName) ?? new MigrationPlan(migrationName, new List<MigrationStep>());
+
+        // Enrich the plan with schema/database auto-creation steps
+        if (hasChanges && AutoCreateSchema)
+        {
+            plan = EnrichPlanWithSchemaCreation(plan, targetSnapshot);
+        }
 
         // If no changes detected and we have a previous snapshot, don't generate files
         if (!hasChanges && currentSnapshot != null)
@@ -367,6 +380,62 @@ public class MigrationGenerator
 
         var reversePlan = reverseDiff.ToMigrationPlan($"{migrationName}_down");
         return GenerateSqlScript(reversePlan);
+    }
+    
+    /// <summary>
+    /// Enriches a migration plan with schema/database auto-creation steps.
+    /// For PgSql, Mssql, Oracle: detects unique schema names from added tables
+    /// and prepends CREATE SCHEMA IF NOT EXISTS statements.
+    /// For MySQL: prepends CREATE DATABASE IF NOT EXISTS if <see cref="DatabaseName"/> is set,
+    /// or detects database name from table schema definitions.
+    /// </summary>
+    private MigrationPlan EnrichPlanWithSchemaCreation(MigrationPlan plan, SchemaSnapshot targetSnapshot)
+    {
+        // Collect unique schema names from tables in the target snapshot
+        var uniqueSchemas = targetSnapshot.Tables
+            .Select(t => t.SchemaName)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (uniqueSchemas.Count == 0)
+            return plan;
+
+        var schemaSteps = new List<MigrationStep>();
+
+        if (_provider == DatabaseProvider.MySql)
+        {
+            foreach (var dbSchema in uniqueSchemas)
+            {
+                schemaSteps.Add(new MigrationStep(
+                    MigrationStepType.CreateDatabase,
+                    $"Create schema {dbSchema}",
+                    new CreateDatabaseQuery(dbSchema)
+                ));
+            }
+        }
+        else if (_provider == DatabaseProvider.Sqlite)
+        {
+            // Sqlite does not support schemas/databases, so no action needed
+        }
+        else
+        {
+            // For PgSql, Mssql, Oracle: generate CREATE SCHEMA IF NOT EXISTS for unique schemas
+            foreach (var schema in uniqueSchemas)
+            {
+                schemaSteps.Add(new MigrationStep(
+                    MigrationStepType.CreateSchema,
+                    $"Create schema {schema}",
+                    new CreateSchemaQuery(schema)
+                ));
+            }
+        }
+
+        // Prepend schema creation steps before the existing plan steps
+        var allSteps = new List<MigrationStep>();
+        allSteps.AddRange(schemaSteps);
+        allSteps.AddRange(plan.Steps);
+        return new MigrationPlan(plan.Name, allSteps);
     }
     
     private SchemaSnapshot CreateSnapshotFromTypes(
