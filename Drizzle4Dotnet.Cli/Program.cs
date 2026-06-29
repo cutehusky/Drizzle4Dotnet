@@ -9,8 +9,10 @@ namespace Drizzle4Dotnet.Cli;
 /// <remarks>
 /// Usage:
 ///   drizzle4net generate --provider pgsql --name v1 --types "SharedDemo.PgSql.UsersTable,SharedDemo.PgSql.DepartmentsTable"
+///   drizzle4net generate --provider pgsql --name v1                                    (auto-discovers all table types)
 ///   drizzle4net generate --provider mysql --name v1 --types "SharedDemo.MySql.UsersTable" --assembly ./path/to/assembly.dll
 ///   drizzle4net snapshot --provider pgsql --name v1 --types "SharedDemo.PgSql.UsersTable" --output ./snapshot.json
+///   drizzle4net snapshot --provider pgsql --name v1                                    (auto-discovers all table types)
 ///   drizzle4net generate --help
 /// </remarks>
 public class Program
@@ -139,21 +141,19 @@ public class Program
         if (string.IsNullOrWhiteSpace(options.MigrationName))
             errors.Add("--name is required");
 
-        if (options.TableTypes.Count == 0)
-            errors.Add("--types is required (comma-separated list of fully qualified type names)");
-
         if (errors.Count > 0)
         {
             Console.Error.WriteLine("❌ Invalid arguments:");
             foreach (var error in errors)
                 Console.Error.WriteLine($"  - {error}");
             Console.Error.WriteLine();
-            Console.Error.WriteLine("Usage: drizzle4net generate --provider pgsql --name <name> --types \"Type1,Type2\" [options]");
+            Console.Error.WriteLine("Usage: drizzle4net generate --provider pgsql --name <name> [options]");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Options:");
             Console.Error.WriteLine("  --provider, -p    Database provider (pgsql, mysql, mssql, sqlite, oracle)");
             Console.Error.WriteLine("  --name, -n        Migration name (e.g., 'v1.0.0', 'add_users_table')");
             Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
+            Console.Error.WriteLine("                    (if omitted, auto-discovers all table types for the provider)");
             Console.Error.WriteLine("  --output, -o      Output directory (default: ./Migrations/{provider})");
             Console.Error.WriteLine("  --snapshot, -s    Path to current snapshot JSON file");
             Console.Error.WriteLine("  --project, --proj Path to .csproj file (builds automatically)");
@@ -234,8 +234,10 @@ public class Program
         if (string.IsNullOrWhiteSpace(options.SnapshotName))
             errors.Add("--name is required");
 
-        if (options.TableTypes.Count == 0)
-            errors.Add("--types is required (comma-separated list of fully qualified type names)");
+        if (options.TableTypes.Count == 0 && errors.Count == 0)
+        {
+            Console.WriteLine($"  Auto-discover: On (no --types specified, scanning for {options.Provider} table types)");
+        }
 
         if (errors.Count > 0)
         {
@@ -243,12 +245,13 @@ public class Program
             foreach (var error in errors)
                 Console.Error.WriteLine($"  - {error}");
             Console.Error.WriteLine();
-            Console.Error.WriteLine("Usage: drizzle4net snapshot --provider pgsql --name <name> --types \"Type1,Type2\" [options]");
+            Console.Error.WriteLine("Usage: drizzle4net snapshot --provider pgsql --name <name> [options]");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Options:");
             Console.Error.WriteLine("  --provider, -p    Database provider (pgsql, mysql, mssql, sqlite, oracle)");
             Console.Error.WriteLine("  --name, -n        Snapshot name (e.g., 'v1.0.0')");
             Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
+            Console.Error.WriteLine("                    (if omitted, auto-discovers all table types for the provider)");
             Console.Error.WriteLine("  --output, -o      Output file path (default: ./snapshot.json)");
             Console.Error.WriteLine("  --project, --proj Path to .csproj file (builds automatically)");
             Console.Error.WriteLine("  --assembly, -a    Path to pre-built assembly DLL");
@@ -419,20 +422,18 @@ public class Program
         if (!ResolveAssemblyPath(options, errors))
             return 1;
 
-        if (options.TableTypes.Count == 0)
-            errors.Add("--types is required (comma-separated list of fully qualified type names)");
-
         if (errors.Count > 0)
         {
             Console.Error.WriteLine("❌ Invalid arguments:");
             foreach (var error in errors)
                 Console.Error.WriteLine($"  - {error}");
             Console.Error.WriteLine();
-            Console.Error.WriteLine("Usage: drizzle4net debug --provider pgsql --types \"Type1,Type2\" [options]");
+            Console.Error.WriteLine("Usage: drizzle4net debug --provider pgsql [options]");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Options:");
             Console.Error.WriteLine("  --provider, -p    Database provider (pgsql, mysql, mssql, sqlite, oracle)");
             Console.Error.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
+            Console.Error.WriteLine("                    (if omitted, auto-discovers all table types for the provider)");
             Console.Error.WriteLine("  --project, --proj Path to .csproj file (builds automatically)");
             Console.Error.WriteLine("  --assembly, -a    Path to pre-built assembly DLL");
             Console.Error.WriteLine("  --verbose, -V     Enable verbose output");
@@ -460,11 +461,13 @@ public class Program
         Console.WriteLine("  updates the migration-journal.json file.");
         Console.WriteLine();
         Console.WriteLine("  drizzle4net generate --provider pgsql --name v1 --types \"Namespace.TableA,Namespace.TableB\"");
+        Console.WriteLine("  drizzle4net generate --provider pgsql --name v1                (auto-discovers all table types)");
         Console.WriteLine();
         Console.WriteLine("Snapshot Command:");
         Console.WriteLine("  Creates a snapshot JSON from ORM table types without generating SQL.");
         Console.WriteLine();
         Console.WriteLine("  drizzle4net snapshot --provider pgsql --name v1 --types \"Namespace.TableA\" --output ./schema.json");
+        Console.WriteLine("  drizzle4net snapshot --provider pgsql --name v1                  (auto-discovers all table types)");
         Console.WriteLine();
         Console.WriteLine("Status Command:");
         Console.WriteLine("  Shows the migration journal with all tracked migrations and snapshots.");
@@ -475,6 +478,7 @@ public class Program
         Console.WriteLine("  --provider, -p    Database provider: pgsql, mysql, mssql, sqlite, oracle");
         Console.WriteLine("  --name, -n        Migration or snapshot name");
         Console.WriteLine("  --types, -t       Comma-separated fully qualified ORM table type names");
+        Console.WriteLine("                    (if omitted, auto-discovers all table types for the provider)");
         Console.WriteLine("  --output, -o      Output directory or file path");
         Console.WriteLine("  --snapshot, -s    Path to current snapshot JSON (for generate)");
         Console.WriteLine("  --assembly, -a    Path to assembly containing table types");

@@ -17,8 +17,8 @@ namespace SourceGenerators;
 /// 
 /// Example input:
 /// <code>
-/// [Table("Users", Schema = "public", Dialect = typeof(PgSqlSqlDialectImpl),
-///     Constraints = new[] { "UNIQUE(Email)" })]
+/// [Table("Users", Schema = "public", Dialect = typeof(PgSqlSqlDialectImpl))]
+/// [UniqueConstraint(new[] { "Email" })]
 /// public partial class UsersTable
 /// {
 ///     public static class Columns
@@ -69,7 +69,6 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
         string? dbTableName = null;
         string? schemaName = null;
         string? dialectTypeName = null;
-        var tableConstraints = new List<string>();
 
         if (tableAttr.ConstructorArguments.Length > 0)
             dbTableName = tableAttr.ConstructorArguments[0].Value?.ToString();
@@ -87,16 +86,6 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                 case "Dialect":
                     if (namedArg.Value.Value is INamedTypeSymbol typeSymbol)
                         dialectTypeName = typeSymbol.ToDisplayString();
-                    break;
-                case "Constraints":
-                    if (namedArg.Value.Kind == TypedConstantKind.Array)
-                    {
-                        foreach (var val in namedArg.Value.Values)
-                        {
-                            if (val.Value?.ToString() is { } s)
-                                tableConstraints.Add(s);
-                        }
-                    }
                     break;
             }
         }
@@ -211,7 +200,6 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
 
                 columns.Add(new ColumnSchemaModel
                 {
-                    PropName = subMember.Name,
                     DbColumnName = dbColumnName,
                     ClrType = typeName,
                     IsNullable = isNullable,
@@ -229,8 +217,107 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
         if (columns.Count == 0)
             return null;
 
-        var hasExistingInterface = symbol.AllInterfaces.Any(i =>
-            i.Name == dialect.TableInterface.Replace("I", ""));
+        // Parse typed constraint and index attributes from the table class
+        var foreignKeyConstraints = new List<ForeignKeyConstraintModel>();
+        var uniqueConstraints = new List<UniqueConstraintModel>();
+        var primaryKeyTableConstraints = new List<PrimaryKeyTableConstraintModel>();
+        var checkTableConstraints = new List<CheckTableConstraintModel>();
+        var indexes = new List<TableIndexModel>();
+
+        foreach (var attr in symbol.GetAttributes())
+        {
+            var attrName = attr.AttributeClass?.Name;
+            if (attrName == null)
+                continue;
+
+            if (attrName == "ForeignKeyConstraintAttribute" && attr.ConstructorArguments.Length >= 4)
+            {
+                var constraintName = attr.ConstructorArguments[0].Value?.ToString();
+                var fkColumns = attr.ConstructorArguments[1].Values
+                    .Select(v => v.Value?.ToString())
+                    .Where(v => v != null)
+                    .Cast<string>()
+                    .ToArray();
+                var foreignTableType = attr.ConstructorArguments[2].Value as INamedTypeSymbol;
+                var foreignColumns = attr.ConstructorArguments[3].Values
+                    .Select(v => v.Value?.ToString())
+                    .Where(v => v != null)
+                    .Cast<string>()
+                    .ToArray();
+
+                var foreignTableName = ResolveDbTableName(foreignTableType) ?? foreignTableType?.Name ?? "?";
+                foreignKeyConstraints.Add(new ForeignKeyConstraintModel
+                {
+                    ConstraintName = constraintName,
+                    Columns = fkColumns,
+                    ForeignTable = foreignTableName,
+                    ForeignColumns = foreignColumns
+                });
+            }
+            else if (attrName == "UniqueConstraintAttribute" && attr.ConstructorArguments.Length >= 1)
+            {
+                var uqColumns = attr.ConstructorArguments[0].Values
+                    .Select(v => v.Value?.ToString())
+                    .Where(v => v != null)
+                    .Cast<string>()
+                    .ToArray();
+                uniqueConstraints.Add(new UniqueConstraintModel { Columns = uqColumns });
+            }
+            else if (attrName == "PrimaryKeyTableConstraintAttribute" && attr.ConstructorArguments.Length >= 1)
+            {
+                var pkColumns = attr.ConstructorArguments[0].Values
+                    .Select(v => v.Value?.ToString())
+                    .Where(v => v != null)
+                    .Cast<string>()
+                    .ToArray();
+                primaryKeyTableConstraints.Add(new PrimaryKeyTableConstraintModel { Columns = pkColumns });
+            }
+            else if (attrName == "CheckTableConstraintAttribute" && attr.ConstructorArguments.Length >= 1)
+            {
+                var expression = attr.ConstructorArguments[0].Value?.ToString();
+                if (expression != null)
+                {
+                    checkTableConstraints.Add(new CheckTableConstraintModel { Expression = expression });
+                }
+            }
+            else if (attrName == "IndexAttribute" && attr.ConstructorArguments.Length >= 2)
+            {
+                var indexName = attr.ConstructorArguments[0].Value?.ToString() ?? "";
+                var idxColumns = attr.ConstructorArguments[1].Values
+                    .Select(v => v.Value?.ToString())
+                    .Where(v => v != null)
+                    .Cast<string>()
+                    .ToArray();
+
+                bool isUnique = false;
+                string? indexType = null;
+                string? where = null;
+                foreach (var namedArg in attr.NamedArguments)
+                {
+                    switch (namedArg.Key)
+                    {
+                        case "IsUnique":
+                            isUnique = namedArg.Value.Value?.Equals(true) ?? false;
+                            break;
+                        case "IndexType":
+                            indexType = namedArg.Value.Value?.ToString();
+                            break;
+                        case "Where":
+                            where = namedArg.Value.Value?.ToString();
+                            break;
+                    }
+                }
+
+                indexes.Add(new TableIndexModel
+                {
+                    IndexName = indexName,
+                    Columns = idxColumns,
+                    IsUnique = isUnique,
+                    IndexType = indexType,
+                    Where = where
+                });
+            }
+        }
 
         return new TableSchemaModel
         {
@@ -238,12 +325,15 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
                 || symbol.ContainingNamespace.ToDisplayString() == "<global namespace>")
                 ? "" : symbol.ContainingNamespace.ToDisplayString(),
             ClassName = symbol.Name,
-            DbTableName = dbTableName,
-            DbSchemaName = schemaName,
+            DbTableName = dbTableName!,
+            DbSchemaName = schemaName!,
             Dialect = dialect,
             Columns = columns,
-            TableConstraints = tableConstraints,
-            HasExistingInterface = hasExistingInterface
+            ForeignKeyConstraints = foreignKeyConstraints,
+            UniqueConstraints = uniqueConstraints,
+            PrimaryKeyTableConstraints = primaryKeyTableConstraints,
+            CheckTableConstraints = checkTableConstraints,
+            Indexes = indexes
         };
     }
 
@@ -348,15 +438,59 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
             sb.AppendLine();
 
             // Build table constraints
-            bool hasConstraints = table.TableConstraints.Count > 0;
+            bool hasConstraints = table.ForeignKeyConstraints.Count > 0
+                || table.UniqueConstraints.Count > 0
+                || table.PrimaryKeyTableConstraints.Count > 0
+                || table.CheckTableConstraints.Count > 0;
 
             if (hasConstraints)
             {
                 sb.AppendLine("            var tableConstraints = new TableConstraint[]");
                 sb.AppendLine("            {");
-                foreach (var constraint in table.TableConstraints)
+
+                foreach (var fk in table.ForeignKeyConstraints)
                 {
-                    sb.AppendLine($"                new RawTableConstraint(\"{EscapeString(constraint)}\"),");
+                    var constraintName = fk.ConstraintName != null ? $"\"{EscapeString(fk.ConstraintName)}\"" : "null";
+                    var columns = string.Join(", ", fk.Columns.Select(c => $"\"{EscapeString(c)}\""));
+                    var foreignColumns = string.Join(", ", fk.ForeignColumns.Select(c => $"\"{EscapeString(c)}\""));
+                    sb.AppendLine($"                new ForeignKeyConstraint({constraintName}, new[] {{ {columns} }}, \"{EscapeString(fk.ForeignTable)}\", new[] {{ {foreignColumns} }}),");
+                }
+
+                foreach (var uq in table.UniqueConstraints)
+                {
+                    var columns = string.Join(", ", uq.Columns.Select(c => $"\"{EscapeString(c)}\""));
+                    sb.AppendLine($"                new UniqueConstraint(new[] {{ {columns} }}),");
+                }
+
+                foreach (var pk in table.PrimaryKeyTableConstraints)
+                {
+                    var columns = string.Join(", ", pk.Columns.Select(c => $"\"{EscapeString(c)}\""));
+                    sb.AppendLine($"                new PrimaryKeyTableConstraint(new[] {{ {columns} }}),");
+                }
+
+                foreach (var ck in table.CheckTableConstraints)
+                {
+                    sb.AppendLine($"                new CheckTableConstraint(\"{EscapeString(ck.Expression)}\"),");
+                }
+
+                sb.AppendLine("            };");
+                sb.AppendLine();
+            }
+
+            // Build indexes
+            bool hasIndexes = table.Indexes.Count > 0;
+
+            if (hasIndexes)
+            {
+                sb.AppendLine("            var indexes = new TableIndex[]");
+                sb.AppendLine("            {");
+                foreach (var idx in table.Indexes)
+                {
+                    var columns = string.Join(", ", idx.Columns.Select(c => $"\"{EscapeString(c)}\""));
+                    var isUnique = idx.IsUnique ? "true" : "false";
+                    var indexType = idx.IndexType != null ? $"\"{EscapeString(idx.IndexType)}\"" : "null";
+                    var where = idx.Where != null ? $"\"{EscapeString(idx.Where)}\"" : "null";
+                    sb.AppendLine($"                new TableIndex(\"{EscapeString(idx.IndexName)}\", \"{table.DbSchemaName}\", \"{table.DbTableName}\", new[] {{ {columns} }}, isUnique: {isUnique}, indexType: {indexType}, where: {where}),");
                 }
                 sb.AppendLine("            };");
                 sb.AppendLine();
@@ -368,7 +502,11 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
             sb.AppendLine("                columns");
             if (hasConstraints)
             {
-                sb.AppendLine("                , tableConstraints");
+                sb.AppendLine("                , tableConstraints: tableConstraints");
+            }
+            if (hasIndexes)
+            {
+                sb.AppendLine("                , indexes: indexes");
             }
             sb.AppendLine("            );");
             sb.AppendLine();
@@ -413,103 +551,31 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
         }
     }
 
+    /// <summary>
+    /// Resolves the database table name from a type symbol by looking for the [Table] attribute.
+    /// Uses the first constructor argument (table name) or falls back to the type name.
+    /// </summary>
+    private static string? ResolveDbTableName(INamedTypeSymbol? typeSymbol)
+    {
+        if (typeSymbol == null)
+            return null;
+
+        var tableAttr = typeSymbol.GetAttributes().FirstOrDefault(a =>
+            a.AttributeClass?.Name == "TableAttribute");
+
+        if (tableAttr != null && tableAttr.ConstructorArguments.Length > 0)
+        {
+            var name = tableAttr.ConstructorArguments[0].Value?.ToString();
+            if (!string.IsNullOrEmpty(name))
+                return name;
+        }
+
+        return typeSymbol.Name;
+    }
+
     private static string EscapeString(string value)
     {
         return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
-    }
-
-    private static string MapClrToSqlType(string fullyQualifiedTypeName, string dialectType)
-    {
-        var simplified = fullyQualifiedTypeName
-            .Replace("global::", "")
-            .Replace("System.", "")
-            .Replace("?", "");
-
-        var isSqlite = dialectType.Contains("Sqlite");
-        var isMySql = dialectType.Contains("MySql");
-        var isPgSql = dialectType.Contains("PgSql");
-        var isMssql = dialectType.Contains("Mssql");
-        var isOracle = dialectType.Contains("Oracle");
-
-        if (isSqlite)
-        {
-            return simplified switch
-            {
-                "int" or "Int32" or "long" or "Int64" or "short" or "Int16" or "byte" or "Byte" => "INTEGER",
-                "string" or "String" or "DateTime" or "DateOnly" or "TimeOnly" or "Guid" or "char" or "Char" => "TEXT",
-                "bool" or "Boolean" => "INTEGER",
-                "decimal" or "Decimal" => "NUMERIC",
-                "float" or "Single" or "double" or "Double" => "REAL",
-                "byte[]" or "Byte[]" => "BLOB",
-                _ => "TEXT"
-            };
-        }
-
-        if (isMssql)
-        {
-            return simplified switch
-            {
-                "int" or "Int32" => "INT",
-                "long" or "Int64" => "BIGINT",
-                "short" or "Int16" => "SMALLINT",
-                "byte" or "Byte" => "TINYINT",
-                "string" or "String" => "NVARCHAR(MAX)",
-                "bool" or "Boolean" => "BIT",
-                "decimal" or "Decimal" => "DECIMAL(18,2)",
-                "float" or "Single" => "REAL",
-                "double" or "Double" => "FLOAT",
-                "DateTime" => "DATETIME2",
-                "DateOnly" => "DATE",
-                "TimeOnly" => "TIME",
-                "Guid" => "UNIQUEIDENTIFIER",
-                "byte[]" or "Byte[]" => "VARBINARY(MAX)",
-                "char" or "Char" => "NCHAR(1)",
-                _ => "NVARCHAR(MAX)"
-            };
-        }
-
-        if (isOracle)
-        {
-            return simplified switch
-            {
-                "int" or "Int32" => "NUMBER(10)",
-                "long" or "Int64" => "NUMBER(19)",
-                "short" or "Int16" => "NUMBER(5)",
-                "byte" or "Byte" => "NUMBER(3)",
-                "string" or "String" => "VARCHAR2(255)",
-                "bool" or "Boolean" => "NUMBER(1)",
-                "decimal" or "Decimal" => "NUMBER(18,2)",
-                "float" or "Single" => "BINARY_FLOAT",
-                "double" or "Double" => "BINARY_DOUBLE",
-                "DateTime" => "TIMESTAMP",
-                "DateOnly" => "DATE",
-                "TimeOnly" => "INTERVAL DAY TO SECOND",
-                "Guid" => "RAW(16)",
-                "byte[]" or "Byte[]" => "BLOB",
-                "char" or "Char" => "CHAR(1)",
-                _ => "VARCHAR2(255)"
-            };
-        }
-
-        return simplified switch
-        {
-            "int" or "Int32" => "INTEGER",
-            "long" or "Int64" => "BIGINT",
-            "short" or "Int16" => "SMALLINT",
-            "byte" or "Byte" => isMySql ? "TINYINT" : "SMALLINT",
-            "string" or "String" => isMySql ? "VARCHAR(255)" : "TEXT",
-            "bool" or "Boolean" => isMySql ? "TINYINT(1)" : "BOOLEAN",
-            "decimal" or "Decimal" => isMySql ? "DECIMAL(18,2)" : "NUMERIC(18,2)",
-            "float" or "Single" => "REAL",
-            "double" or "Double" => isMySql ? "DOUBLE" : "DOUBLE PRECISION",
-            "DateTime" => isMySql ? "DATETIME(6)" : "TIMESTAMP",
-            "DateOnly" => "DATE",
-            "TimeOnly" => "TIME",
-            "Guid" => isMySql ? "CHAR(36)" : "UUID",
-            "byte[]" or "Byte[]" => isMySql ? "BLOB" : "BYTEA",
-            "char" or "Char" => "CHAR(1)",
-            _ => "TEXT"
-        };
     }
 
     /// <summary>
@@ -835,7 +901,6 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
 
     private class ColumnSchemaModel
     {
-        public string PropName { get; set; } = "";
         public string DbColumnName { get; set; } = "";
         public string ClrType { get; set; } = "";
         public bool IsNullable { get; set; }
@@ -855,9 +920,44 @@ public class MigrationSchemaGenerator : IIncrementalGenerator
         public string ClassName { get; set; } = "";
         public string DbTableName { get; set; } = "";
         public string DbSchemaName { get; set; } = "public";
-        public DialectInfo Dialect { get; set; } = DialectInfo.PgSql;
+        public DialectInfo Dialect { get; set; } = null!;
         public List<ColumnSchemaModel> Columns { get; set; } = new();
-        public List<string> TableConstraints { get; set; } = new();
-        public bool HasExistingInterface { get; set; }
+        public List<ForeignKeyConstraintModel> ForeignKeyConstraints { get; set; } = new();
+        public List<UniqueConstraintModel> UniqueConstraints { get; set; } = new();
+        public List<PrimaryKeyTableConstraintModel> PrimaryKeyTableConstraints { get; set; } = new();
+        public List<CheckTableConstraintModel> CheckTableConstraints { get; set; } = new();
+        public List<TableIndexModel> Indexes { get; set; } = new();
+    }
+
+    private class ForeignKeyConstraintModel
+    {
+        public string? ConstraintName { get; set; }
+        public string[] Columns { get; set; } = [];
+        public string ForeignTable { get; set; } = "";
+        public string[] ForeignColumns { get; set; } = [];
+    }
+
+    private class UniqueConstraintModel
+    {
+        public string[] Columns { get; set; } = [];
+    }
+
+    private class PrimaryKeyTableConstraintModel
+    {
+        public string[] Columns { get; set; } = [];
+    }
+
+    private class CheckTableConstraintModel
+    {
+        public string Expression { get; set; } = "";
+    }
+
+    private class TableIndexModel
+    {
+        public string IndexName { get; set; } = "";
+        public string[] Columns { get; set; } = [];
+        public bool IsUnique { get; set; }
+        public string? IndexType { get; set; }
+        public string? Where { get; set; }
     }
 }

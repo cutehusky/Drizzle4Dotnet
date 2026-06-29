@@ -18,14 +18,7 @@ public class TableAttribute(string name, string schema = "") : Attribute
     /// Optional dialect type (e.g., typeof(PgSqlSqlDialectImpl) or typeof(MySqlSqlDialectImpl)).
     /// If not specified, defaults to PgSqlSqlDialectImpl for backward compatibility.
     /// </summary>
-    public Type? Dialect { get; set; }
-
-    /// <summary>
-    /// Table-level constraints as raw SQL strings (e.g., "UNIQUE(Name, Email)", 
-    /// "CONSTRAINT fk_dept FOREIGN KEY (DepartmentId) REFERENCES Departments(Id)").
-    /// Each string is appended after all column definitions in CREATE TABLE.
-    /// </summary>
-    public string[]? Constraints { get; set; }
+    public required Type Dialect { get; set; }
 }
 
 /// <summary>
@@ -41,12 +34,6 @@ public class AliasAttribute(Type table, string alias) : Attribute
 
     /// <summary>The alias name.</summary>
     public string Alias { get; } = alias;
-
-    /// <summary>
-    /// Optional dialect type (e.g., typeof(PgSqlSqlDialectImpl) or typeof(MySqlSqlDialectImpl)).
-    /// If not specified, defaults to PgSqlSqlDialectImpl for backward compatibility.
-    /// </summary>
-    public Type? Dialect { get; set; }
 }
 
 /// <summary>

@@ -6,11 +6,11 @@ using Drizzle4Dotnet.PgSql.Schema;
 namespace SharedDemo.PgSql
 {
     [Table("Users", "public", Dialect = typeof(PgSqlSqlDialectImpl))]
-    // [ForeignKeyConstraint("FK_Users_Departments", [ColumnNames.Id], typeof(DepartmentsTable), [DepartmentsTable.ColumnNames.Id])]
-    // [ForeignKeyConstraint("FK_Users_Roles", [ColumnNames.RoleId], typeof(RolesTable), [RolesTable.ColumnNames.Id])]
-    [ForeignKeyConstraint("FK_Users_Manager", [ColumnNames.ManagerId], typeof(UsersTable), [ColumnNames.Id])]
-    [Index("IX_Users_Email", [ColumnNames.Email], IsUnique = true)]
-    [Index("IX_Users_Name_Age", [ColumnNames.Name, ColumnNames.Age], IsUnique = false)]
+    [ForeignKeyConstraint("FK_Users_Departments", ["Id"], typeof(DepartmentsTable), ["Id"])]
+    [ForeignKeyConstraint("FK_Users_Roles", ["RoleId"], typeof(RolesTable), ["Id"])]
+    [ForeignKeyConstraint("FK_Users_Manager", ["ManagerId"], typeof(UsersTable), ["Id"])]
+    [Index("IX_Users_Email", ["Email"], IsUnique = true)]
+    [Index("IX_Users_Name_Age", ["Name", "Age"], IsUnique = false)]
     public partial class UsersTable
     {
         public static class Columns
@@ -82,7 +82,7 @@ namespace SharedDemo.PgSql
         }
     }
 
-    [Alias(typeof(UsersTable), "Manager", Dialect = typeof(PgSqlSqlDialectImpl))]
+    [Alias(typeof(UsersTable), "Manager")]
     public partial class ManagersTable
     {
     }
@@ -292,11 +292,9 @@ namespace SharedDemo.PgSql
         }
     }
     
-    [Table("UserProjects",  "public", Dialect = typeof(PgSqlSqlDialectImpl),
-        Constraints = new[] {
-            "CONSTRAINT \"FK_UserProjects_User\" FOREIGN KEY (\"UserId\") REFERENCES \"Users\"(\"Id\")",
-            "CONSTRAINT \"FK_UserProjects_Project\" FOREIGN KEY (\"ProjectId\") REFERENCES \"Projects\"(\"Id\")"
-        })]
+    [Table("UserProjects", "public", Dialect = typeof(PgSqlSqlDialectImpl))]
+    [ForeignKeyConstraint("FK_UserProjects_User", new[] { "UserId" }, typeof(UsersTable), new[] { "Id" })]
+    [ForeignKeyConstraint("FK_UserProjects_Project", new[] { "ProjectId" }, typeof(ProjectsTable), new[] { "Id" })]
     public partial class UserProjectsTable
     {
         public static class Columns

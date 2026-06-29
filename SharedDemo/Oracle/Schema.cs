@@ -5,12 +5,10 @@ using Drizzle4Dotnet.Oracle.Schema;
 
 namespace SharedDemo.Oracle
 {
-    [Table("Users", null, Dialect = typeof(OracleSqlDialectImpl),
-        Constraints = new[] {
-            "CONSTRAINT \"FK_Users_Departments\" FOREIGN KEY (\"DepartmentId\") REFERENCES \"Departments\"(\"Id\")",
-            "CONSTRAINT \"FK_Users_Roles\" FOREIGN KEY (\"RoleId\") REFERENCES \"Roles\"(\"Id\")",
-            "CONSTRAINT \"FK_Users_Manager\" FOREIGN KEY (\"ManagerId\") REFERENCES \"Users\"(\"Id\")"
-        })]
+    [Table("Users", null, Dialect = typeof(OracleSqlDialectImpl))]
+    [ForeignKeyConstraint("FK_Users_Departments", new[] { "DepartmentId" }, typeof(DepartmentsTable), new[] { "Id" })]
+    [ForeignKeyConstraint("FK_Users_Roles", new[] { "RoleId" }, typeof(RolesTable), new[] { "Id" })]
+    [ForeignKeyConstraint("FK_Users_Manager", new[] { "ManagerId" }, typeof(UsersTable), new[] { "Id" })]
     public partial class UsersTable
     {
         public static class Columns
@@ -69,16 +67,14 @@ namespace SharedDemo.Oracle
         }
     }
     
-    [Alias(typeof(UsersTable), "Manager", Dialect = typeof(OracleSqlDialectImpl))]
+    [Alias(typeof(UsersTable), "Manager")]
     public partial class ManagersTable
     {
     }
     
-    [Table("Departments", null, Dialect = typeof(OracleSqlDialectImpl),
-        Constraints = new[] {
-            "CONSTRAINT \"FK_Departments_Parent\" FOREIGN KEY (\"ParentDepartmentId\") REFERENCES \"Departments\"(\"Id\")",
-            "CONSTRAINT \"FK_Departments_Manager\" FOREIGN KEY (\"ManagerId\") REFERENCES \"Users\"(\"Id\")"
-        })]
+    [Table("Departments", null, Dialect = typeof(OracleSqlDialectImpl))]
+    [ForeignKeyConstraint("FK_Departments_Parent", new[] { "ParentDepartmentId" }, typeof(DepartmentsTable), new[] { "Id" })]
+    [ForeignKeyConstraint("FK_Departments_Manager", new[] { "ManagerId" }, typeof(UsersTable), new[] { "Id" })]
     public partial class DepartmentsTable
     {
         public static class Columns
@@ -188,11 +184,9 @@ namespace SharedDemo.Oracle
         }
     }
     
-    [Table("Projects", null, Dialect = typeof(OracleSqlDialectImpl),
-        Constraints = new[] {
-            "CONSTRAINT \"FK_Projects_Departments\" FOREIGN KEY (\"DepartmentId\") REFERENCES \"Departments\"(\"Id\")",
-            "CONSTRAINT \"FK_Projects_Owner\" FOREIGN KEY (\"OwnerId\") REFERENCES \"Users\"(\"Id\")"
-        })]
+    [Table("Projects", null, Dialect = typeof(OracleSqlDialectImpl))]
+    [ForeignKeyConstraint("FK_Projects_Departments", new[] { "DepartmentId" }, typeof(DepartmentsTable), new[] { "Id" })]
+    [ForeignKeyConstraint("FK_Projects_Owner", new[] { "OwnerId" }, typeof(UsersTable), new[] { "Id" })]
     public partial class ProjectsTable
     {
         public static class Columns
@@ -251,11 +245,9 @@ namespace SharedDemo.Oracle
         }
     }
     
-    [Table("UserProjects", null, Dialect = typeof(OracleSqlDialectImpl),
-        Constraints = new[] {
-            "CONSTRAINT \"FK_UserProjects_User\" FOREIGN KEY (\"UserId\") REFERENCES \"Users\"(\"Id\")",
-            "CONSTRAINT \"FK_UserProjects_Project\" FOREIGN KEY (\"ProjectId\") REFERENCES \"Projects\"(\"Id\")"
-        })]
+    [Table("UserProjects", null, Dialect = typeof(OracleSqlDialectImpl))]
+    [ForeignKeyConstraint("FK_UserProjects_User", new[] { "UserId" }, typeof(UsersTable), new[] { "Id" })]
+    [ForeignKeyConstraint("FK_UserProjects_Project", new[] { "ProjectId" }, typeof(ProjectsTable), new[] { "Id" })]
     public partial class UserProjectsTable
     {
         public static class Columns

@@ -348,7 +348,7 @@ public class MigrationGenerator
             reverseDiff = targetSnapshot.Compare(currentSnapshot);
         }
 
-        if (reverseDiff == null || !reverseDiff.HasChanges)
+        if (!reverseDiff.HasChanges)
         {
             return $"-- Down migration: {migrationName}\n" +
                    $"-- Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC\n" +
@@ -370,6 +370,8 @@ public class MigrationGenerator
 
     /// <summary>
     /// Extracts TableDefinitions from the given type names.
+    /// If no types are specified, auto-discovers all table types in the loaded assemblies
+    /// that match the current dialect.
     /// Uses OrmSchemaExporter to extract schema via reflection.
     /// </summary>
     private Dictionary<string, TableDefinition> ExtractTableDefinitions(
@@ -378,7 +380,12 @@ public class MigrationGenerator
     {
         var result = new Dictionary<string, TableDefinition>();
 
-        if (tableTypes.Count == 0)
+        // If no types specified, auto-discover all table types matching the current dialect
+        var resolvedTypes = tableTypes.Count > 0
+            ? tableTypes.ToList()
+            : AutoDiscoverTableTypes(assemblyPath);
+
+        if (resolvedTypes.Count == 0)
             return result;
 
         // Load the assembly and its dependencies from the same directory
@@ -422,7 +429,7 @@ public class MigrationGenerator
         // Get OrmSchemaExporter type for reflection
         var exporterType = typeof(OrmSchemaExporter);
 
-        foreach (var typeName in tableTypes)
+        foreach (var typeName in resolvedTypes)
         {
             Type? type = null;
             
@@ -465,6 +472,102 @@ public class MigrationGenerator
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Auto-discovers all table types in the loaded assemblies that match the current dialect.
+    /// Scans types with the [Table] attribute where TableAttribute.Dialect == _dialectType.
+    /// Skips types with [Alias] attribute (table aliases are not real tables).
+    /// </summary>
+    private List<string> AutoDiscoverTableTypes(string? assemblyPath)
+    {
+        var discovered = new List<string>();
+
+        // Collect all loaded assemblies (same logic as in ExtractTableDefinitions)
+        var loadedAssemblies = new List<Assembly>();
+
+        if (!string.IsNullOrEmpty(assemblyPath) && File.Exists(assemblyPath))
+        {
+            var mainAssembly = Assembly.LoadFrom(assemblyPath);
+            loadedAssemblies.Add(mainAssembly);
+
+            var dir = Path.GetDirectoryName(Path.GetFullPath(assemblyPath))!;
+            foreach (var dll in Directory.GetFiles(dir, "*.dll"))
+            {
+                try
+                {
+                    var asmName = AssemblyName.GetAssemblyName(dll);
+                    if (AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == asmName.Name))
+                        continue;
+                    var asm = Assembly.LoadFrom(dll);
+                    loadedAssemblies.Add(asm);
+                }
+                catch
+                {
+                    // Skip assemblies that can't be loaded
+                }
+            }
+        }
+        else
+        {
+            loadedAssemblies.Add(Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly());
+        }
+
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (!loadedAssemblies.Any(a => a == asm))
+                loadedAssemblies.Add(asm);
+        }
+
+        var tableAttrType = typeof(Drizzle4Dotnet.Core.Schema.Tables.TableAttribute);
+        var aliasAttrType = typeof(Drizzle4Dotnet.Core.Schema.Tables.AliasAttribute);
+
+        foreach (var asm in loadedAssemblies)
+        {
+            Type[] types;
+            try
+            {
+                types = asm.GetTypes();
+            }
+            catch (ReflectionTypeLoadException ex)
+            {
+                types = ex.Types.Where(t => t != null).ToArray()!;
+            }
+
+            foreach (var type in types)
+            {
+                if (type == null || !type.IsClass || type.IsAbstract)
+                    continue;
+
+                // Skip types with [Alias] attribute (not real tables)
+                if (type.GetCustomAttribute(aliasAttrType) != null)
+                    continue;
+
+                // Check for [Table] attribute with matching dialect
+                var tableAttr = type.GetCustomAttribute(tableAttrType) as Drizzle4Dotnet.Core.Schema.Tables.TableAttribute;
+                if (tableAttr == null)
+                    continue;
+
+                // Check if the table's dialect matches the current provider
+                if (tableAttr.Dialect != _dialectType)
+                    continue;
+
+                discovered.Add(type.FullName!);
+            }
+        }
+
+        if (discovered.Count > 0)
+        {
+            Console.WriteLine($"  Auto-discovered: {discovered.Count} table type(s)");
+            foreach (var t in discovered)
+                Console.WriteLine($"    - {t}");
+        }
+        else
+        {
+            Console.WriteLine($"  Auto-discovered: 0 table type(s) for {ProviderName}");
+        }
+
+        return discovered;
     }
 
     /// <summary>
