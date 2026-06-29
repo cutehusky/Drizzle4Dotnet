@@ -3,430 +3,210 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query.Select;
 
-public enum ELockType
+// TODO: handle offset limit of various dialects (e.g., SQL Server uses OFFSET ... FETCH NEXT)
+public class SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>: Query<TReturn, TDialect, TVirtualTable>,
+    ISupportWhere<TSelf>,
+    ISupportOrderBy<TSelf>,
+    ISupportOffsetLimit<TSelf>,
+    ISupportDistinct<TSelf>,
+    ISupportCte<TSelf, TDialect>,
+    IJoin<TSelf, TDialect>
+    where TSelf : SelectQuery<TReturn, TDialect, TVirtualTable, TSelf>
+    where TDialect : ISqlDialect
+    where TVirtualTable : IVirtualTable<TDialect>
 {
-    None,
-    ForUpdate,
-    ForShare,
-    ForNoKeyUpdate,
-    ForKeyShare
-}
-
-public class SelectQuery<TReturn, TDialect>: Query<TReturn, TDialect> where TDialect : ISqlDialect
-{
-    private IGenericTable<TDialect>? _from;
-    private readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> _joins = new();
-    private readonly List<IGenericSql> _wheres = new();
-    private readonly List<(IGenericSql, bool)> _orderBys = new();
-    private int? _limit;
-    private int? _offset;
-    private bool _distinct;
-    private readonly List<IGenericSql> _groupBys = new();
-    private readonly List<IGenericSql> _havings = new();
-    private string? _lockClause;
-    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
-
-    public SelectQuery(
-        ISelectedColumns<TReturn, TDialect> selectedColumns,
-        DbClient<TDialect> dbClient
-        ): base(selectedColumns, dbClient)
-    {
-    }
-    
-    public SelectQuery<TReturn, TDialect> With(ICteTable<TDialect> cteTable)
-    {
-        _cteTables.Add(cteTable);
-        return this;
-    }
-    
-    public override void BuildSql(ISqlBuilder sqlBuilder)
-    {
-        // WITH
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
-        
-        sqlBuilder.Append("SELECT ");
-        if (_distinct) sqlBuilder.Append("DISTINCT ");
-        SelectedColumns.BuildSql(sqlBuilder);
-
-        // FROM
-        if (_from != null)
-        {
-            sqlBuilder.Append(" FROM ");
-            _from.BuildRefSql(sqlBuilder);
-        }
-
-        if (_joins.Count > 0)
-        {
-            foreach (var (table, type, on) in _joins)
-            {
-                sqlBuilder.Append(' ').Append(type).Append(" JOIN ");
-                table.BuildRefSql(sqlBuilder);
-                if (on != null)
-                {
-                    sqlBuilder.Append(" ON (");
-                    on.BuildSql(sqlBuilder);
-                    sqlBuilder.Append(')');
-                }
-            }
-        }
-
-        // WHERE
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
-
-        // GROUP BY
-        AppendClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
-
-        // HAVING
-        AppendClause(sqlBuilder, " HAVING ", " AND ", _havings, wrapInParentheses: true);
-
-        // ORDER BY
-        if (_orderBys.Count > 0)
-        {
-            sqlBuilder.Append(" ORDER BY ");
-            for (int i = 0; i < _orderBys.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                var (expr, isAsc) = _orderBys[i];
-                expr.BuildSql(sqlBuilder);
-                sqlBuilder.Append(isAsc ? " ASC" : " DESC");
-            }
-        }
-
-        // LIMIT & OFFSET
-        if (_limit.HasValue) sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
-        if (_offset.HasValue) sqlBuilder.Append(" OFFSET ").Append(sqlBuilder.AddParameter(_offset.Value));
-        
-        if (_lockClause != null) sqlBuilder.Append(' ').Append(_lockClause);
-    }
-
-    public SelectQuery<TReturn, TDialect> From(IGenericTable<TDialect> table)
-    {
-        _from = table;
-        return this;
-    }
-
-    
-    public SelectQuery<TReturn, TDialect> Where(params IGenericSql[] conditions)
-    {
-        _wheres.AddRange(conditions);
-        return this;
-    }
-    
-    public SelectQuery<TReturn, TDialect> Where(IGenericSql conditions)
-    {
-        _wheres.AddRange(conditions);
-        return this;
-    }
-    
-    public SelectQuery<TReturn, TDialect> GroupBy(IGenericSql columns)
-    {
-        _groupBys.Add(columns);
-        return this;
-    }
-    
-    public SelectQuery<TReturn, TDialect> GroupBy(params IGenericSql[] columns)
-    {
-        _groupBys.AddRange(columns);
-        return this;
-    }
-
-    public SelectQuery<TReturn, TDialect> Having(IGenericSql condition)
-    {
-        _havings.Add(condition);
-        return this;
-    }
-    
-    public SelectQuery<TReturn, TDialect> Having(params IGenericSql[] conditions)
-    {
-        _havings.AddRange(conditions);
-        return this;
-    }
-
-    public SelectQuery<TReturn, TDialect> OrderBy(IGenericSql col, bool asc = true)
-    {
-        _orderBys.Add((col, asc));
-        return this;
-    }
-
-    public SelectQuery<TReturn, TDialect> Limit(int limit)
-    {
-        _limit = limit;
-        return this;
-    }
-
-    public SelectQuery<TReturn, TDialect> Offset(int offset)
-    {
-        _offset = offset;
-        return this;
-    }
-
-    // ====== JOINS ======
-    private SelectQuery<TReturn, TDialect> JoinInternal(
-        IGenericTable<TDialect> table,
-        IGenericSql on,
-        string type)
-    {
-        _joins.Add((table, type, on));
-        return this;
-    }
-
-    public SelectQuery<TReturn, TDialect> InnerJoin(IGenericTable<TDialect> table, IGenericSql on)
-        => JoinInternal(table, on, "INNER");
-
-    public SelectQuery<TReturn, TDialect> LeftJoin(IGenericTable<TDialect> table, IGenericSql on)
-        => JoinInternal(table, on, "LEFT");
-
-    public SelectQuery<TReturn, TDialect> RightJoin(IGenericTable<TDialect> table, IGenericSql on)
-        => JoinInternal(table, on, "RIGHT");
-
-    public SelectQuery<TReturn, TDialect> FullJoin(IGenericTable<TDialect> table, IGenericSql on)
-        => JoinInternal(table, on, "FULL");
-
-    public SelectQuery<TReturn, TDialect> CrossJoin(IGenericTable<TDialect> table)
-    {
-        _joins.Add((table, "CROSS", null));
-        return this;
-    }
-    
-    public SelectQuery<TReturn, TDialect> Distinct()
-    {
-        _distinct = true;
-        return this;
-    }
-    
-    public SelectQuery<TReturn, TDialect> ForUpdate() { _lockClause = "FOR UPDATE"; return this; }
-    public SelectQuery<TReturn, TDialect> ForShare() { _lockClause = "FOR SHARE"; return this; }
-    public SelectQuery<TReturn, TDialect> ForNoKeyUpdate() { _lockClause = "FOR NO KEY UPDATE"; return this; }
-    public SelectQuery<TReturn, TDialect> ForKeyShare() { _lockClause = "FOR KEY SHARE"; return this; }
-    public SelectQuery<TReturn, TDialect> For(ELockType lockType)
-    {
-        _lockClause = lockType switch
-        {
-            ELockType.ForUpdate => "FOR UPDATE",
-            ELockType.ForShare => "FOR SHARE",
-            ELockType.ForNoKeyUpdate => "FOR NO KEY UPDATE",
-            ELockType.ForKeyShare => "FOR KEY SHARE",
-            _ => null
-        };
-        return this;
-    }
-}
-
-public class SelectQuery<TReturn, TDialect, TVirtualTable>: Query<TReturn, TDialect, TVirtualTable> where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
-{
-    private IGenericTable<TDialect>? _from;
-    private readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> _joins = new();
-    private readonly List<IGenericSql> _wheres = new();
-    private readonly List<(IGenericSql, bool)> _orderBys = new();
-    private int? _limit;
-    private int? _offset;
-    private bool _distinct;
-    private readonly List<IGenericSql> _groupBys = new();
-    private readonly List<IGenericSql> _havings = new();
-    private string? _lockClause;
-    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    protected IGenericTable<TDialect>? FromTable;
+    protected readonly List<(IGenericTable<TDialect>, string, IGenericSql?)> Joins = new();
+    protected readonly List<IGenericSql> Wheres = new();
+    protected readonly List<(IGenericSql, bool)> OrderBys = new();
+    protected int? LimitValue;
+    protected int? OffsetValue;
+    protected bool IsDistinct;
+    protected readonly List<IGenericSql> GroupBys = new();
+    protected readonly List<IGenericSql> Havings = new();
 
     public SelectQuery(
         ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns,
-        DbClient<TDialect> dbClient
-        ): base(selectedColumns, dbClient)
+        IQueryExecutor<TDialect> executor
+        ): base(selectedColumns, executor)
     {
     }
     
-    public SelectQuery<TReturn, TDialect, TVirtualTable> With(ICteTable<TDialect> cteTable)
+    public TSelf With(params ICteTable<TDialect>[] cteTables)
     {
-        _cteTables.Add(cteTable);
-        return this;
+        Recursive = false;
+        CteTables.AddRange(cteTables);
+        return (TSelf)this;
     }
     
+    public TSelf WithRecursive(params ICteTable<TDialect>[] cteTables)
+    {
+        Recursive = true;
+        CteTables.AddRange(cteTables);
+        return (TSelf)this;
+    }
+    
+    /// <summary>
+    /// Validates the query state before building SQL.
+    /// Override in dialect-specific subclasses to add custom validation.
+    /// </summary>
+    protected override void ValidateQuery()
+    {
+        if (Joins.Count > 0 && FromTable == null)
+        {
+            throw new InvalidOperationException("Cannot use JOIN without a FROM table. Call From() first.");
+        }
+    }
+
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        // WITH
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                sqlBuilder.Append('\n');
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append('\n');
-        }
+        ValidateQuery();
+
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
         
         sqlBuilder.Append("SELECT ");
-        if (_distinct) sqlBuilder.Append("DISTINCT ");
+        BuildSqlDistinct(sqlBuilder);
         SelectedColumns.BuildSql(sqlBuilder);
 
         // FROM
-        if (_from != null)
+        if (FromTable != null)
         {
             sqlBuilder.Append(" FROM ");
-            _from.BuildRefSql(sqlBuilder);
+            FromTable.BuildRefSql(sqlBuilder);
         }
 
-        if (_joins.Count > 0)
-        {
-            foreach (var (table, type, on) in _joins)
-            {
-                sqlBuilder.Append(' ').Append(type).Append(" JOIN ");
-                table.BuildRefSql(sqlBuilder);
-                if (on != null)
-                {
-                    sqlBuilder.Append(" ON (");
-                    on.BuildSql(sqlBuilder);
-                    sqlBuilder.Append(')');
-                }
-            }
-        }
+        SqlStatics.BuildSqlJoins(sqlBuilder, Joins);
 
         // WHERE
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
 
         // GROUP BY
-        AppendClause(sqlBuilder, " GROUP BY ", ", ", _groupBys);
+        SqlStatics.BuildClause(sqlBuilder, " GROUP BY ", ", ", GroupBys);
 
         // HAVING
-        AppendClause(sqlBuilder, " HAVING ", " AND ", _havings, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " HAVING ", " AND ", Havings, wrapInParentheses: true);
 
         // ORDER BY
-        if (_orderBys.Count > 0)
-        {
-            sqlBuilder.Append(" ORDER BY ");
-            for (int i = 0; i < _orderBys.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                var (expr, isAsc) = _orderBys[i];
-                expr.BuildSql(sqlBuilder);
-                sqlBuilder.Append(isAsc ? " ASC" : " DESC");
-            }
-        }
+        SqlStatics.BuildSqlOrderBy(sqlBuilder, OrderBys);
 
         // LIMIT & OFFSET
-        if (_limit.HasValue) sqlBuilder.Append(" LIMIT ").Append(sqlBuilder.AddParameter(_limit.Value));
-        if (_offset.HasValue) sqlBuilder.Append(" OFFSET ").Append(sqlBuilder.AddParameter(_offset.Value));
+        TDialect.BuildLimitOffset(sqlBuilder, LimitValue, OffsetValue);
         
-        if (_lockClause != null) sqlBuilder.Append(' ').Append(_lockClause);
-    }
-
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> From(IGenericTable<TDialect> table)
-    {
-        _from = table;
-        return this;
-    }
-
-    
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Where(params IGenericSql[] conditions)
-    {
-        _wheres.AddRange(conditions);
-        return this;
+        BuildSqlLock(sqlBuilder);
     }
     
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Where(IGenericSql conditions)
+    /// <summary>
+    /// Hook for dialect-specific locking clause. Override in subclasses if needed.
+    /// Default implementation does nothing (no lock support in core SQL).
+    /// </summary>
+    protected virtual void BuildSqlLock(ISqlBuilder sqlBuilder)
     {
-        _wheres.AddRange(conditions);
-        return this;
+        // No-op by default — dialect subclasses override this for lock support.
+    }
+
+    public TSelf From(IGenericTable<TDialect> table)
+    {
+        FromTable = table;
+        return (TSelf)this;
+    }
+
+            
+    public TSelf Where(params IGenericSql[] conditions)
+    {
+        Wheres.AddRange(conditions);
+        return (TSelf)this;
     }
     
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> GroupBy(IGenericSql columns)
+    public TSelf Where(IGenericSql conditions)
     {
-        _groupBys.Add(columns);
-        return this;
+        Wheres.Add(conditions);
+        return (TSelf)this;
     }
     
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> GroupBy(params IGenericSql[] columns)
+    public TSelf GroupBy(IGenericSql columns)
     {
-        _groupBys.AddRange(columns);
-        return this;
-    }
-
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Having(IGenericSql condition)
-    {
-        _havings.Add(condition);
-        return this;
+        GroupBys.Add(columns);
+        return (TSelf)this;
     }
     
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Having(params IGenericSql[] conditions)
+    public TSelf GroupBy(params IGenericSql[] columns)
     {
-        _havings.AddRange(conditions);
-        return this;
+        GroupBys.AddRange(columns);
+        return (TSelf)this;
     }
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> OrderBy(IGenericSql col, bool asc = true)
+    public TSelf Having(IGenericSql condition)
     {
-        _orderBys.Add((col, asc));
-        return this;
+        Havings.Add(condition);
+        return (TSelf)this;
+    }
+    
+    public TSelf Having(params IGenericSql[] conditions)
+    {
+        Havings.AddRange(conditions);
+        return (TSelf)this;
     }
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Limit(int limit)
+    public TSelf OrderBy(IGenericSql col, bool asc = true)
     {
-        _limit = limit;
-        return this;
+        OrderBys.Add((col, asc));
+        return (TSelf)this;
+    }
+    
+    public TSelf OrderBy(params (IGenericSql col, bool asc)[] columns)
+    {
+        foreach (var c in columns) OrderBys.Add(c);
+        return (TSelf)this;
     }
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Offset(int offset)
+    public TSelf Limit(int limit)
     {
-        _offset = offset;
-        return this;
+        LimitValue = limit;
+        return (TSelf)this;
+    }
+
+    public TSelf Offset(int offset)
+    {
+        OffsetValue = offset;
+        return (TSelf)this;
     }
 
     // ====== JOINS ======
-    private  SelectQuery<TReturn, TDialect, TVirtualTable> JoinInternal(
+    protected TSelf JoinInternal(
         IGenericTable<TDialect> table,
-        IGenericSql on,
+        IGenericSql? on,
         string type)
     {
-        _joins.Add((table, type, on));
-        return this;
+        Joins.Add((table, type, on));
+        return (TSelf)this;
     }
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> InnerJoin(IGenericTable<TDialect> table, IGenericSql on)
+    // ====== STANDARD JOINS (supported by all major databases) ======
+
+    public TSelf InnerJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "INNER");
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> LeftJoin(IGenericTable<TDialect> table, IGenericSql on)
+    public TSelf LeftJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "LEFT");
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> RightJoin(IGenericTable<TDialect> table, IGenericSql on)
+    public TSelf RightJoin(IGenericTable<TDialect> table, IGenericSql on)
         => JoinInternal(table, on, "RIGHT");
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> FullJoin(IGenericTable<TDialect> table, IGenericSql on)
-        => JoinInternal(table, on, "FULL");
+    public TSelf CrossJoin(IGenericTable<TDialect> table)
+        => JoinInternal(table, null, "CROSS");
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> CrossJoin(IGenericTable<TDialect> table)
+    public virtual TSelf Distinct()
     {
-        _joins.Add((table, "CROSS", null));
-        return this;
+        IsDistinct = true;
+        return (TSelf)this;
     }
-    
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Distinct()
+
+    /// <summary>
+    /// Hook for dialect-specific DISTINCT rendering (e.g., DISTINCT ON for PostgreSQL).
+    /// Default implementation appends "DISTINCT " if _distinct is true.
+    /// </summary>
+    protected virtual void BuildSqlDistinct(ISqlBuilder sqlBuilder)
     {
-        _distinct = true;
-        return this;
-    }
-    
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> ForUpdate() { _lockClause = "FOR UPDATE"; return this; }
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> ForShare() { _lockClause = "FOR SHARE"; return this; }
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> ForNoKeyUpdate() { _lockClause = "FOR NO KEY UPDATE"; return this; }
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> ForKeyShare() { _lockClause = "FOR KEY SHARE"; return this; }
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> For(ELockType lockType)
-    {
-        _lockClause = lockType switch
-        {
-            ELockType.ForUpdate => "FOR UPDATE",
-            ELockType.ForShare => "FOR SHARE",
-            ELockType.ForNoKeyUpdate => "FOR NO KEY UPDATE",
-            ELockType.ForKeyShare => "FOR KEY SHARE",
-            _ => null
-        };
-        return this;
+        if (IsDistinct) sqlBuilder.Append("DISTINCT ");
     }
 }

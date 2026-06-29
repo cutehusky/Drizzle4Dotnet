@@ -5,11 +5,6 @@ using Drizzle4Dotnet.Core.Schema.Tables;
 namespace Drizzle4Dotnet.Core.Shared;
 
 
-public interface ISelectedColumns<TReturn, TDialect>: ISql where TDialect : ISqlDialect
-{
-    TReturn Mapper(DbDataReader r);
-}
-
 public interface ISelectedColumns<TReturn, TDialect, TVirtualTable>: ISql where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
 {
     TReturn Mapper(DbDataReader r);
@@ -33,12 +28,6 @@ public interface ITypedTupleSelectedColumns<
 }
 
 
-public interface ISelection<TReturnModel, TReturnRecord, TDialect> where TDialect : ISqlDialect 
-{
-    public static abstract ISelectedColumns<TReturnRecord, TDialect> Record { get; }
-    public static abstract ISelectedColumns<TReturnModel, TDialect> Mapping { get; }
-}
-
 public interface ISelection<TReturnModel, TReturnRecord, TDialect, TVirtualTable> where TDialect : ISqlDialect where TVirtualTable : IVirtualTable<TDialect>
 {
     public static abstract ISelectedColumns<TReturnRecord, TDialect, TVirtualTable> Record { get; }
@@ -53,7 +42,7 @@ public class TypedTupleGeneratedSubqueryTable<TReturn, TDialect>:
 {
     protected readonly IGenericSql BaseSql;
     protected readonly string AliasName;
-    protected ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> SelectedColumns;
+    protected readonly ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> SelectedColumns;
     
     public ITypedTupleSelectedColumns<TReturn, TDialect, TypedTupleGeneratedSubqueryTable<TReturn, TDialect>> 
         Selected => SelectedColumns.As(AliasName);

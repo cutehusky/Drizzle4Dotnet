@@ -1,19 +1,23 @@
 using Drizzle4Dotnet.Core;
+using Drizzle4Dotnet.Core.Operators;
+using Drizzle4Dotnet.Core.Operators.Nodes;
+using Drizzle4Dotnet.Core.Query;
+using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
-using Drizzle4Dotnet.Dialect;
-using SharedDemo;
-using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
-using static Drizzle4Dotnet.Core.Shared.Operators.Functions;
-using ProjectSelect = SharedDemo.ProjectSelect;
-using UserSelect = SharedDemo.UserSelect;
-using UserWithRelationsSelect = SharedDemo.UserWithRelationsSelect;
+using Drizzle4Dotnet.PgSql;
+using SharedDemo.PgSql;
+using static Drizzle4Dotnet.Core.Operators.Operators;
+using static Drizzle4Dotnet.Core.Operators.Functions;
+using ProjectSelect = SharedDemo.PgSql.ProjectSelect;
+using UserSelect = SharedDemo.PgSql.UserSelect;
+using UserWithRelationsSelect = SharedDemo.PgSql.UserWithRelationsSelect;
 
 namespace Test.Select;
 
 [TestFixture]
 public class SelectQueryPgTests
 {
-    private QueryBuilder<PgSqlSqlDialectImpl> _db;
+    private PgSqlQueryBuilder _db;
 
     private UsersTable users;
     private DepartmentsTable departments;
@@ -25,7 +29,7 @@ public class SelectQueryPgTests
     [SetUp]
     public void Setup()
     {
-        _db = new QueryBuilder<PgSqlSqlDialectImpl>();
+        _db = new PgSqlQueryBuilder();
 
         users = new UsersTable();
         departments = new DepartmentsTable();
@@ -285,23 +289,22 @@ public class SelectQueryPgTests
         Print("COMPLEX JOIN + WHERE + ORDER + LIMIT", sql, parameters);
     }
 
-    // [Test]
-    // public void Select_WithCaseExpression()
-    // {
-    //     var query = _db
-    //         .Select(
-    //             UsersTable.Id,
-    //             Case()
-    //                 .When(Eq(UsersTable.IsActive, true), "Active")
-    //                 .Else("Inactive")
-    //                 .As("Status")
-    //         )
-    //         .From(users);
-    //
-    //     var (sql, parameters) = query.Build();
-    //
-    //     Print("SELECT with CASE expression", sql, parameters);
-    // }
+    [Test]
+    public void Select_WithCaseExpression()
+    {
+        var query = _db
+            .Select(
+                UsersTable.Id,
+                Case
+                    .When(Eq(UsersTable.IsActive, true), Sql.Value("Active"))
+                    .Else(Sql.Value("Inactive")).Build().As("Status")
+            )
+            .From(users);
+
+        var (sql, parameters) = query.Build();
+
+        Print("SELECT with CASE expression", sql, parameters);
+    }
     
     [Test]
     public void Select_WithAggregateFunctions()
@@ -489,7 +492,7 @@ public class SelectQueryPgTests
             .GroupBy(ProjectsTable.DepartmentId)
             .AsSubQuery("dept_budgets", (from) => new
             {
-                Id = from.Field<int>("Id"),
+                Id = from.Field<long>("Id"),
                 TotalDeptBudget = from.Field<decimal>("TotalDeptBudget")
             }).AsCte();
     
@@ -542,8 +545,8 @@ public class SelectQueryPgTests
     public void Select_ActiveUsersInActiveProjects_RawSQL()
     {
         
-        var activeProjectsRaw = new RawSql<PgSqlSqlDialectImpl>("SELECT up.\"UserId\", p.\"Name\" AS \"ProjectName\" FROM \"Projects\" p INNER JOIN \"UserProjects\" up ON p.\"Id\" = up.\"ProjectId\" WHERE p.\"IsActive\" = TRUE")
-            .AsSubQuery("active_projects_raw").AsCte();
+        var activeProjectsRaw = new RawSql("SELECT up.\"UserId\", p.\"Name\" AS \"ProjectName\" FROM \"Projects\" p INNER JOIN \"UserProjects\" up ON p.\"Id\" = up.\"ProjectId\" WHERE p.\"IsActive\" = TRUE")
+            .AsSubQuery<PgSqlSqlDialectImpl>("active_projects_raw").AsCte();
 
         var projectMembers = _db
             .Select(
@@ -569,29 +572,59 @@ public class SelectQueryPgTests
         Print("Multiple CTEs Join with RAW SQL CTE", sql, parameters);
     }
     
-    //
-    // [Test]
-    // public void Select_DepartmentHierarchy_Recursive()
-    // {
-    //     var deptTree = _db
-    //         .Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
-    //         .From(departments)
-    //         .Where(Eq(DepartmentsTable.Id, 1))
-    //         .UnionAll(
-    //             _db.Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
-    //                 .From(departments)
-    //                 .InnerJoin("dept_tree", Eq(DepartmentsTable.ParentDepartmentId, Field("dept_tree", "Id")))
-    //         )
-    //         .AsRecursiveSubQuery("dept_tree");
-    //
-    //     var query = _db
-    //         .SelectAll()
-    //         .With(deptTree)
-    //         .From(deptTree);
-    //
-    //     var (sql, parameters) = query.Build();
-    //     Print("Recursive Department Tree", sql, parameters);
-    // }
+    [Test]
+    public void Select_WithRecursiveCte()
+    {
+        // Build a recursive CTE: anchor member UNION ALL recursive member
+        var deptTree = _db
+            .Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+            .From(departments)
+            .Where(Eq(DepartmentsTable.Id, 1))
+            .UnionAll(
+                _db.Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+                    .From(departments)
+                    .Where(Gt(DepartmentsTable.Id, 1))
+            )
+            .AsRecursiveCte("dept_tree");
+
+        // Main query using the recursive CTE
+        var query = _db
+            .Select(deptTree.Field<long>("Id"), deptTree.Field<string>("Name"))
+            .WithRecursive(deptTree)
+            .From(deptTree)
+            .OrderBy(deptTree.Field<long>("Id"));
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL WITH RECURSIVE CTE", sql, parameters);
+    }
+
+    [Test]
+    public void Select_WithRecursiveCte_SelfJoin()
+    {
+        // Self-join pattern using recursive CTE via raw SQL reference for the recursive member
+        var cteBody = _db
+            .Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+            .From(departments)
+            .Where(Eq(DepartmentsTable.ParentDepartmentId, Sql.Value<long?>(null)))
+            .UnionAll(
+                _db.Select(DepartmentsTable.Id, DepartmentsTable.Name, DepartmentsTable.ParentDepartmentId)
+                    .From(departments)
+                    .InnerJoin( 
+                        new RawSqlTableAlias<PgSqlSqlDialectImpl>("dept_tree"),
+                        Eq(DepartmentsTable.ParentDepartmentId, new RawSqlTableAlias<PgSqlSqlDialectImpl>("dept_tree").Field<long>("Id"))
+                    )
+            )
+            .AsRecursiveCte("dept_tree");
+
+        var query = _db
+            .Select(cteBody.Field<long>("Id"), cteBody.Field<string>("Name"))
+            .WithRecursive(cteBody)
+            .From(cteBody)
+            .OrderBy(cteBody.Field<long>("Id"));
+
+        var (sql, parameters) = query.Build();
+        Print("PgSQL WITH RECURSIVE CTE (self-join)", sql, parameters);
+    }
     
     [Test]
     public void Select_SalaryGapWithManager()
@@ -610,7 +643,7 @@ public class SelectQueryPgTests
             )
             .With(managerSalaries)
             .From(users)
-            .InnerJoin(managerSalaries, Eq(UsersTable.ManagerId, managerSalaries.Field<int>("Id")));
+            .InnerJoin(managerSalaries, Eq(UsersTable.ManagerId, managerSalaries.Field<long>("Id")));
     
         var (sql, parameters) = query.Build();
         Print("CTE Salary Gap Analysis", sql, parameters);
@@ -630,7 +663,7 @@ public class SelectQueryPgTests
             .Select(UsersTable.Name, UsersTable.Email)
             .With(highRoles)
             .From(users)
-            .Where(In(UsersTable.RoleId, highRoles.Field<int>("Id")));
+            .Where(In(UsersTable.RoleId, highRoles.Field<long>("Id")));
     
         var (sql, parameters) = query.Build();
         Print("CTE as Filter Scope", sql, parameters);

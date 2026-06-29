@@ -1,0 +1,184 @@
+-- =========================
+-- SQLite Sample Data for SharedDemo
+-- Uses SQLite-compatible functions: random(), abs(), datetime('now')
+-- =========================
+
+-- =========================
+-- ROLES (10 rows)
+-- =========================
+INSERT INTO "Roles" ("Id", "Guid", "Name", "Level", "BaseSalary", "BonusRate", "IsActive", "CanApproveBudget", "CreatedAt", "UpdatedAt", "Description")
+SELECT
+    i,
+    printf('%s-%s-%s-%s-%s',
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 8),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 12)
+    ),
+    'Role ' || i,
+    abs(random()) % 10,
+    round(3000 + abs(random()) % 7000, 2),
+    abs(random() % 100) / 100.0,
+    1,
+    CASE WHEN abs(random()) % 2 = 0 THEN 1 ELSE 0 END,
+    datetime('now'),
+    NULL,
+    'Role description ' || i
+FROM (SELECT 1 AS i UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+      UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10);
+
+-- =========================
+-- DEPARTMENTS (20 rows)
+-- =========================
+INSERT INTO "Departments" ("Id", "Guid", "Name", "Code", "Location", "Budget", "HeadCount", "IsActive", "CreatedAt", "UpdatedAt", "Description", "ParentDepartmentId", "ManagerId")
+SELECT
+    i,
+    printf('%s-%s-%s-%s-%s',
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 8),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 12)
+    ),
+    'Department ' || i,
+    'DPT-' || i,
+    'Location ' || i,
+    round(100000 + abs(random()) % 900000, 2),
+    5 + abs(random()) % 50,
+    1,
+    datetime('now'),
+    NULL,
+    'Department desc ' || i,
+    CASE WHEN i > 5 THEN abs(random()) % 5 + 1 ELSE NULL END,
+    1
+FROM (SELECT 1 AS i UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+      UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+      UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15
+      UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20);
+
+-- =========================
+-- USERS (100 rows - reduced from 1000 for SQLite demo)
+-- =========================
+INSERT INTO "Users" ("Id", "Guid", "Name", "Email", "Age", "Salary", "Rating", "IsActive", "DepartmentId", "ManagerId", "RoleId", "CreatedAt", "UpdatedAt")
+SELECT
+    i,
+    printf('%s-%s-%s-%s-%s',
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 8),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 12)
+    ),
+    'User ' || i,
+    'user' || i || '@example.com',
+    18 + abs(random()) % 40,
+    round(2000 + abs(random()) % 8000, 2),
+    abs(random() % 500) / 100.0,
+    CASE WHEN abs(random()) % 10 > 0 THEN 1 ELSE 0 END,
+    abs(random()) % 19 + 1,
+    CASE WHEN i > 10 THEN abs(random()) % 10 + 1 ELSE NULL END,
+    abs(random()) % 9 + 1,
+    datetime('now'),
+    NULL
+FROM (SELECT 1 AS i UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+      UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+      UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15
+      UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20
+      UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23 UNION ALL SELECT 24 UNION ALL SELECT 25
+      UNION ALL SELECT 26 UNION ALL SELECT 27 UNION ALL SELECT 28 UNION ALL SELECT 29 UNION ALL SELECT 30
+      UNION ALL SELECT 31 UNION ALL SELECT 32 UNION ALL SELECT 33 UNION ALL SELECT 34 UNION ALL SELECT 35
+      UNION ALL SELECT 36 UNION ALL SELECT 37 UNION ALL SELECT 38 UNION ALL SELECT 39 UNION ALL SELECT 40
+      UNION ALL SELECT 41 UNION ALL SELECT 42 UNION ALL SELECT 43 UNION ALL SELECT 44 UNION ALL SELECT 45
+      UNION ALL SELECT 46 UNION ALL SELECT 47 UNION ALL SELECT 48 UNION ALL SELECT 49 UNION ALL SELECT 50
+      UNION ALL SELECT 51 UNION ALL SELECT 52 UNION ALL SELECT 53 UNION ALL SELECT 54 UNION ALL SELECT 55
+      UNION ALL SELECT 56 UNION ALL SELECT 57 UNION ALL SELECT 58 UNION ALL SELECT 59 UNION ALL SELECT 60
+      UNION ALL SELECT 61 UNION ALL SELECT 62 UNION ALL SELECT 63 UNION ALL SELECT 64 UNION ALL SELECT 65
+      UNION ALL SELECT 66 UNION ALL SELECT 67 UNION ALL SELECT 68 UNION ALL SELECT 69 UNION ALL SELECT 70
+      UNION ALL SELECT 71 UNION ALL SELECT 72 UNION ALL SELECT 73 UNION ALL SELECT 74 UNION ALL SELECT 75
+      UNION ALL SELECT 76 UNION ALL SELECT 77 UNION ALL SELECT 78 UNION ALL SELECT 79 UNION ALL SELECT 80
+      UNION ALL SELECT 81 UNION ALL SELECT 82 UNION ALL SELECT 83 UNION ALL SELECT 84 UNION ALL SELECT 85
+      UNION ALL SELECT 86 UNION ALL SELECT 87 UNION ALL SELECT 88 UNION ALL SELECT 89 UNION ALL SELECT 90
+      UNION ALL SELECT 91 UNION ALL SELECT 92 UNION ALL SELECT 93 UNION ALL SELECT 94 UNION ALL SELECT 95
+      UNION ALL SELECT 96 UNION ALL SELECT 97 UNION ALL SELECT 98 UNION ALL SELECT 99 UNION ALL SELECT 100);
+
+-- =========================
+-- FIX Department.ManagerId (after users exist)
+-- =========================
+UPDATE "Departments" SET "ManagerId" = abs(random()) % 100 + 1;
+
+-- =========================
+-- PROJECTS (50 rows - reduced from 200)
+-- =========================
+INSERT INTO "Projects" ("Id", "Guid", "Name", "Code", "OwnerId", "DepartmentId", "Budget", "Progress", "IsActive", "StartDate", "EndDate", "CreatedAt", "UpdatedAt")
+SELECT
+    i,
+    printf('%s-%s-%s-%s-%s',
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 8),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 4),
+        substr('0123456789abcdef', abs(random()) % 16 + 1, 12)
+    ),
+    'Project ' || i,
+    'PRJ-' || i,
+    abs(random()) % 100 + 1,
+    abs(random()) % 19 + 1,
+    round(50000 + abs(random()) % 500000, 2),
+    abs(random() % 10000) / 100.0,
+    CASE WHEN abs(random()) % 10 > 2 THEN 1 ELSE 0 END,
+    datetime('now', '-' || (abs(random()) % 365) || ' days'),
+    CASE WHEN abs(random()) % 2 = 0 THEN datetime('now') ELSE NULL END,
+    datetime('now'),
+    NULL
+FROM (SELECT 1 AS i UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+      UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+      UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15
+      UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20
+      UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23 UNION ALL SELECT 24 UNION ALL SELECT 25
+      UNION ALL SELECT 26 UNION ALL SELECT 27 UNION ALL SELECT 28 UNION ALL SELECT 29 UNION ALL SELECT 30
+      UNION ALL SELECT 31 UNION ALL SELECT 32 UNION ALL SELECT 33 UNION ALL SELECT 34 UNION ALL SELECT 35
+      UNION ALL SELECT 36 UNION ALL SELECT 37 UNION ALL SELECT 38 UNION ALL SELECT 39 UNION ALL SELECT 40
+      UNION ALL SELECT 41 UNION ALL SELECT 42 UNION ALL SELECT 43 UNION ALL SELECT 44 UNION ALL SELECT 45
+      UNION ALL SELECT 46 UNION ALL SELECT 47 UNION ALL SELECT 48 UNION ALL SELECT 49 UNION ALL SELECT 50);
+
+-- =========================
+-- USER PROJECTS (100 rows)
+-- =========================
+INSERT INTO "UserProjects" ("Id", "UserId", "ProjectId", "Role", "Allocation", "HourlyRate", "IsActive", "AssignedAt", "RemovedAt", "CreatedAt", "UpdatedAt")
+SELECT
+    i,
+    abs(random()) % 100 + 1,
+    abs(random()) % 50 + 1,
+    CASE WHEN abs(random()) % 4 = 0 THEN 'Manager'
+         WHEN abs(random()) % 4 = 1 THEN 'Dev'
+         WHEN abs(random()) % 4 = 2 THEN 'QA'
+         ELSE 'Designer'
+    END,
+    abs(random() % 100) / 100.0,
+    round(20 + abs(random()) % 100, 2),
+    CASE WHEN abs(random()) % 10 > 2 THEN 1 ELSE 0 END,
+    datetime('now', '-' || (abs(random()) % 200) || ' days'),
+    CASE WHEN abs(random()) % 10 > 7 THEN datetime('now') ELSE NULL END,
+    datetime('now'),
+    NULL
+FROM (SELECT 1 AS i UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+      UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+      UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15
+      UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20
+      UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23 UNION ALL SELECT 24 UNION ALL SELECT 25
+      UNION ALL SELECT 26 UNION ALL SELECT 27 UNION ALL SELECT 28 UNION ALL SELECT 29 UNION ALL SELECT 30
+      UNION ALL SELECT 31 UNION ALL SELECT 32 UNION ALL SELECT 33 UNION ALL SELECT 34 UNION ALL SELECT 35
+      UNION ALL SELECT 36 UNION ALL SELECT 37 UNION ALL SELECT 38 UNION ALL SELECT 39 UNION ALL SELECT 40
+      UNION ALL SELECT 41 UNION ALL SELECT 42 UNION ALL SELECT 43 UNION ALL SELECT 44 UNION ALL SELECT 45
+      UNION ALL SELECT 46 UNION ALL SELECT 47 UNION ALL SELECT 48 UNION ALL SELECT 49 UNION ALL SELECT 50
+      UNION ALL SELECT 51 UNION ALL SELECT 52 UNION ALL SELECT 53 UNION ALL SELECT 54 UNION ALL SELECT 55
+      UNION ALL SELECT 56 UNION ALL SELECT 57 UNION ALL SELECT 58 UNION ALL SELECT 59 UNION ALL SELECT 60
+      UNION ALL SELECT 61 UNION ALL SELECT 62 UNION ALL SELECT 63 UNION ALL SELECT 64 UNION ALL SELECT 65
+      UNION ALL SELECT 66 UNION ALL SELECT 67 UNION ALL SELECT 68 UNION ALL SELECT 69 UNION ALL SELECT 70
+      UNION ALL SELECT 71 UNION ALL SELECT 72 UNION ALL SELECT 73 UNION ALL SELECT 74 UNION ALL SELECT 75
+      UNION ALL SELECT 76 UNION ALL SELECT 77 UNION ALL SELECT 78 UNION ALL SELECT 79 UNION ALL SELECT 80
+      UNION ALL SELECT 81 UNION ALL SELECT 82 UNION ALL SELECT 83 UNION ALL SELECT 84 UNION ALL SELECT 85
+      UNION ALL SELECT 86 UNION ALL SELECT 87 UNION ALL SELECT 88 UNION ALL SELECT 89 UNION ALL SELECT 90
+      UNION ALL SELECT 91 UNION ALL SELECT 92 UNION ALL SELECT 93 UNION ALL SELECT 94 UNION ALL SELECT 95
+      UNION ALL SELECT 96 UNION ALL SELECT 97 UNION ALL SELECT 98 UNION ALL SELECT 99 UNION ALL SELECT 100);

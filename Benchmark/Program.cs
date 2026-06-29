@@ -1,19 +1,20 @@
 ﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 using Dapper;
-using Drizzle4Dotnet.Core;
-using Drizzle4Dotnet.Dialect;
+using Drizzle4Dotnet.Core.Operators;
+using Drizzle4Dotnet.PgSql;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using SharedDemo;
-using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+using SharedDemo.PgSql;
+
+namespace Benchmark;
 
 [MemoryDiagnoser]
 public class OrmBenchmark
 {
     public NpgsqlConnection Connection;
     
-    public DbClient<PgSqlSqlDialectImpl> Db;
+    public PgSqlDbClient Db;
     public static readonly UsersTable Users = new UsersTable();
     
     public AppDbContext EfContext;
@@ -27,7 +28,7 @@ public class OrmBenchmark
         var dataSource = builder.Build();
         Connection = dataSource.OpenConnection(); 
         
-        Db = new DbClient<PgSqlSqlDialectImpl>(Connection); 
+        Db = new PgSqlDbClient(Connection); 
         
         
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -133,7 +134,7 @@ WHERE ""Id"" = @id;";
     {
         var user = await Db.Select(UsersTable.ModelAll)
             .From(Users)
-            .Where(Eq(UsersTable.Id, 1));
+            .Where(Operators.Eq(UsersTable.Id, 1));
     }
     
     [Benchmark]

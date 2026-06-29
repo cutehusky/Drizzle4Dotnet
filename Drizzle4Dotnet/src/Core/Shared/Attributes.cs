@@ -1,6 +1,13 @@
 namespace Drizzle4Dotnet.Core.Shared;
 
-[AttributeUsage(AttributeTargets.Class)] public class DbSelectAttribute : Attribute { }
+[AttributeUsage(AttributeTargets.Class)] public class DbSelectAttribute : Attribute 
+{ 
+    /// <summary>
+    /// Optional dialect type (e.g., typeof(PgSqlSqlDialectImpl) or typeof(MySqlSqlDialectImpl)).
+    /// If not specified, defaults to PgSqlSqlDialectImpl for backward compatibility.
+    /// </summary>
+    public Type? Dialect { get; set; }
+}
 
 [AttributeUsage(AttributeTargets.Property)]
 public class MapWithAttribute(

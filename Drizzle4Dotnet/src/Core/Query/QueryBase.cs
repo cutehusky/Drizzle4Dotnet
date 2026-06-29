@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query;
@@ -5,11 +7,17 @@ namespace Drizzle4Dotnet.Core.Query;
 
 public abstract class QueryBase<TDialect>: IGenericSql where TDialect : ISqlDialect
 {
-    public readonly DbClient<TDialect> DbClient;
-
-    public QueryBase(DbClient<TDialect> dbClient)
+    /// <summary>
+    /// The executor used to run this query against a database.
+    /// Decoupled via IQueryExecutor for testability.
+    /// </summary>
+    public readonly IQueryExecutor<TDialect> Executor;
+    protected readonly List<ICteTable<TDialect>> CteTables = new();
+    protected bool Recursive;
+    
+    public QueryBase(IQueryExecutor<TDialect> executor)
     {
-        DbClient = dbClient;
+        Executor = executor;
     }
 
     public abstract void BuildSql(ISqlBuilder sqlBuilder);
@@ -21,18 +29,23 @@ public abstract class QueryBase<TDialect>: IGenericSql where TDialect : ISqlDial
         return builder.Build();
     }
     
-    protected void AppendClause(ISqlBuilder sqlBuilder, string header, string separator, IReadOnlyList<IGenericSql> items, 
-         bool wrapInParentheses = false)
+    /// <summary>
+    /// Validates the query state before building SQL.
+    /// Override in dialect-specific subclasses to add custom validation.
+    /// </summary>
+    protected virtual void ValidateQuery()
     {
-        if (items.Count == 0) return;
-
-        sqlBuilder.Append(header);
-        for (int i = 0; i < items.Count; i++)
-        {
-            if (i > 0) sqlBuilder.Append(separator);
-            if (wrapInParentheses) sqlBuilder.Append('(');
-            items[i].BuildSql(sqlBuilder);
-            if (wrapInParentheses) sqlBuilder.Append(')');
-        }
+        if (Recursive && CteTables.Count == 0)
+            throw new InvalidOperationException("Recursive CTE tables must be provided for a recursive compound query.");
     }
+}
+
+public interface IAwaitableQuery<TReturn>
+{
+    TaskAwaiter<TReturn> GetAwaiter();
+}
+
+public interface IAwaitableQuery
+{
+    TaskAwaiter GetAwaiter();
 }

@@ -1,9 +1,10 @@
-﻿using Drizzle4Dotnet.Core;
-using Drizzle4Dotnet.Dialect;
+﻿using Drizzle4Dotnet.PgSql;
 using Npgsql;
-using SharedDemo;
-using static Drizzle4Dotnet.Core.Shared.Operators.Operators;
+using SharedDemo.PgSql;
+using static Drizzle4Dotnet.Core.Operators.Operators;
 
+
+namespace Demo1;
 
 public static class EntryPoint {
     public static async Task Main()
@@ -14,7 +15,7 @@ public static class EntryPoint {
         await using var dataSource = builder.Build();
         await using var conn = await dataSource.OpenConnectionAsync();
 
-        var db = new DbClient<PgSqlSqlDialectImpl>(conn);
+        var db = new PgSqlDbClient(conn);
         var users = new UsersTable();
         var departments = new DepartmentsTable();
         var managers = new ManagersTable();
@@ -51,7 +52,7 @@ public static class EntryPoint {
             .Where(And(
                 Eq(DepartmentsTable.Id, 1),
                 Like(UsersTable.Email, "%@example.com")
-                ));
+            ));
         (sql, parameters) = query.Build();
         Console.WriteLine(sql);
         foreach (var queryParameter in parameters)

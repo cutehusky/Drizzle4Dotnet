@@ -1,295 +1,526 @@
 # Drizzle4Dotnet
 
-A modern, type-safe SQL builder for .NET inspired by Drizzle ORM (TypeScript).
+> **A modern, type-safe SQL builder for .NET** — inspired by [Drizzle ORM](https://orm.drizzle.team) (TypeScript), built for .NET with compile-time safety, Native AOT compatibility, and multi-dialect support.
 
-Drizzle4Dotnet brings the same philosophy of **type safety**, **composability**, and **developer ergonomics** into the .NET ecosystem, with strong focus on performance and Native AOT compatibility.
-
----
-
-## ✨ Features
-
-* Strongly typed query builder (compile-time safety)
-* CRUD operations
-* Typed result mapping (record / model)
-* Source Generator powered
-* Column-level selection
-* CTE (Common Table Expressions)
-* Subqueries (nested + reusable)
-* Complex joins (inner, left, self, many-to-many)
-* Insert from SELECT
-* DISTINCT, GROUP BY, HAVING
-* ORDER BY, LIMIT, OFFSET
-* Null-safe expressions
-* PostgreSQL support (more dialects planned)
-* Native AOT friendly
-* Custom SQL functions (planned)
+[![.NET 10.0](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Dialects](https://img.shields.io/badge/Dialects-PgSql%20|%20MySql%20|%20MSSQL%20|%20Oracle-blue)
 
 ---
 
-## 🚀 Philosophy
+## Table of Contents
 
-* No runtime reflection
-* Everything is type-safe
-* SQL is explicit but composable
-* Generated code over magic
+- [Features](#features)
+- [Dialects](#dialects)
+- [Quick Start](#quick-start)
+- [Usage Examples](#usage-examples)
+  - [SELECT](#select)
+  - [INSERT](#insert)
+  - [UPDATE](#update)
+  - [DELETE](#delete)
+  - [Joins](#joins)
+  - [Subqueries & CTEs](#subqueries--ctes)
+  - [Upsert / On Conflict](#upsert--on-conflict)
+- [Schema Definition](#schema-definition)
+- [Source Generators](#source-generators)
+- [CLI Tool](#cli-tool)
+- [Migration System](#migration-system)
+- [Documentation](#documentation)
+- [Project Structure](#project-structure)
+- [Building](#building)
+- [License](#license)
+
 ---
 
-## 🧱 Defining Select Models
+## Features
 
-Use `[DbSelect]` with `[MapWith]` to define typed result projections.
+| Feature | Description |
+|---------|-------------|
+| 🔒 **Type-safe queries** | Compile-time checked column types, table references, and result mappings |
+| ⚡ **Fluent API** | Method-chaining query builder with `await` support |
+| 🎯 **Multi-dialect** | PostgreSQL, MySQL/MariaDB, MSSQL, Oracle — single API |
+| 🔧 **Source generators** | Roslyn incremental generators for table schemas, typed records, and mapping code |
+| 🏗️ **Migration system** | Snapshot-based schema diffing and migration SQL generation |
+| 📦 **CLI tool** | `drizzle4net` — generate, snapshot, apply, status commands |
+| 🚀 **Native AOT** | Zero runtime reflection — all type mapping via generics + source gen |
+| 📐 **Composable** | Subqueries, CTEs, recursive CTEs, compound queries, window functions |
+
+---
+
+## Dialects
+
+| Dialect | Namespace | Status | Provider |
+|---------|-----------|--------|----------|
+| **PostgreSQL** | `Drizzle4Dotnet.PgSql` | ✅ Complete | Npgsql |
+| **MySQL/MariaDB** | `Drizzle4Dotnet.MySql` | ✅ Complete | MySqlConnector |
+| **SQL Server** | `Drizzle4Dotnet.Mssql` | ✅ Complete | Microsoft.Data.SqlClient |
+| **Oracle** | `Drizzle4Dotnet.Oracle` | ✅ Complete | Oracle.ManagedDataAccess.Core |
+| **SQLite** | `Drizzle4Dotnet.Sqlite` | 🚧 Planned | Microsoft.Data.Sqlite |
+
+Each dialect provides:
+- `{Dialect}DbClient` — database connection + execution
+- `{Dialect}QueryBuilder` — offline SQL builder (for unit testing)
+- `{Dialect}SqlDialectImpl` — dialect configuration (quoting, parameters, feature flags)
+- `{Dialect}DataType` — CLR-to-SQL type mapping
+- Dialect-specific functions, operators, and query extensions
+
+---
+
+## Quick Start
+
+### Install
+
+```bash
+# Reference the project or NuGet package (once published):
+dotnet add package Drizzle4Dotnet
+```
+
+### Define a Table Schema
 
 ```csharp
-[DbSelect]
-public partial class UserSelect
-{
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Id)]
-    public int Id { get; set; }
+using Drizzle4Dotnet.Core.Schema.Columns;
+using Drizzle4Dotnet.Core.Schema.Tables;
+using Drizzle4Dotnet.PgSql;
+using Drizzle4Dotnet.PgSql.Schema;
 
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Email)]
-    public string Email { get; set; }
-    
-    [MapWith(typeof(UsersTable), UsersTable.ColumnNames.Name)]
-    public string Name { get; set; }
+[Table("Users", "public", Dialect = typeof(PgSqlSqlDialectImpl))]
+[Index("IX_Users_Email", ["Email"], IsUnique = true)]
+public partial class UsersTable
+{
+    public static class Columns
+    {
+        [PgSqlBigInt]
+        [Column("Id")]
+        [PrimaryKey]
+        public static long Id { get; set; }
+
+        [PgSqlText]
+        [Column("Name")]
+        [NotNull]
+        public static string Name { get; set; }
+
+        [PgSqlText]
+        [Column("Email")]
+        [NotNull]
+        public static string Email { get; set; }
+
+        [PgSqlBoolean]
+        [Column("IsActive")]
+        [NotNull]
+        public static bool IsActive { get; set; }
+    }
 }
 ```
 
-The source generator will automatically:
-
-* Generate SQL projection
-* Generate mapping logic
-* Generate `Record` and `Model`
-
----
-
-## 🧩 Basic Query
+### Build a Query
 
 ```csharp
-var query = _db
-    .Select(UserSelect.Record)
-    .From(users);
+using Drizzle4Dotnet.Core;
+using Drizzle4Dotnet.PgSql;
 
-var (sql, parameters) = query.Build();
-```
+// Offline builder (no DB connection)
+var db = new PgSqlQueryBuilder();
+var users = new UsersTable();
 
----
+// OR online with real database:
+await using var client = new PgSqlDbClient(connectionString);
+var db = new PgSqlQueryBuilder(client);
 
-## 🔍 WHERE Conditions
-
-```csharp
-var query = _db
-    .Select(UserSelect.Record)
+// Build and await
+List<(long Id, string Name)> results = await db
+    .Select(users.Id, users.Name)
     .From(users)
-    .Where(And(
-        UsersTable.Id.Eq(1),
-        Like(UsersTable.Email, "%@example.com")
-    ));
+    .Where(users.IsActive.Eq(true))
+    .OrderBy(users.Name, asc: true)
+    .Limit(10);
 ```
 
 ---
 
-## 🔗 Joins
+## Usage Examples
 
-### Inner Join
+### SELECT
 
 ```csharp
-var query = _db
-    .Select(UserSelect.Record)
+// Basic SELECT
+var query = db
+    .Select(users.Id, users.Name, users.Email)
     .From(users)
-    .InnerJoin(departments,
-        Eq(UsersTable.DepartmentId, DepartmentsTable.Id));
-```
+    .Where(users.IsActive.Eq(true))
+    .OrderBy(users.Name)
+    .Limit(20)
+    .Offset(0);
 
-### Multiple Joins
+// SELECT DISTINCT
+db.SelectDistinct(users.Name).From(users);
 
-```csharp
-var query = _db
-    .Select(UserSelect.Record)
+// SELECT with GROUP BY and HAVING
+db.Select(users.DepartmentId, Functions.Count(users.Id))
     .From(users)
-    .InnerJoin(departments,
-        Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
-    .InnerJoin(roles,
-        Eq(UsersTable.RoleId, RolesTable.Id));
+    .GroupBy(users.DepartmentId)
+    .Having(Functions.Count(users.Id).Gt(5));
+
+// SELECT with compound queries (UNION, INTERSECT, EXCEPT)
+var active = db.Select(users.Id).From(users).Where(users.IsActive.Eq(true));
+var admins = db.Select(users.Id).From(users).Where(users.RoleId.Eq(1));
+var union = active.Union(admins);
 ```
 
-### Left Join
+### INSERT
 
 ```csharp
-.LeftJoin(managers,
-    Eq(UsersTable.ManagerId, ManagersTable.Id))
+// Single row with generated InsertRecord
+await db.Insert(users).Value(new UsersTable.InsertRecord(
+    Name: "Alice",
+    Email: "alice@example.com",
+    IsActive: true
+));
+
+// Multiple rows
+await db.Insert(users).Values(
+    new UsersTable.InsertRecord(Name: "Alice", ...),
+    new UsersTable.InsertRecord(Name: "Bob", ...)
+);
+
+// INSERT ... SELECT
+await db.Insert(users).From(
+    db.Select(archivedUsers.Name, archivedUsers.Email).From(archivedUsers)
+        .Where(archivedUsers.IsActive.Eq(true))
+);
+
+// INSERT with RETURNING
+var inserted = await db.Insert(users)
+    .Value(new UsersTable.InsertRecord(Name: "Alice", ...))
+    .Returning(users.Id, users.Name);
 ```
 
----
-
-## 🔁 Subqueries
+### UPDATE
 
 ```csharp
-var subQuery = _db
-    .Select(UsersTable.Id)
+// Update with Set
+await db.Update(users)
+    .Set(users.Name, "Updated Name")
+    .Set(users.IsActive, false)
+    .Where(users.Id.Eq(1));
+
+// Update with generated UpdateRecord (uses Optional<T>)
+await db.Update(users)
+    .Set(new UsersTable.UpdateRecord(Name: "New Name"))
+    .Where(users.Id.Eq(1));
+
+// Update with expression value
+await db.Update(users)
+    .Set(users.LoginCount, users.LoginCount.Add(1))
+    .Where(users.Id.Eq(1));
+```
+
+### DELETE
+
+```csharp
+// Simple delete
+await db.Delete(users).Where(users.Id.Eq(1));
+
+// Delete with RETURNING
+var deleted = await db.Delete(users)
+    .Where(users.IsActive.Eq(false))
+    .Returning(users.Id, users.Name);
+```
+
+### Joins
+
+```csharp
+// INNER JOIN
+db.Select(users.Id, departments.Name)
     .From(users)
-    .Where(Eq(UsersTable.IsActive, true));
+    .InnerJoin(departments, users.DepartmentId.Eq(departments.Id));
 
-var query = _db
-    .Select(UserSelect.Record)
+// LEFT JOIN, RIGHT JOIN, CROSS JOIN
+db.Select(...).From(users)
+    .LeftJoin(departments, users.DepartmentId.Eq(departments.Id));
+
+// PostgreSQL-specific: LATERAL joins
+db.Select(...).From(users)
+    .InnerLateralJoin(subQuery, users.Id.Eq(subQuery.Field<long>("user_id")));
+
+// MSSQL-specific: CROSS/OUTER APPLY
+db.Select(...).From(users)
+    .CrossApply(subQuery);
+```
+
+### Subqueries & CTEs
+
+```csharp
+// Subquery with typed columns
+var subQuery = db.Select(users.Id, users.Name)
     .From(users)
-    .Where(In(UsersTable.Id, subQuery));
+    .Where(users.Age.Gt(18))
+    .AsSubQuery("adults");
+
+db.Select(subQuery.Field<long>("id"), subQuery.Field<string>("name"))
+    .From(subQuery);
+
+// Subquery with shape mapping
+var shaped = query.AsSubQuery("s", f => new {
+    UserId = f.Field<long>("id"),
+    FullName = f.Field<string>("name")
+});
+db.Select(shaped.Shape.UserId, shaped.Shape.FullName).From(shaped);
+
+// CTE from subquery
+var cte = subQuery.AsCte();
+db.Select(cte.Field<long>("id")).From(cte).With(cte);
+
+// Recursive CTE
+var recursiveCte = compoundQuery.AsRecursiveCte("org_tree");
+db.Select(...).From(recursiveCte).WithRecursive(recursiveCte);
 ```
 
----
-
-## 📊 Group By + Having
+### Upsert / On Conflict
 
 ```csharp
-var query = _db
-    .Select(
-        DepartmentsTable.Id,
-        DepartmentsTable.Name,
-        Count(UsersTable.Id).As("UserCount")
-    )
-    .From(users)
-    .InnerJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
-    .GroupBy(DepartmentsTable.Id, DepartmentsTable.Name)
-    .Having(Gt(Count(UsersTable.Id), 5));
+// PostgreSQL: ON CONFLICT DO NOTHING
+await db.Insert(users)
+    .Value(new UsersTable.InsertRecord(Email: "alice@example.com", ...))
+    .OnConflict("email")
+    .DoNothing();
+
+// PostgreSQL: ON CONFLICT DO UPDATE
+await db.Insert(users)
+    .Value(new UsersTable.InsertRecord(Email: "alice@example.com", Name: "Alice"))
+    .OnConflict("email")
+    .DoUpdate()
+    .SetOnConflict(users.Name, "Updated Alice")
+    .SetOnConflictExcluded(users.Email);
+
+// MySQL: ON DUPLICATE KEY UPDATE
+await db.Insert(users)
+    .Value(new InsertRecord(...))
+    .OnDuplicateKeyUpdate(users.Name, "Updated");
+
+// MSSQL: MERGE
+await db.Merge(users)
+    .Using(source)
+    .On(users.Id.Eq(source.Field<long>("id")))
+    .WhenMatchedThenUpdate(new Dictionary<string, object?> { ["Name"] = "Updated" })
+    .WhenNotMatchedThenInsert(new List<string> { "Name" }, new List<object?> { "New" });
 ```
 
 ---
 
-## 📌 Ordering & Pagination
+## Schema Definition
+
+### Table Attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `[Table(name, schema)]` | Marks a class as database table |
+| `[Alias(tableType, alias)]` | Self-join alias |
+| `[Virtual]` | Virtual table (subquery/CTE) |
+
+### Column Attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `[Column(name)]` | Maps property to DB column |
+| `[PrimaryKey]` | Primary key column |
+| `[NotNull]` | NOT NULL constraint |
+| `[Nullable]` | Forces nullable |
+| `[DefaultValue("expr")]` | Default value expression |
+| `[AutoIncrement]` | Auto-increment/identity |
+| `[Check("expr")]` | CHECK constraint |
+| `[Comment("text")]` | Column comment |
+
+### Constraint Attributes (Table-Level)
+
+| Attribute | Description |
+|-----------|-------------|
+| `[ForeignKeyKeyConstraint(name, cols, foreignTable, fcols)]` | FOREIGN KEY (repeatable) |
+| `[UniqueConstraint(cols)]` | UNIQUE constraint (repeatable) |
+| `[PrimaryKeyTableConstraint(cols)]` | Composite PRIMARY KEY (repeatable) |
+| `[CheckTableConstraint(expr)]` | CHECK constraint (repeatable) |
+| `[Index(name, cols)]` | Database index (repeatable) |
+
+### Generated Schema Output
+
+Each `[Table]` class generates:
+- `DbColumn<T, TTable, TDialect>` static properties for each column
+- `ColumnNames` static class with column name constants
+- `InsertModel` / `InsertRecord` (typed insert records)
+- `UpdateModel` / `UpdateRecord` (typed update records with `Optional<T>`)
+- `SelectResult` / `SelectModel` (pre-built result types)
+- `GeneratedSubqueryTable` / `GeneratedCteTable` (subquery/CTE support)
+
+---
+
+## Source Generators
+
+Three Roslyn incremental generators produce strongly-typed code at compile time:
+
+| Generator | Input | Output |
+|-----------|-------|--------|
+| [`TableGenerator`](SourceGenerators/SourceGenerators/TableGenerator.cs) | `[Table]` + `[Column]` classes | Table classes with `DbColumn` properties, `InsertRecord`/`UpdateRecord`, subquery tables |
+| [`DbSelectGenerator`](SourceGenerators/SourceGenerators/DbSelectGenerator.cs) | `[DbSelect]` classes + `TypedTupleSelectedColumns` (1–16) | `ISelection<TModel,TRecord>` with `.Record` and `.Mapping` |
+| [`MigrationSchemaGenerator`](SourceGenerators/SourceGenerators/MigrationSchemaGenerator.cs) | Table types with schema attributes | Migration C# code with embedded SQL |
+
+---
+
+## CLI Tool
+
+The `drizzle4net` CLI tool provides migration management:
+
+```bash
+# Generate migration from table types
+drizzle4net generate --provider pgsql --name v1 --types "MyApp.UsersTable,MyApp.DepartmentsTable"
+
+# Generate with auto-discovery + auto-name
+drizzle4net generate --provider pgsql
+
+# Create schema snapshot
+drizzle4net snapshot --provider pgsql --name v1 --output ./snapshot.json
+
+# Show migration status
+drizzle4net status --provider pgsql --output ./Migrations/pgsql
+
+# Apply pending migrations
+drizzle4net apply --provider pgsql --connection "Host=localhost;Database=mydb"
+```
+
+---
+
+## Migration System
+
+The migration pipeline works through snapshot diffing:
+
+```mermaid
+graph LR
+    A[ORM Schema] -->|OrmSchemaExporter| B[TableDefinition]
+    B --> C[SchemaSnapshot]
+    C --> D{Compare}
+    E[Existing Snapshot] --> D
+    D --> F[SchemaDiff]
+    F --> G[MigrationPlan]
+    G --> H[SQL Script]
+```
 
 ```csharp
-var query = _db
-    .Select(UserSelect.Record)
-    .From(users)
-    .OrderBy(UsersTable.Name)
-    .OrderBy(UsersTable.Age, false)
-    .Limit(10)
-    .Offset(20);
+// Extract schema from table types
+var snapshot = OrmSchemaExporter.CreateSchemaSnapshot<PgSqlSqlDialectImpl>(
+    "v2", typeof(UsersTable), typeof(DepartmentsTable));
+
+// Load existing snapshot
+var existing = SchemaSnapshot.Deserialize(File.ReadAllText("snapshot.json"));
+
+// Generate diff and migration plan
+var diff = existing.Compare(snapshot);
+var plan = diff.ToMigrationPlan("v2");
+var sql = plan.ToSql<PgSqlSqlDialectImpl>();
+
+// Write migration files
+File.WriteAllText("Migrations/pgsql/0002_v2.sql", sql);
+File.WriteAllText("Migrations/pgsql/0002-snapshot-v2.json", snapshot.Serialize());
 ```
 
 ---
 
-## 🧠 Distinct
+## Documentation
 
-```csharp
-var query = _db
-    .SelectDistinct(UserSelect.Record)
-    .From(users);
+| Document                               | Description |
+|----------------------------------------|-------------|
+| [`class.md`](class.md)                 | Comprehensive class hierarchy and design documentation |
+| [`feature.md`](feature.md)             | Complete feature inventory with all functions, operators, dialect syntax |
+| [`design-review.md`](design-review.md) | Design strengths, weaknesses, and recommendations |
+| [`test-report.md`](test-report.md)     | Test coverage report and implementation plan |
+| [`PLAN-pgsql.md`](PLAN-pgsql.md)             | PostgreSQL implementation status |
+| [`PLAN-mssql.md`](PLAN-mssql.md)       | MSSQL implementation status |
+| [`PLAN-mysql.md`](PLAN-mysql.md)       | MySQL implementation status |
+| [`PLAN-oracle.md`](PLAN-oracle.md)     | Oracle implementation status |
+| [`PLAN-sqlite.md`](PLAN-sqlite.md)     | SQLite implementation plan |
+
+---
+
+## Project Structure
+
+```
+Drizzle4Dotnet/
+├── Drizzle4Dotnet/                       # Main library project
+│   └── src/
+│       ├── Core/                         # Core library (dialect-agnostic)
+│       │   ├── DbClient.cs               # Abstract DB client + transaction support
+│       │   ├── Query/                    # Query builders (Select, Insert, Update, Delete, Compound, Returning)
+│       │   │   ├── Select/               #   SelectQuery.cs
+│       │   │   ├── Insert/               #   InsertQuery.cs, IInsertRecord.cs
+│       │   │   ├── Update/               #   UpdateQuery.cs, IUpdateRecord.cs
+│       │   │   └── Delete/               #   DeleteQuery.cs
+│       │   ├── Schema/
+│       │   │   ├── Columns/              # Column types + attributes (IColumn, DbColumn, VirtualColumn)
+│       │   │   ├── Tables/               # Table types + attributes (ITable, Attributes)
+│       │   │   └── Migration/            # Migration system (DDL, snapshot, diff, comparer)
+│       │   │       └── Query/            #   DDL query builders (CreateTable, AlterTable, etc.)
+│       │   ├── Shared/                   # Core interfaces (ISql, ISqlDialect, IQueryExecutor, ISelectedColumns, etc.)
+│       │   └── Operators/               # SQL operators + functions + expression nodes (AST)
+│       │       └── Nodes/               #   Expression node types (BinaryNode, FunctionCallNode, etc.)
+│       ├── PgSql/                        # PostgreSQL implementation
+│       │   ├── PgSqlDbClient.cs
+│       │   ├── PgSqlQueryBuilder.cs
+│       │   ├── PgSqlSqlDialectImpl.cs
+│       │   ├── PgSqlStatics.cs
+│       │   ├── Schema/                   # PgSqlColumn, PgSqlDataType, PgSqlTable
+│       │   ├── Operators/                # PgSqlFunctions, PgSqlOperators
+│       │   │   └── Nodes/
+│       │   └── Query/                    # PgSqlSelectQuery, PgSqlInsertQuery, etc.
+│       ├── MySql/                        # MySQL/MariaDB implementation
+│       ├── Mssql/                        # MSSQL implementation
+│       └── Oracle/                       # Oracle implementation
+├── Drizzle4Dotnet.Cli/                   # CLI tool (Program.cs + Commands/ + Services/)
+├── SourceGenerators/
+│   └── SourceGenerators/                 # Roslyn incremental generators
+│       ├── TableGenerator.cs             # [Table] → DbColumn, InsertRecord, UpdateRecord, SubqueryTable
+│       ├── DbSelectGenerator.cs          # TypedTupleSelectedColumns + [DbSelect] processing
+│       ├── MigrationSchemaGenerator.cs   # Migration C# code generation
+│       └── Utils.cs                      # Shared helpers
+├── SharedDemo/                           # Demo schema definitions (all dialects)
+│   ├── PgSql/
+│   ├── MySql/
+│   ├── Mssql/
+│   └── Sqlite/
+├── Test/                                 # NUnit test suite
+│   ├── Select/                           # PgSqlSelectTests, MySqlSelectTests, CompoundQueryTests
+│   ├── Insert/                           # PgSqlInsertTests, MySqlInsertTests
+│   ├── Update/                           # PgSqlUpdateTests, MySqlUpdateTests
+│   ├── Delete/                           # PgSqlDeleteTests, MySqlDeleteTests
+│   ├── Merge/                            # PgSqlMergeTests
+│   └── Migration/                        # PgSqlMigrationTests
+├── Benchmark/                            # Performance benchmarks
+│   ├── Benchmark.csproj
+│   └── Program.cs
+├── Demo1/                                # Demo application
+├── Migrations/                           # Sample migration output (per dialect)
+│   └── pgsql/
+└── docs/                                 # Documentation (class.md, feature.md, design-review.md, test-report.md, PLAN*.md)
+    (root level: *.md)
 ```
 
 ---
 
-## 🧪 Complex Query Example
+## Building
 
-```csharp
-var query = _db
-    .Select(UserWithRelationsSelect.Record)
-    .From(users)
-    .InnerJoin(departments, Eq(UsersTable.DepartmentId, DepartmentsTable.Id))
-    .InnerJoin(roles, Eq(UsersTable.RoleId, RolesTable.Id))
-    .LeftJoin(managers, Eq(UsersTable.ManagerId, ManagersTable.Id))
-    .Where(
-        Eq(UsersTable.IsActive, true),
-        Gt(UsersTable.Age, 25),
-        Like(UsersTable.Email, "%@company.com")
-    )
-    .OrderBy(UsersTable.Name)
-    .Limit(50);
+```bash
+# Restore and build
+dotnet restore Drizzle4Dotnet.sln
+dotnet build
+
+# Run tests
+dotnet test
+
+# Run benchmarks
+dotnet run -p Benchmark/Benchmark.csproj -c Release
+
+# Pack for NuGet
+dotnet pack -c Release
 ```
 
 ---
 
-## 🏗 Table Definition Example
+## License
 
-```csharp
-[Table("Users")]
-    public partial class UsersTable
-    {
-        public static class Columns
-        {
-            [Column("Id")]
-            public static int Id { get; set; }
-
-            [Column("Guid")]
-            public static Guid Guid { get; set; }
-
-            [Column("Name")]
-            public static string Name { get; set; }
-
-            [Column("Email")]
-            public static string Email { get; set; }
-
-            [Column("Age")]
-            public static int Age { get; set; }
-
-            [Column("Salary")]
-            public static decimal Salary { get; set; }
-
-            [Column("Rating")]
-            public static double Rating { get; set; }
-
-            [Column("IsActive")]
-            public static bool IsActive { get; set; }
-
-            [Column("DepartmentId")]
-            public static int DepartmentId { get; set; }
-
-            [Column("ManagerId")]
-            public static int? ManagerId { get; set; }
-
-            [Column("RoleId")]
-            public static int RoleId { get; set; }
-
-            [Column("CreatedAt")]
-            public static DateTime CreatedAt { get; set; }
-
-            [Column("UpdatedAt")]
-            public static DateTime? UpdatedAt { get; set; }
-        }
-    }
-
-
-    [Alias(typeof(UsersTable), "Manager")]
-    public partial class ManagersTable
-    {
-    }
-```
-
-Generated features include:
-
-* Typed columns
-* SQL fragments
-* Result record structs
-* Model classes
-* Subquery/CTE support
-
-
-
----
-
-## ⚡ Native AOT
-
-Drizzle4Dotnet is designed with Native AOT in mind:
-
-* No reflection
-* Source generators only
-* Predictable runtime behavior
-
----
-
-## 🛠 Roadmap
-
-* Custom SQL functions
-* More database dialects (MySQL, SQLite, MSSQL)
-* Migration tooling
-* Query caching
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome. Feel free to open issues or submit pull requests.
-
----
-
-## 📄 License
-
-MIT License
+MIT License — see [LICENSE](LICENSE) for details.

@@ -12,8 +12,3 @@ public interface IColumnOfTable<TTable>
 {
     public string Identifier { get; }
 }
-
-public interface IColumnOfDialect<T, TDialect> : IColumn<T> where TDialect : ISqlDialect
-{
-    
-}

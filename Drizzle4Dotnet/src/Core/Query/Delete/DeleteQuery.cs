@@ -4,50 +4,55 @@ using Drizzle4Dotnet.Core.Shared;
 namespace Drizzle4Dotnet.Core.Query.Delete;
 
 
-public class DeleteQuery<TTable, TDialect> : Query<TDialect> where TTable : ITable<TDialect> where TDialect : ISqlDialect
+public class DeleteQuery<TTable, TDialect, TSelf> : Query<TDialect>,
+    ISupportWhere<TSelf>,
+    ISupportCte<TSelf, TDialect>
+    where TSelf : DeleteQuery<TTable, TDialect, TSelf>
+    where TTable : ITable<TDialect>
+    where TDialect : ISqlDialect
 {
-    private readonly TTable _table;
-    private readonly List<IGenericSql> _wheres = new();
-    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    protected readonly TTable Table;
+    protected readonly List<IGenericSql> Wheres = new();
 
-    public DeleteQuery(TTable table, DbClient<TDialect> dbClient) : base(dbClient)
+    public DeleteQuery(TTable table, IQueryExecutor<TDialect> executor) : base(executor)
     {
-        _table = table;
+        Table = table;
     }
     
-    public DeleteQuery<TTable, TDialect> With(ICteTable<TDialect> cteTable)
+    public TSelf With(params ICteTable<TDialect>[] cteTables)
     {
-        _cteTables.Add(cteTable);
-        return this;
+        Recursive = false;
+        CteTables.AddRange(cteTables);
+        return (TSelf)this;
+    }
+    
+    public TSelf WithRecursive(params ICteTable<TDialect>[] cteTables)
+    {
+        Recursive = true;
+        CteTables.AddRange(cteTables);
+        return (TSelf)this;
     }
 
-    public DeleteQuery<TTable, TDialect> Where(IGenericSql condition)
+    public TSelf Where(IGenericSql condition)
     {
-        _wheres.Add(condition);
-        return this;
+        Wheres.Add(condition);
+        return (TSelf)this;
     }
     
-    public DeleteQuery<TTable, TDialect> Where(params IGenericSql[] conditions)
+    public TSelf Where(params IGenericSql[] conditions)
     {
-        _wheres.AddRange(conditions);
-        return this;
+        Wheres.AddRange(conditions);
+        return (TSelf)this;
     }
-    
+
     public override void BuildSql(ISqlBuilder sqlBuilder)
     {
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
+        ValidateQuery();
+
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         sqlBuilder.Append("DELETE FROM ");
-        _table.BuildRefSql(sqlBuilder);
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+        Table.BuildRefSql(sqlBuilder);
+        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
     }
 }

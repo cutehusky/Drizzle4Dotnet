@@ -14,7 +14,7 @@ public readonly struct Optional<T>
         _hasValue = true;
     }
 
-    public static implicit operator Optional<T>(T value) => new Optional<T>(value);
+    public static implicit operator Optional<T>(T value) => new(value);
     
     public static readonly Optional<T> Undefined = default;
 }

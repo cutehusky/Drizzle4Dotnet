@@ -1,7 +1,13 @@
+using Drizzle4Dotnet.Core.Schema.Migration;
+
 namespace Drizzle4Dotnet.Core.Shared;
 
 public interface ISqlDialect
 { 
+    // ======================================================================
+    // Identifier & Naming
+    // ======================================================================
+    
     static abstract string BuildIdentifier(string identifier);
     
     static abstract string BuildTableName(string schemaName, string tableName);
@@ -11,4 +17,45 @@ public interface ISqlDialect
     static abstract string BuildParameterName(string parameterName);
     
     static abstract string BuildParameterName(int parameterIndex);
+    
+    // ======================================================================
+    // Limit / Offset
+    // ======================================================================
+    
+    static abstract void BuildLimitOffset(ISqlBuilder sqlBuilder, int? limit, int? offset);
+    static abstract void BuildLimitOffsetForUpdateDelete(ISqlBuilder sqlBuilder, int? limit, int? offset);
+    
+    // ======================================================================
+    // Feature Flags
+    // ======================================================================
+    
+    static abstract bool SupportsReturning { get; }
+    static abstract bool SupportsArrays { get; }
+    static abstract bool SupportsJson { get; }
+    static abstract bool SupportsWindowFunctions { get; }
+    static abstract bool SupportsCte { get; }
+    static abstract bool SupportsRecursiveCte { get; }
+    static abstract bool SupportsDeleteUsing { get; }
+    static abstract bool SupportsIsDistinctFrom { get; }
+    static abstract bool SupportsFilteredAggregates { get; }
+    static abstract bool SupportsFullOuterJoin { get; }
+    static abstract bool SupportsNaturalJoin { get; }
+    static abstract bool SupportsLateralJoin { get; }
+    static abstract bool SupportsApplyJoin { get; }
+    
+    // ======================================================================
+    // String Escaping
+    // ======================================================================
+    
+    static abstract string EscapeString(string value);
+    
+    // ======================================================================
+    // Data Type Mapping
+    // ======================================================================
+    
+    /// <summary>
+    /// Maps CLR types to dialect-specific <see cref="ISqlDataType"/> instances.
+    /// Used by <see cref="Schema.Migration.OrmSchemaExporter"/> for automatic type mapping.
+    /// </summary>
+    static abstract Dictionary<Type, ISqlDataType> ClrToSqlTypeMap { get; }
 }

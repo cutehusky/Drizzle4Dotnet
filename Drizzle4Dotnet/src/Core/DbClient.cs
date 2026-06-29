@@ -1,106 +1,57 @@
 using System.Data.Common;
-using Drizzle4Dotnet.Core.Query.Delete;
-using Drizzle4Dotnet.Core.Query.Insert;
-using Drizzle4Dotnet.Core.Query.Select;
-using Drizzle4Dotnet.Core.Query.Update;
 using Drizzle4Dotnet.Core.Schema.Tables;
 using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core;
 
-public interface IQueryBuilder<TDialect> where TDialect : ISqlDialect
+
+public abstract class DbClient<TDialect>: IAsyncDisposable, IQueryExecutor<TDialect> where TDialect : ISqlDialect
 {
-    public SelectQuery<TReturn, TDialect> Select<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns);
+    protected readonly DbConnection Conn;
+    protected readonly DbTransaction? Transaction;
+
+    protected DbClient(DbConnection conn,  DbTransaction? transaction = null)
+    {
+        Conn = conn;
+        Transaction = transaction;
+    }
+
+    // ======================================================================
+    // Command Preparation (shared helper to reduce duplication)
+    // ======================================================================
     
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Select<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>;
-
-    public UpdateQuery<TTable, TDialect> Update<TTable>(TTable table) where TTable : ITable<TDialect>;
-
-    public InsertQuery<TTable, TDialect> Insert<TTable>(TTable table) where TTable : ITable<TDialect>;
-    public DeleteQuery<TTable, TDialect> Delete<TTable>(TTable table) where TTable : ITable<TDialect>;
-
-    public SelectQuery<TReturn, TDialect> SelectDistinct<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns);
-    
-    public SelectQuery<TReturn, TDialect, TVirtualTable> SelectDistinct<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>;
-}
-
-public class QueryBuilder<TDialect> : IQueryBuilder<TDialect> where TDialect : ISqlDialect
-{
-    public SelectQuery<TReturn, TDialect> Select<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
+    /// <summary>
+    /// Creates a DbCommand from an IGenericSql query, building SQL and populating parameters.
+    /// Accepts any SQL expression (ISql, ISql&lt;T&gt;, IReturning, etc.).
+    /// </summary>
+    protected async Task<DbCommand> CreateCommandAsync(IGenericSql query)
     {
-        return new SelectQuery<TReturn, TDialect>(selectedColumns, null);
+        var cmd = Conn.CreateCommand();
+        cmd.Transaction = Transaction;
+        
+        var sqlBuilder = new SqlBuilder<TDialect>();
+        query.BuildSql(sqlBuilder);
+        var (sql, parameters) = sqlBuilder.Build();
+        cmd.CommandText = sql;
+
+        foreach (var entry in parameters)
+        {
+            var p = cmd.CreateParameter();
+            p.ParameterName = entry.Key;
+            p.Value = entry.Value ?? DBNull.Value;
+            cmd.Parameters.Add(p);
+        }
+        
+        return cmd;
     }
 
-    public  SelectQuery<TReturn, TDialect, TVirtualTable> Select<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>
-    {
-        return new  SelectQuery<TReturn, TDialect, TVirtualTable>(selectedColumns, null);
-    }
-    
-    public UpdateQuery<TTable, TDialect> Update<TTable>(TTable table) where TTable : ITable<TDialect>
-    {
-        return new UpdateQuery<TTable, TDialect>(table, null);
-    }
-    
-    public InsertQuery<TTable, TDialect> Insert<TTable>(TTable table) where TTable : ITable<TDialect>
-    {
-        return new InsertQuery<TTable, TDialect>(table, null);
-    }
-    
-    public DeleteQuery<TTable, TDialect> Delete<TTable>(TTable table) where TTable : ITable<TDialect>
-    {
-        return new DeleteQuery<TTable, TDialect>(table, null);
-    }
-    
-    public SelectQuery<TReturn, TDialect> SelectDistinct<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
-    {
-        return new  SelectQuery<TReturn, TDialect>(selectedColumns, null).Distinct();
-    }
-
-    public SelectQuery<TReturn, TDialect, TVirtualTable> SelectDistinct<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>
-    {
-        return new  SelectQuery<TReturn, TDialect, TVirtualTable>(selectedColumns, null).Distinct();
-    }
-}
-
-public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposable where TDialect : ISqlDialect
-{
-    private readonly DbConnection _conn;
-    private readonly DbTransaction? _transaction;
-
-    public DbClient(DbConnection conn,  DbTransaction? transaction = null)
-    {
-        _conn = conn;
-        _transaction = transaction;
-    }
-    
-    public async Task<DbClient<TDialect>> BeginTransactionAsync()
-    {
-        var transaction = await _conn.BeginTransactionAsync();
-        return new DbClient<TDialect>(_conn, transaction);
-    }
-
-    public async Task CommitAsync() => await (_transaction?.CommitAsync() ?? Task.CompletedTask);
-    public async Task RollbackAsync() => await (_transaction?.RollbackAsync() ?? Task.CompletedTask);
-
+    // ======================================================================
+    // IQueryExecutor Implementation
+    // ======================================================================
 
     public async Task<List<T>> ExecuteGetListAsync<T, TVirtualTable>(IReturning<T, TDialect, TVirtualTable> query) where TVirtualTable : IVirtualTable<TDialect>
     {
-        await using var cmd = _conn.CreateCommand();
-        cmd.Transaction = _transaction;
-
-        var sqlBuilder = new SqlBuilder<TDialect>();
-        query.BuildSql(sqlBuilder);
-        var (sql, parameters) = sqlBuilder.Build();
-        cmd.CommandText = sql;
-
-        foreach (var entry in parameters)
-        {
-            var p = cmd.CreateParameter();
-            p.ParameterName = entry.Key;
-            p.Value = entry.Value ?? DBNull.Value;
-            cmd.Parameters.Add(p);
-        }
-
+        await using var cmd = await CreateCommandAsync(query);
         await using var reader = await cmd.ExecuteReaderAsync();
         var result = new List<T>();
         var mapper = query.Mapper;
@@ -111,99 +62,68 @@ public sealed class DbClient<TDialect>: IQueryBuilder<TDialect>, IAsyncDisposabl
         return result;
     }
     
-    public async Task<List<T>> ExecuteGetListAsync<T>(IReturning<T, TDialect> query)
+    public async Task ExecuteAsync(IGenericSql query)
     {
-        await using var cmd = _conn.CreateCommand();
-        cmd.Transaction = _transaction;
-
-        var sqlBuilder = new SqlBuilder<TDialect>();
-        query.BuildSql(sqlBuilder);
-        var (sql, parameters) = sqlBuilder.Build();
-        cmd.CommandText = sql;
-
-        foreach (var entry in parameters)
-        {
-            var p = cmd.CreateParameter();
-            p.ParameterName = entry.Key;
-            p.Value = entry.Value ?? DBNull.Value;
-            cmd.Parameters.Add(p);
-        }
-
-        await using var reader = await cmd.ExecuteReaderAsync();
-        var result = new List<T>();
-        var mapper = query.Mapper;
-        while (await reader.ReadAsync())
-        {
-            result.Add(mapper(reader));
-        }
-        return result;
-    }
-    
-    public async Task ExecuteAsync(ISql query)
-    {
-        await using var cmd = _conn.CreateCommand();
-        cmd.Transaction = _transaction;
-
-        var sqlBuilder = new SqlBuilder<TDialect>();
-        query.BuildSql(sqlBuilder);
-        var (sql, parameters) = sqlBuilder.Build();
-        cmd.CommandText = sql;
-
-        foreach (var entry in parameters)
-        {
-            var p = cmd.CreateParameter();
-            p.ParameterName = entry.Key;
-            p.Value = entry.Value ?? DBNull.Value;
-            cmd.Parameters.Add(p);
-        }
-
+        await using var cmd = await CreateCommandAsync(query);
         await cmd.ExecuteNonQueryAsync();
     }
     
-    public SelectQuery<TReturn, TDialect> Select<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
+    /// <summary>
+    /// Executes a query and returns the first column of the first row as a scalar value.
+    /// Returns default(T) if no rows are returned.
+    /// </summary>
+    public async Task<T?> ExecuteScalarAsync<T>(IGenericSql query)
     {
-        return new SelectQuery<TReturn, TDialect>(selectedColumns, this);
+        await using var cmd = await CreateCommandAsync(query);
+        var result = await cmd.ExecuteScalarAsync();
+        return result == null || result == DBNull.Value ? default : (T)result;
     }
     
-    public SelectQuery<TReturn, TDialect> SelectDistinct<TReturn>(ISelectedColumns<TReturn, TDialect> selectedColumns)
+    /// <summary>
+    /// Executes a query and returns a DbDataReader.
+    /// The caller is responsible for disposing the reader.
+    /// </summary>
+    public async Task<DbDataReader> ExecuteReaderAsync(IGenericSql query)
     {
-        return new SelectQuery<TReturn, TDialect>(selectedColumns, this).Distinct();
+        var cmd = await CreateCommandAsync(query);
+        return await cmd.ExecuteReaderAsync();
     }
     
-    public SelectQuery<TReturn, TDialect, TVirtualTable> Select<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>
-    {
-        return new SelectQuery<TReturn, TDialect, TVirtualTable>(selectedColumns, this);
-    }
-    
-    public SelectQuery<TReturn, TDialect, TVirtualTable> SelectDistinct<TReturn, TVirtualTable>(ISelectedColumns<TReturn, TDialect, TVirtualTable> selectedColumns) where TVirtualTable : IVirtualTable<TDialect>
-    {
-        return new SelectQuery<TReturn, TDialect, TVirtualTable>(selectedColumns, this).Distinct();
-    }
-    
-    public UpdateQuery<TTable, TDialect> Update<TTable>(TTable table) where TTable : ITable<TDialect>
-    {
-        return new UpdateQuery<TTable, TDialect>(table, this);
-    }
-    
-    public InsertQuery<TTable, TDialect> Insert<TTable>(TTable table) where TTable : ITable<TDialect>
-    {
-        return new InsertQuery<TTable, TDialect>(table, this);
-    }
-    
-    public DeleteQuery<TTable, TDialect> Delete<TTable>(TTable table) where TTable : ITable<TDialect>
-    {
-        return new DeleteQuery<TTable, TDialect>(table, this);
-    }
-
     public async ValueTask DisposeAsync()
     {
-        if (_transaction != null)
+        if (Transaction != null)
         {
-            await _transaction.DisposeAsync();
+            await Transaction.DisposeAsync();
         }
     }
+}
+
+
+public abstract class DbClientWithTransaction<TInstance, TDialect>: DbClient<TDialect> 
+where TDialect : ISqlDialect
+where TInstance : DbClientWithTransaction<TInstance, TDialect>
+{
+    protected DbClientWithTransaction(DbConnection conn, DbTransaction? transaction = null) : base(conn, transaction)
+    {
+    }
+
+    /// <summary>
+    /// Factory method for subclasses to create a new instance of themselves with a transaction.
+    /// Each concrete subclass must implement this to return its own type.
+    /// </summary>
+    protected abstract TInstance CreateInstance(DbConnection conn, DbTransaction? transaction);
+
     
-    public async Task RunInTransactionAsync(Func<DbClient<TDialect>, Task> action)
+    public async Task CommitAsync() => await (Transaction?.CommitAsync() ?? Task.CompletedTask);
+    public async Task RollbackAsync() => await (Transaction?.RollbackAsync() ?? Task.CompletedTask);
+
+    public async Task<TInstance> BeginTransactionAsync()
+    {
+        var transaction = await Conn.BeginTransactionAsync();
+        return CreateInstance(Conn, transaction);
+    }
+    
+    public async Task RunInTransactionAsync(Func<TInstance, Task> action)
     {
         await using var txClient = await BeginTransactionAsync();
         try

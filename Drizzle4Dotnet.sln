@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Demo1", "Demo1\Demo1.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharedDemo", "SharedDemo\SharedDemo.csproj", "{427315C8-6E20-4110-ABF9-48CE451144CE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Drizzle4Dotnet.Cli", "Drizzle4Dotnet.Cli\Drizzle4Dotnet.Cli.csproj", "{D39482E1-F3A2-48A7-B8C8-2F18933CED39}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,5 +44,9 @@ Global
 		{427315C8-6E20-4110-ABF9-48CE451144CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{427315C8-6E20-4110-ABF9-48CE451144CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{427315C8-6E20-4110-ABF9-48CE451144CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D39482E1-F3A2-48A7-B8C8-2F18933CED39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D39482E1-F3A2-48A7-B8C8-2F18933CED39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D39482E1-F3A2-48A7-B8C8-2F18933CED39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D39482E1-F3A2-48A7-B8C8-2F18933CED39}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -4,109 +4,101 @@ using Drizzle4Dotnet.Core.Shared;
 
 namespace Drizzle4Dotnet.Core.Query.Update;
 
-public class UpdateQuery<TTable, TDialect> : Query<TDialect> where  TTable : ITable<TDialect> where TDialect : ISqlDialect
+public class UpdateQuery<TTable, TDialect, TSelf> : Query<TDialect>,
+    ISupportUpdateSet<TSelf, TTable, TDialect>,
+    ISupportWhere<TSelf>,
+    ISupportCte<TSelf, TDialect>
+    where TSelf : UpdateQuery<TTable, TDialect, TSelf>
+    where TTable : ITable<TDialect>
+    where TDialect : ISqlDialect
 {
-    private readonly TTable _table;
-    private readonly Dictionary<string, object?> _setValues = new();
-    private readonly List<IGenericSql> _wheres = new();
-    private readonly List<ICteTable<TDialect>> _cteTables = new List<ICteTable<TDialect>>();
+    protected readonly TTable Table;
+    protected readonly Dictionary<string, object?> SetValues = new();
+    protected readonly List<IGenericSql> Wheres = new();
 
     public UpdateQuery(
         TTable table, 
-        DbClient<TDialect> dbClient
-    ): base(dbClient)
+        IQueryExecutor<TDialect> executor
+    ): base(executor)
     {
-        _table = table;
+        Table = table;
     }
 
-    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, T value)
+    public TSelf Set<T>(DbColumn<T, TTable, TDialect> column, T value)
     {
-        _setValues[column.Identifier] = value;
-        return this;
+        SetValues[column.Identifier] = value;
+        return (TSelf)this;
     }
     
-    public UpdateQuery<TTable, TDialect> With(ICteTable<TDialect> cteTable)
+    public TSelf With(params ICteTable<TDialect>[] cteTables)
     {
-        _cteTables.Add(cteTable);
-        return this;
+        Recursive = false;
+        CteTables.AddRange(cteTables);
+        return (TSelf)this;
     }
     
-    public UpdateQuery<TTable,TDialect> Set(IUpdateRecord<TTable, TDialect> record)
+    public TSelf WithRecursive(params ICteTable<TDialect>[] cteTables)
     {
-        record.Writer(_setValues);
-        return this;
+        Recursive = true;
+        CteTables.AddRange(cteTables);
+        return (TSelf)this;
     }
     
-    public UpdateQuery<TTable, TDialect> Set<T>(DbColumn<T, TTable, TDialect> column, ISql<T> value)
+    public TSelf Set(IUpdateRecord<TTable, TDialect> record)
     {
-        _setValues[column.Identifier] = value;
-        return this;
+        record.Writer(SetValues);
+        return (TSelf)this;
     }
     
-    public UpdateQuery<TTable, TDialect> Set(Dictionary<IColumnOfTable<TTable>, object> columnValuePairs)
+    public TSelf Set<T>(DbColumn<T, TTable, TDialect> column, ISql<T> value)
+    {
+        SetValues[column.Identifier] = value;
+        return (TSelf)this;
+    }
+    
+    public TSelf Set(Dictionary<IColumnOfTable<TTable>, object> columnValuePairs)
     {
         foreach (var kv in columnValuePairs)
         {
-            _setValues[kv.Key.Identifier] = kv.Value;
+            SetValues[kv.Key.Identifier] = kv.Value;
         }
-        return this;
+        return (TSelf)this;
     }
 
-    public UpdateQuery<TTable, TDialect> Where(IGenericSql condition)
+    public TSelf Where(IGenericSql condition)
     {
-        _wheres.Add(condition);
-        return this;
+        Wheres.Add(condition);
+        return (TSelf)this;
     }
     
-    public UpdateQuery<TTable, TDialect> Where(params IGenericSql[] conditions)
+    public TSelf Where(params IGenericSql[] conditions)
     {
-        _wheres.AddRange(conditions);
-        return this;
+        Wheres.AddRange(conditions);
+        return (TSelf)this;
     }
     
-    public override void BuildSql(ISqlBuilder sqlBuilder)
+    /// <summary>
+    /// Validates the query state before building SQL.
+    /// Override in dialect-specific subclasses to add custom validation.
+    /// </summary>
+    protected override void ValidateQuery()
     {
-        if (_setValues.Count == 0)
+        if (SetValues.Count == 0)
         {
             throw new InvalidOperationException("No columns set for update.");
         }
+    }
+
+    public override void BuildSql(ISqlBuilder sqlBuilder)
+    {
+        ValidateQuery();
         
-        if (_cteTables.Count > 0)
-        {
-            sqlBuilder.Append("WITH ");
-            for (int i = 0; i < _cteTables.Count; i++)
-            {
-                if (i > 0) sqlBuilder.Append(", ");
-                _cteTables[i].BuildSql(sqlBuilder);
-            }
-            sqlBuilder.Append(' ');
-        }
+        SqlStatics.BuildSqlCte(sqlBuilder, CteTables, Recursive);
 
         sqlBuilder.Append("UPDATE ");
-        _table.BuildRefSql(sqlBuilder);
-        sqlBuilder.Append(" SET ");
+        Table.BuildRefSql(sqlBuilder);
+        SqlStatics.BuildSqlSetClause<TDialect>(sqlBuilder, SetValues);
 
-        bool firstSet = true;
-        foreach (var kv in _setValues)
-        {
-            if (!firstSet) sqlBuilder.Append(", ");
-        
-            sqlBuilder.Append(TDialect.BuildIdentifier(kv.Key));
-            sqlBuilder.Append(" = ");
-
-            if (kv.Value is IGenericSql op)
-            {
-                sqlBuilder.Append('(');
-                op.BuildSql(sqlBuilder);
-                sqlBuilder.Append(')');
-            }
-            else
-            {
-                sqlBuilder.Append(sqlBuilder.AddParameter(kv.Value));
-            }
-            firstSet = false;
-        }
-
-        AppendClause(sqlBuilder, " WHERE ", " AND ", _wheres, wrapInParentheses: true);
+        SqlStatics.BuildClause(sqlBuilder, " WHERE ", " AND ", Wheres, wrapInParentheses: true);
     }
 }
